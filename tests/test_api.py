@@ -22,7 +22,7 @@ class SyntheticProvider:
         return candles
 
 
-def test_analysis_contract_is_unchanged_with_structure_engine() -> None:
+def test_analysis_contract_keeps_legacy_fields_and_adds_multi_timeframe() -> None:
     app.dependency_overrides[get_market_data_provider] = lambda: SyntheticProvider()
     try:
         response = TestClient(app).post(
@@ -38,7 +38,8 @@ def test_analysis_contract_is_unchanged_with_structure_engine() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 200
-    assert set(response.json()) == {
+    payload = response.json()
+    legacy_fields = {
         "symbol",
         "timeframe",
         "higher_timeframe_bias",
@@ -51,6 +52,23 @@ def test_analysis_contract_is_unchanged_with_structure_engine() -> None:
         "target",
         "reasons",
     }
+    assert legacy_fields < set(payload)
+    assert set(payload) - legacy_fields == {"multi_timeframe"}
+    assert set(payload["multi_timeframe"]) == {
+        "higher_timeframe",
+        "current_timeframe",
+        "higher_timeframe_trend",
+        "current_timeframe_trend",
+        "higher_timeframe_phase",
+        "current_timeframe_phase",
+        "alignment",
+        "alignment_score",
+        "directional_bias",
+        "reasons",
+        "human_readable_summary",
+    }
+    assert payload["multi_timeframe"]["higher_timeframe"] == "1h"
+    assert payload["multi_timeframe"]["current_timeframe"] == "5m"
 
 
 def test_analysis_returns_informative_503_when_provider_fails() -> None:

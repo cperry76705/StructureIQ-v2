@@ -37,6 +37,17 @@ Its output is a typed structural snapshot with events, relevant levels, trend or
 
 The Multi-Timeframe Engine relates higher-timeframe bias to lower-timeframe execution context. It determines whether timeframes are aligned, conflicting, or neutral and calculates an alignment score without allowing a lower timeframe to erase material higher-timeframe risk.
 
+The v0.3 implementation evaluates exactly two inputs from the existing analysis request:
+
+- `higher_timeframe` supplies directional bias and broad context.
+- `timeframe` supplies current execution context.
+
+Each side is represented by a typed `TimeframeAnalysis` derived from the Market Structure Engine. The resulting `MultiTimeframeResult` records both trends and phases, an alignment category, a `0–100` alignment score, unified directional bias, reasons, and a human-readable summary.
+
+Alignment is directional agreement, not prediction. Matching impulse structures receive strong alignment; an in-direction current pullback or range remains mixed within the higher-timeframe bias; opposite directional structures conflict; and unclear structure reduces the score. Strategy qualification and confidence consume this result without changing the underlying structure observations.
+
+The engine accepts named timeframe inputs rather than hard-coding a hierarchy, leaving room for a later multi-level implementation while deliberately limiting v0.3 to two timeframes.
+
 ### 4. Indicator Framework
 
 The Indicator Framework calculates standardized indicator observations and translates them into evidence that confirms, weakens, or remains neutral toward the structure-led thesis. Indicators never create the primary thesis independently.
@@ -74,6 +85,6 @@ Backtesting results must account for data quality, fees, slippage assumptions, a
 - Failures are explicit and observable; ambiguous data produces uncertainty, not fabricated precision.
 - New functionality preserves backward compatibility unless a versioned contract intentionally changes it.
 
-## Current Foundation
+## Current Platform State
 
-The current application provides a FastAPI service, a market data provider abstraction, normalized candle data, foundational structure analysis, strategy routing, scoring, and tests. The blueprint describes the intended boundaries as these capabilities mature into independently versioned engines.
+The current application provides a FastAPI service, a market data provider abstraction, normalized candle data, typed market structure analysis, two-timeframe alignment, strategy routing, scoring, and tests. The blueprint describes the intended boundaries as these capabilities mature into independently versioned engines.

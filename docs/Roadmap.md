@@ -31,6 +31,8 @@ The roadmap builds from reliable data and deterministic structure analysis towar
 
 **Exit criteria:** analysis distinguishes bias from execution context, represents conflicts explicitly, and produces a tested alignment score.
 
+**Status:** implemented for the request's two timeframes. The engine exposes typed context, alignment categories, a `0–100` score, unified bias, reasons, and API-ready explanations. Expanding to a larger timeframe hierarchy remains outside v0.3.
+
 ## Version 0.4 — Decision Engine
 
 - Weighted scoring.

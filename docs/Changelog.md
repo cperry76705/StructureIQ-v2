@@ -2,6 +2,34 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 0.3 — Multi-Timeframe Analysis — 2026-06-27
+
+### Added
+
+- Two-timeframe analysis in `core/multi_timeframe.py`.
+- Typed `TimeframeAnalysis`, `TimeframeAlignment`, and `MultiTimeframeResult` models.
+- Alignment classifications for aligned bullish, aligned bearish, mixed, conflicting, and unclear structure.
+- A deterministic `0–100` alignment score, unified directional bias, evidence reasons, and a human-readable summary.
+- Additive `multi_timeframe` data on successful `POST /analysis` responses.
+- Focused tests for aligned, pullback, ranging, conflicting, unclear, confidence, routing, and API compatibility behavior.
+
+### Changed
+
+- Confidence now rewards strong timeframe agreement and penalizes direct conflict or unclear context.
+- Strategy routing waits on conflicting or unclear alignment.
+- Mixed alignment requires the current trend, key-level context, and candle confirmation to support the higher-timeframe direction before producing an actionable assessment.
+- All legacy `/analysis` response fields retain their existing names and types.
+
+### Verification
+
+- 38 automated tests pass.
+- The complete v0.1, v0.2, and v0.3 suite passes together.
+
+### Scope
+
+- v0.3 is intentionally limited to the request's higher and current timeframes.
+- No dashboard, broker execution, live trading, or new indicator work was added.
+
 ## Version 0.2 — Market Structure Engine — 2026-06-27
 
 ### Added

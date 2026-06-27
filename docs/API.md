@@ -54,9 +54,9 @@ Status: `200 OK`
   "symbol": "BTC-USD",
   "timeframe": "5m",
   "higher_timeframe_bias": "bullish",
-  "current_structure": "bullish pullback",
+  "current_structure": "pullback",
   "action": "wait",
-  "setup": "pullback continuation",
+  "setup": "bullish_pullback_to_support",
   "confidence": 6.5,
   "entry_zone": "illustrative level or range",
   "stop_loss": "illustrative invalidation level",
@@ -64,7 +64,24 @@ Status: `200 OK`
   "reasons": [
     "Higher-timeframe structure is bullish",
     "Lower-timeframe confirmation is incomplete"
-  ]
+  ],
+  "multi_timeframe": {
+    "higher_timeframe": "1h",
+    "current_timeframe": "5m",
+    "higher_timeframe_trend": "bullish",
+    "current_timeframe_trend": "bullish",
+    "higher_timeframe_phase": "impulse",
+    "current_timeframe_phase": "pullback",
+    "alignment": "mixed",
+    "alignment_score": 70,
+    "directional_bias": "bullish",
+    "reasons": [
+      "Higher timeframe 1h is bullish in an impulse phase.",
+      "Current timeframe 5m is bullish in a pullback phase.",
+      "Current structure is pulling back within the higher-timeframe direction."
+    ],
+    "human_readable_summary": "1h bullish context and 5m bullish execution structure are mixed (70/100). Directional bias is bullish."
+  }
 }
 ```
 
@@ -74,6 +91,25 @@ The current response contract includes:
 - `action`: `buy`, `sell`, `wait`, or `no_trade`.
 - `confidence`: a value from `0` to `10`.
 - Text fields describing structure, setup, illustrative levels, and reasoning.
+- `multi_timeframe`: an additive v0.3 object containing the two structure views, alignment, unified bias, and explanation.
+
+### Multi-Timeframe Object
+
+| Field | Values | Description |
+| --- | --- | --- |
+| `higher_timeframe` | string | Requested higher timeframe. |
+| `current_timeframe` | string | Requested execution-context timeframe. |
+| `higher_timeframe_trend` | `bullish`, `bearish`, `ranging`, `unclear` | Higher-timeframe structure classification. |
+| `current_timeframe_trend` | `bullish`, `bearish`, `ranging`, `unclear` | Current-timeframe structure classification. |
+| `higher_timeframe_phase` | `impulse`, `pullback`, `range`, `reversal_attempt`, `unclear` | Higher-timeframe phase. |
+| `current_timeframe_phase` | same as above | Current-timeframe phase. |
+| `alignment` | `aligned_bullish`, `aligned_bearish`, `mixed`, `conflicting`, `unclear` | Relationship between the two structures. |
+| `alignment_score` | integer, `0–100` | Strength and clarity of alignment. |
+| `directional_bias` | `bullish`, `bearish`, `neutral`, `unclear` | Unified context, led by the higher timeframe. |
+| `reasons` | array of strings | Evidence supporting the classification. |
+| `human_readable_summary` | string | Concise explanation of the result. |
+
+The v0.3 response is backward-compatible at the field level: every pre-v0.3 field remains present with the same name and type. `multi_timeframe` is the only additive top-level field.
 
 Illustrative entry, stop, and target values are analytical outputs. They are not live orders, financial advice, or guarantees.
 

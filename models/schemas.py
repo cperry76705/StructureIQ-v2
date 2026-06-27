@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.config import DEFAULT_LOOKBACK, MAX_LOOKBACK, MIN_LOOKBACK, SUPPORTED_TIMEFRAMES
+from core.multi_timeframe import MultiTimeframeResult
 
 
 Bias = Literal["bullish", "bearish", "ranging"]
@@ -42,6 +43,7 @@ class AnalysisResponse(BaseModel):
     stop_loss: str
     target: str
     reasons: list[str]
+    multi_timeframe: MultiTimeframeResult
 
 
 class HealthResponse(BaseModel):
