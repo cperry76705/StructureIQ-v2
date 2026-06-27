@@ -5,6 +5,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.config import DEFAULT_LOOKBACK, MAX_LOOKBACK, MIN_LOOKBACK, SUPPORTED_TIMEFRAMES
+from core.decision_engine import DecisionResult
 from core.multi_timeframe import MultiTimeframeResult
 
 
@@ -44,6 +45,7 @@ class AnalysisResponse(BaseModel):
     target: str
     reasons: list[str]
     multi_timeframe: MultiTimeframeResult
+    decision: DecisionResult
 
 
 class HealthResponse(BaseModel):

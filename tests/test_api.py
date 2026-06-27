@@ -22,7 +22,7 @@ class SyntheticProvider:
         return candles
 
 
-def test_analysis_contract_keeps_legacy_fields_and_adds_multi_timeframe() -> None:
+def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None:
     app.dependency_overrides[get_market_data_provider] = lambda: SyntheticProvider()
     try:
         response = TestClient(app).post(
@@ -53,7 +53,7 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_multi_timeframe() -> Non
         "reasons",
     }
     assert legacy_fields < set(payload)
-    assert set(payload) - legacy_fields == {"multi_timeframe"}
+    assert set(payload) - legacy_fields == {"multi_timeframe", "decision"}
     assert set(payload["multi_timeframe"]) == {
         "higher_timeframe",
         "current_timeframe",
@@ -69,6 +69,23 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_multi_timeframe() -> Non
     }
     assert payload["multi_timeframe"]["higher_timeframe"] == "1h"
     assert payload["multi_timeframe"]["current_timeframe"] == "5m"
+    assert set(payload["decision"]) == {
+        "action",
+        "confidence",
+        "score_breakdown",
+        "positive_evidence",
+        "negative_evidence",
+        "neutral_evidence",
+        "risk_notes",
+        "invalidation_notes",
+        "human_readable_summary",
+    }
+    decision = payload["decision"]
+    expected_legacy_action = (
+        "no_trade" if decision["action"] == "avoid" else decision["action"]
+    )
+    assert payload["action"] == expected_legacy_action
+    assert payload["confidence"] == round(decision["confidence"] / 10, 1)
 
 
 def test_analysis_returns_informative_503_when_provider_fails() -> None:

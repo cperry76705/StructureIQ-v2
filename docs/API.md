@@ -81,6 +81,40 @@ Status: `200 OK`
       "Current structure is pulling back within the higher-timeframe direction."
     ],
     "human_readable_summary": "1h bullish context and 5m bullish execution structure are mixed (70/100). Directional bias is bullish."
+  },
+  "decision": {
+    "action": "wait",
+    "confidence": 68.0,
+    "score_breakdown": {
+      "market_structure": 22.8,
+      "multi_timeframe": 17.5,
+      "support_resistance_liquidity": 9.8,
+      "indicators": 12.0,
+      "risk_reward_volatility": 5.9,
+      "total": 68.0
+    },
+    "positive_evidence": [
+      {
+        "category": "indicators",
+        "message": "Available indicator context supports the structural thesis.",
+        "impact": 12.0
+      }
+    ],
+    "negative_evidence": [],
+    "neutral_evidence": [
+      {
+        "category": "multi_timeframe",
+        "message": "Current structure is pulling back within the higher-timeframe direction.",
+        "impact": 0.0
+      }
+    ],
+    "risk_notes": [
+      "ATR-based volatility context is not yet available in v0.4."
+    ],
+    "invalidation_notes": [
+      "Bullish thesis weakens if price closes below the latest confirmed swing low."
+    ],
+    "human_readable_summary": "StructureIQ recommends waiting because the evidence has not cleared every direction and risk gate; confidence is 68.0/100."
   }
 }
 ```
@@ -92,6 +126,7 @@ The current response contract includes:
 - `confidence`: a value from `0` to `10`.
 - Text fields describing structure, setup, illustrative levels, and reasoning.
 - `multi_timeframe`: an additive v0.3 object containing the two structure views, alignment, unified bias, and explanation.
+- `decision`: an additive v0.4 object containing the weighted recommendation and complete evidence ledger.
 
 ### Multi-Timeframe Object
 
@@ -109,7 +144,21 @@ The current response contract includes:
 | `reasons` | array of strings | Evidence supporting the classification. |
 | `human_readable_summary` | string | Concise explanation of the result. |
 
-The v0.3 response is backward-compatible at the field level: every pre-v0.3 field remains present with the same name and type. `multi_timeframe` is the only additive top-level field.
+### Decision Object
+
+| Field | Description |
+| --- | --- |
+| `action` | `buy`, `sell`, `wait`, or `avoid`. |
+| `confidence` | Weighted evidence confidence from `0–100`. |
+| `score_breakdown` | Contributions from market structure, multi-timeframe alignment, support/resistance and liquidity, indicators, and risk/reward and volatility. |
+| `positive_evidence` | Supporting evidence items with category, message, and positive impact. |
+| `negative_evidence` | Adverse evidence items with category, message, and negative impact. |
+| `neutral_evidence` | Context that neither confirms nor invalidates the thesis. |
+| `risk_notes` | Risk/reward, volatility, and trade-quality warnings. |
+| `invalidation_notes` | Structural levels or conditions that weaken the thesis. |
+| `human_readable_summary` | Concise explanation of the action and confidence. |
+
+The response remains backward-compatible at the field level: every pre-v0.4 field remains present with the same name and type. `multi_timeframe` and `decision` are additive objects. The legacy top-level action is derived from the decision action, with `avoid` mapped to `no_trade`; legacy confidence is decision confidence divided by ten.
 
 Illustrative entry, stop, and target values are analytical outputs. They are not live orders, financial advice, or guarantees.
 

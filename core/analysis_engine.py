@@ -1,11 +1,11 @@
 """Orchestrate the focused analysis modules into one API result."""
 
+from core.decision_engine import DecisionAction, DecisionEngine
 from core.indicators import calculate_rsi
 from core.market_data import Candle, MarketDataProvider
 from core.market_structure import MarketStructureEngine
 from core.multi_timeframe import MultiTimeframeEngine
 from core.risk import build_risk_levels
-from core.scoring import score_confidence
 from core.strategy_router import route_strategy
 from core.structure import find_swings
 from core.support_resistance import detect_zones
@@ -16,6 +16,25 @@ def _bullish_candle(candle: Candle) -> bool:
     return candle.close > candle.open
 
 
+def _risk_reward_ratio(
+    bias: str,
+    price: float,
+    support: tuple[float, float],
+    resistance: tuple[float, float],
+) -> float | None:
+    if bias == "bullish":
+        risk = price - support[0]
+        reward = resistance[0] - price
+    elif bias == "bearish":
+        risk = resistance[1] - price
+        reward = price - support[1]
+    else:
+        return None
+    if risk <= 0 or reward <= 0:
+        return None
+    return round(reward / risk, 2)
+
+
 class AnalysisEngine:
     """Analysis orchestrator with an injected, provider-agnostic data source."""
 
@@ -24,12 +43,14 @@ class AnalysisEngine:
         market_data: MarketDataProvider,
         structure_engine: MarketStructureEngine | None = None,
         multi_timeframe_engine: MultiTimeframeEngine | None = None,
+        decision_engine: DecisionEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
         self._multi_timeframe_engine = (
             multi_timeframe_engine or MultiTimeframeEngine()
         )
+        self._decision_engine = decision_engine or DecisionEngine()
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         entry_candles = self._market_data.get_candles(
@@ -45,6 +66,7 @@ class AnalysisEngine:
             higher_candles,
             self._structure_engine,
             self._multi_timeframe_engine,
+            self._decision_engine,
         )
 
 
@@ -54,6 +76,7 @@ def _build_analysis(
     higher_candles: list[Candle],
     structure_engine: MarketStructureEngine,
     multi_timeframe_engine: MultiTimeframeEngine,
+    decision_engine: DecisionEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -79,7 +102,7 @@ def _build_analysis(
     rsi = calculate_rsi(entry_candles)
     rsi_supportive = 40 <= rsi <= 65 if bias == "bullish" else 35 <= rsi <= 60
 
-    action, setup = route_strategy(
+    _, setup = route_strategy(
         bias,
         structure,
         near_level,
@@ -87,17 +110,28 @@ def _build_analysis(
         alignment=multi_timeframe.alignment.value,
         current_trend=entry_structure.trend,
     )
-    confidence = score_confidence(
-        aligned_bias=bias != "ranging",
-        at_key_level=near_level,
-        rsi_supportive=rsi_supportive,
-        candle_confirmed=confirmed,
-        structure_modifier=entry_structure.confidence_modifier,
-        alignment_score=multi_timeframe.alignment_score,
+    risk_reward_ratio = _risk_reward_ratio(
+        bias, price, support, resistance
     )
+    decision = decision_engine.analyze(
+        market_structure=entry_structure,
+        multi_timeframe=multi_timeframe,
+        price_near_level=near_level,
+        indicator_supportive=rsi_supportive,
+        current_timeframe_confirmed=confirmed,
+        risk_reward_ratio=risk_reward_ratio,
+        volatility_adequate=None,
+    )
+    action = (
+        "no_trade"
+        if decision.action is DecisionAction.AVOID
+        else decision.action.value
+    )
+    confidence = round(decision.confidence / 10.0, 1)
     entry_zone, stop_loss, target = build_risk_levels(bias, support, resistance)
 
     reasons = [
+        decision.human_readable_summary,
         f"Higher timeframe is {bias}",
         multi_timeframe.human_readable_summary,
         entry_structure.human_readable_summary,
@@ -118,4 +152,5 @@ def _build_analysis(
         target=target,
         reasons=reasons,
         multi_timeframe=multi_timeframe,
+        decision=decision,
     )

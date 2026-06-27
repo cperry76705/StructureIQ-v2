@@ -56,6 +56,10 @@ The Indicator Framework calculates standardized indicator observations and trans
 
 The Decision Engine combines weighted evidence across market structure, multi-timeframe alignment, support/resistance and liquidity, indicators, and risk/reward and volatility. It produces a normalized score, confidence, evidence ledger, conflicts, and a decision state such as buy, sell, wait, or no trade.
 
+The v0.4 implementation is a dedicated domain engine independent of FastAPI. It consumes typed market-structure and multi-timeframe results plus normalized context inputs. `ScoreBreakdown` enforces the blueprint's `35/25/15/15/10` weighting, while `EvidenceItem` separates supportive, adverse, and neutral observations. Risk and invalidation notes remain first-class output rather than being reconstructed in the API layer.
+
+Action selection occurs after scoring. Confidence thresholds, alignment agreement, current-timeframe confirmation, and minimum risk/reward act as explicit gates. The analysis orchestrator maps the result into both the new nested decision contract and the legacy top-level action and confidence fields; it does not maintain a second decision algorithm.
+
 ### 6. Strategy Engine
 
 The Strategy Engine determines whether current conditions satisfy a named, rule-based setup. Initial strategy families are pullback continuation, breakout continuation, range reversal, liquidity sweep reversal, and compression breakout.
@@ -87,4 +91,4 @@ Backtesting results must account for data quality, fees, slippage assumptions, a
 
 ## Current Platform State
 
-The current application provides a FastAPI service, a market data provider abstraction, normalized candle data, typed market structure analysis, two-timeframe alignment, strategy routing, scoring, and tests. The blueprint describes the intended boundaries as these capabilities mature into independently versioned engines.
+The current application provides a FastAPI service, a market data provider abstraction, normalized candle data, typed market structure analysis, two-timeframe alignment, a weighted decision engine, strategy setup routing, and tests. The blueprint describes the intended boundaries as these capabilities mature into independently versioned engines.

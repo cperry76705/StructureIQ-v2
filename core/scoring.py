@@ -1,4 +1,8 @@
-"""Transparent confidence score composed from independent signals."""
+"""Legacy v0.1–v0.3 scorer retained for compatibility and focused tests.
+
+The primary analysis path uses :mod:`core.decision_engine` as the single source
+of weighted confidence and action logic.
+"""
 
 
 def score_confidence(

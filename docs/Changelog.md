@@ -2,6 +2,36 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 0.4 — Decision Engine — 2026-06-27
+
+### Added
+
+- Dedicated weighted decision logic in `core/decision_engine.py`.
+- Typed `DecisionResult`, `EvidenceItem`, `ScoreBreakdown`, and `DecisionAction` models.
+- Blueprint-aligned category weights for structure, multi-timeframe alignment, price and liquidity context, indicators, and risk/reward and volatility.
+- Positive, negative, and neutral evidence ledgers with signed impacts.
+- Explicit risk notes, structural invalidation notes, confidence gates, and human-readable recommendations.
+- Additive `decision` data on successful `POST /analysis` responses.
+- Focused tests for bullish and bearish decisions, mixed and conflicting context, confidence thresholds, score totals, evidence, risk, invalidation, and API compatibility.
+
+### Changed
+
+- The Decision Engine is now the single source of top-level `/analysis` action and confidence.
+- Legacy top-level confidence remains on a `0–10` scale and is derived from nested decision confidence on a `0–100` scale.
+- Nested `avoid` decisions map to the existing top-level `no_trade` action.
+- `core/scoring.py` remains available for compatibility but is no longer used by the main analysis path.
+
+### Verification
+
+- 47 automated tests pass.
+- The complete v0.1 through v0.4 suite passes together.
+
+### Scope
+
+- Existing RSI support is used as indicator confirmation; no new indicators were added.
+- ATR-based volatility quality is reported as unavailable rather than inferred.
+- No dashboard, broker execution, or live trading work was added.
+
 ## Version 0.3 — Multi-Timeframe Analysis — 2026-06-27
 
 ### Added

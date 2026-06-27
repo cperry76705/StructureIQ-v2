@@ -41,6 +41,8 @@ The roadmap builds from reliable data and deterministic structure analysis towar
 
 **Exit criteria:** every decision is reproducible and carries a complete evidence ledger showing contributions, conflicts, and missing evidence.
 
+**Status:** implemented. The main analysis path now uses the blueprint's weighted scoring model, typed evidence ledger, confidence thresholds, alignment and risk gates, invalidation notes, and backward-compatible API mapping.
+
 ## Version 0.5 — Strategy Engine
 
 - Pullback continuation.
