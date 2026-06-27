@@ -14,10 +14,38 @@ from core.structure import SwingPoint, find_swings
 
 Trend = Literal["bullish", "bearish", "ranging", "unclear"]
 Phase = Literal["impulse", "pullback", "range", "reversal_attempt", "unclear"]
+StructureEventType = Literal[
+    "higher_high",
+    "higher_low",
+    "lower_high",
+    "lower_low",
+    "bullish_bos",
+    "bearish_bos",
+    "bullish_choch",
+    "bearish_choch",
+    "liquidity_sweep_high",
+    "liquidity_sweep_low",
+    "pullback",
+    "trend_continuation",
+]
+
+
+@dataclass(frozen=True)
+class StructureEvent:
+    """A timestamped, explainable observation produced by the structure engine."""
+
+    index: int
+    timestamp: int
+    type: StructureEventType
+    price: float
+    description: str
+    reference_swing: SwingPoint | None = None
 
 
 @dataclass(frozen=True)
 class MarketStructureResult:
+    """Complete v0.2 structural snapshot for one chronological candle series."""
+
     trend: Trend
     phase: Phase
     latest_swing_high: SwingPoint | None
@@ -26,12 +54,9 @@ class MarketStructureResult:
     liquidity_sweep_detected: bool
     confidence_modifier: float
     human_readable_summary: str
-
-
-@dataclass(frozen=True)
-class _TimedEvent:
-    index: int
-    name: str
+    swing_highs: tuple[SwingPoint, ...] = ()
+    swing_lows: tuple[SwingPoint, ...] = ()
+    events: tuple[StructureEvent, ...] = ()
 
 
 class MarketStructureEngine:
@@ -48,13 +73,28 @@ class MarketStructureEngine:
 
         highs, lows = find_swings(candles, self.swing_window)
         trend = _classify_trend(highs, lows)
-        events = _relationship_events(highs, lows)
-        events.extend(_price_action_events(candles, highs, lows))
+        events = _relationship_events(candles, highs, lows)
+        events.extend(
+            _price_action_events(candles, highs, lows, self.swing_window)
+        )
 
         phase = _classify_phase(candles, trend, events)
-        phase_event = "pullback" if phase == "pullback" else "trend_continuation"
+        phase_event: StructureEventType = (
+            "pullback" if phase == "pullback" else "trend_continuation"
+        )
         if trend in {"bullish", "bearish"} and phase in {"impulse", "pullback"}:
-            events.append(_TimedEvent(len(candles) - 1, phase_event))
+            last = candles[-1]
+            events.append(
+                StructureEvent(
+                    index=len(candles) - 1,
+                    timestamp=last.timestamp,
+                    type=phase_event,
+                    price=last.close,
+                    description=(
+                        f"Price is in a {phase} phase within the {trend} structure."
+                    ),
+                )
+            )
 
         recent_events = _latest_unique_events(events)
         swept = any(event.startswith("liquidity_sweep_") for event in recent_events)
@@ -73,6 +113,9 @@ class MarketStructureEngine:
             human_readable_summary=_build_summary(
                 trend, phase, latest_high, latest_low, recent_events
             ),
+            swing_highs=tuple(highs),
+            swing_lows=tuple(lows),
+            events=tuple(sorted(events, key=lambda event: (event.index, event.type))),
         )
 
     @staticmethod
@@ -104,32 +147,49 @@ def _classify_trend(highs: list[SwingPoint], lows: list[SwingPoint]) -> Trend:
 
 
 def _relationship_events(
-    highs: list[SwingPoint], lows: list[SwingPoint]
-) -> list[_TimedEvent]:
-    events: list[_TimedEvent] = []
-    if len(highs) >= 2:
-        if highs[-1].price > highs[-2].price:
-            events.append(_TimedEvent(highs[-1].index, "higher_high"))
-        elif highs[-1].price < highs[-2].price:
-            events.append(_TimedEvent(highs[-1].index, "lower_high"))
-    if len(lows) >= 2:
-        if lows[-1].price > lows[-2].price:
-            events.append(_TimedEvent(lows[-1].index, "higher_low"))
-        elif lows[-1].price < lows[-2].price:
-            events.append(_TimedEvent(lows[-1].index, "lower_low"))
+    candles: list[Candle], highs: list[SwingPoint], lows: list[SwingPoint]
+) -> list[StructureEvent]:
+    events: list[StructureEvent] = []
+    for point in [*highs, *lows]:
+        if point.label is None:
+            continue
+        label = point.label.replace("_", " ")
+        events.append(
+            StructureEvent(
+                index=point.index,
+                timestamp=candles[point.index].timestamp,
+                type=point.label,
+                price=point.price,
+                description=f"Confirmed {label} at {point.price:.2f}.",
+                reference_swing=point,
+            )
+        )
     return events
 
 
 def _price_action_events(
-    candles: list[Candle], highs: list[SwingPoint], lows: list[SwingPoint]
-) -> list[_TimedEvent]:
-    events: list[_TimedEvent] = []
+    candles: list[Candle],
+    highs: list[SwingPoint],
+    lows: list[SwingPoint],
+    swing_window: int,
+) -> list[StructureEvent]:
+    events: list[StructureEvent] = []
     broken_highs: set[int] = set()
     broken_lows: set[int] = set()
+    swept_highs: set[int] = set()
+    swept_lows: set[int] = set()
 
     for index in range(1, len(candles)):
-        prior_highs = [point for point in highs if point.index < index]
-        prior_lows = [point for point in lows if point.index < index]
+        prior_highs = [
+            point
+            for point in highs
+            if (point.confirmed_index or point.index + swing_window) < index
+        ]
+        prior_lows = [
+            point
+            for point in lows
+            if (point.confirmed_index or point.index + swing_window) < index
+        ]
         latest_high = prior_highs[-1] if prior_highs else None
         latest_low = prior_lows[-1] if prior_lows else None
         candle = candles[index]
@@ -142,11 +202,24 @@ def _price_action_events(
                 and candle.close > latest_high.price
                 and previous_close <= latest_high.price
             ):
-                name = "bullish_choch" if trend_before_break == "bearish" else "bullish_bos"
-                events.append(_TimedEvent(index, name))
+                name: StructureEventType = (
+                    "bullish_choch"
+                    if trend_before_break == "bearish"
+                    else "bullish_bos"
+                )
+                events.append(
+                    _break_event(candle, index, name, latest_high)
+                )
                 broken_highs.add(latest_high.index)
-            elif candle.high > latest_high.price and candle.close <= latest_high.price:
-                events.append(_TimedEvent(index, "liquidity_sweep_high"))
+            elif (
+                latest_high.index not in swept_highs
+                and candle.high > latest_high.price
+                and candle.close <= latest_high.price
+            ):
+                events.append(
+                    _sweep_event(candle, index, "liquidity_sweep_high", latest_high)
+                )
+                swept_highs.add(latest_high.index)
 
         if latest_low is not None:
             if (
@@ -154,20 +227,79 @@ def _price_action_events(
                 and candle.close < latest_low.price
                 and previous_close >= latest_low.price
             ):
-                name = "bearish_choch" if trend_before_break == "bullish" else "bearish_bos"
-                events.append(_TimedEvent(index, name))
+                name = (
+                    "bearish_choch"
+                    if trend_before_break == "bullish"
+                    else "bearish_bos"
+                )
+                events.append(
+                    _break_event(candle, index, name, latest_low)
+                )
                 broken_lows.add(latest_low.index)
-            elif candle.low < latest_low.price and candle.close >= latest_low.price:
-                events.append(_TimedEvent(index, "liquidity_sweep_low"))
+            elif (
+                latest_low.index not in swept_lows
+                and candle.low < latest_low.price
+                and candle.close >= latest_low.price
+            ):
+                events.append(
+                    _sweep_event(candle, index, "liquidity_sweep_low", latest_low)
+                )
+                swept_lows.add(latest_low.index)
 
     return events
 
 
+def _break_event(
+    candle: Candle,
+    index: int,
+    event_type: StructureEventType,
+    reference: SwingPoint,
+) -> StructureEvent:
+    direction = "above" if event_type.startswith("bullish") else "below"
+    label = event_type.replace("_", " ")
+    return StructureEvent(
+        index=index,
+        timestamp=candle.timestamp,
+        type=event_type,
+        price=candle.close,
+        description=(
+            f"{label.title()}: candle closed {direction} the confirmed swing at "
+            f"{reference.price:.2f}."
+        ),
+        reference_swing=reference,
+    )
+
+
+def _sweep_event(
+    candle: Candle,
+    index: int,
+    event_type: StructureEventType,
+    reference: SwingPoint,
+) -> StructureEvent:
+    side = "high" if event_type.endswith("high") else "low"
+    excursion = candle.high if side == "high" else candle.low
+    return StructureEvent(
+        index=index,
+        timestamp=candle.timestamp,
+        type=event_type,
+        price=excursion,
+        description=(
+            f"Liquidity sweep {side}: price traded through {reference.price:.2f} "
+            "and closed back inside the level."
+        ),
+        reference_swing=reference,
+    )
+
+
 def _classify_phase(
-    candles: list[Candle], trend: Trend, events: list[_TimedEvent]
+    candles: list[Candle], trend: Trend, events: list[StructureEvent]
 ) -> Phase:
-    breaks = [event for event in events if event.name.endswith("_bos") or event.name.endswith("_choch")]
-    if breaks and breaks[-1].name.endswith("_choch"):
+    breaks = [
+        event
+        for event in events
+        if event.type.endswith("_bos") or event.type.endswith("_choch")
+    ]
+    if breaks and max(breaks, key=lambda event: event.index).type.endswith("_choch"):
         return "reversal_attempt"
     if trend == "ranging":
         return "range"
@@ -182,10 +314,12 @@ def _classify_phase(
     return "pullback" if moving_against_trend else "impulse"
 
 
-def _latest_unique_events(events: list[_TimedEvent]) -> list[str]:
+def _latest_unique_events(events: list[StructureEvent]) -> list[str]:
     latest_by_name: dict[str, int] = {}
     for event in events:
-        latest_by_name[event.name] = max(event.index, latest_by_name.get(event.name, -1))
+        latest_by_name[event.type] = max(
+            event.index, latest_by_name.get(event.type, -1)
+        )
     return [name for name, _ in sorted(latest_by_name.items(), key=lambda item: (item[1], item[0]))]
 
 
@@ -219,6 +353,16 @@ def _build_summary(
             f" Latest confirmed swing high is {latest_high.price:.2f};"
             f" latest confirmed swing low is {latest_low.price:.2f}."
         )
+    relationships = [
+        event
+        for event in events
+        if event in {"higher_high", "higher_low", "lower_high", "lower_low"}
+    ]
+    if relationships:
+        labels = " and ".join(
+            event.replace("_", " ") for event in relationships[-2:]
+        )
+        summary += f" Latest swing sequence includes {labels}."
     important = [
         event
         for event in events

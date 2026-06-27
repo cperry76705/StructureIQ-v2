@@ -88,3 +88,18 @@ An increase in price range, displacement, or volatility that moves price away fr
 - When evidence is insufficient or contradictory, the correct classification is unclear rather than forced.
 
 Thresholds such as swing window, break tolerance, and volatility normalization must be configurable, recorded in analysis metadata, and covered by tests.
+
+## v0.2 Implementation Assumptions
+
+The v0.2 engine applies the blueprint with the following explicit rules:
+
+- Swings use a configurable strict fractal window, defaulting to two candles on each side. Equal neighboring highs or lows do not form a swing.
+- A swing records its source candle and confirmation index. Breaks and sweeps are evaluated only after the swing is confirmed, preventing look-ahead use of unconfirmed pivots.
+- HH, HL, LH, and LL compare each confirmed swing with the preceding confirmed swing of the same kind. Equal levels carry no directional relationship label.
+- A break requires a completed candle close strictly beyond the reference swing. A wick beyond the level followed by a close back inside is a liquidity sweep, not a break.
+- A break against an established opposite trend is CHOCH. For backward compatibility, a break detected before a complete directional trend exists is provisionally labeled BOS; it does not by itself make the trend bullish or bearish.
+- Trend classification compares the two latest confirmed highs and lows. Both rising is bullish, both falling is bearish, mixed or equal structure is ranging, and insufficient confirmed structure is unclear.
+- A latest CHOCH produces `reversal_attempt`. Directional structure moving against its recent close progression produces `pullback`; otherwise it produces `impulse`. Ranging and insufficient structures produce `range` and `unclear`, respectively.
+- Liquidity sweeps are reported once per reference swing. Later tests of a newly confirmed swing can produce a new sweep event.
+
+The result preserves the existing string-based event list while also exposing typed swing collections and detailed events with candle index, timestamp, price, reference level, and human-readable explanation.

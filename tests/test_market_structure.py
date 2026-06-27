@@ -1,5 +1,5 @@
 from core.market_data import Candle
-from core.market_structure import MarketStructureEngine
+from core.market_structure import MarketStructureEngine, StructureEvent
 
 
 def _candles(closes: list[float]) -> list[Candle]:
@@ -93,3 +93,47 @@ def test_bullish_pullback_phase() -> None:
     assert result.trend == "bullish"
     assert result.phase == "pullback"
     assert "pullback" in result.structure_events
+
+
+def test_result_exposes_confirmed_swing_metadata() -> None:
+    result = ENGINE.analyze(_candles([9, 12, 10, 14, 11, 16, 14]))
+
+    assert [point.label for point in result.swing_highs] == [None, "higher_high", "higher_high"]
+    assert [point.label for point in result.swing_lows] == [None, "higher_low"]
+    assert all(point.kind == "high" for point in result.swing_highs)
+    assert all(point.kind == "low" for point in result.swing_lows)
+    assert all(point.confirmed_index == point.index + 1 for point in result.swing_highs)
+
+
+def test_break_event_retains_reference_level_and_explanation() -> None:
+    result = ENGINE.analyze(_candles([10, 12, 10, 11, 14]))
+    event = next(event for event in result.events if event.type == "bullish_bos")
+
+    assert isinstance(event, StructureEvent)
+    assert event.reference_swing is not None
+    assert event.reference_swing.price == 13
+    assert event.price == 14
+    assert "closed above" in event.description
+
+
+def test_wick_through_level_is_sweep_not_break() -> None:
+    result = ENGINE.analyze(_with_last_wick([10, 12, 10, 12], high=14))
+
+    assert "liquidity_sweep_high" in result.structure_events
+    assert "bullish_bos" not in result.structure_events
+
+
+def test_insufficient_candles_return_explicit_unclear_result() -> None:
+    result = MarketStructureEngine(swing_window=2).analyze(_candles([10, 11, 12, 13]))
+
+    assert result.trend == "unclear"
+    assert result.phase == "unclear"
+    assert result.events == ()
+    assert "not enough confirmed candles" in result.human_readable_summary
+
+
+def test_summary_explains_directional_swing_sequence() -> None:
+    result = ENGINE.analyze(_candles([9, 12, 10, 14, 11, 16, 14]))
+
+    assert "higher high" in result.human_readable_summary
+    assert "higher low" in result.human_readable_summary
