@@ -1,0 +1,1 @@
+"""StructureIQ test suite."""
