@@ -181,3 +181,7 @@ Given the same provider candles, engine versions, request, and configuration, ca
 `aggregate_setup_coverage_summary` combines candidate snapshots from all records. It reports selected, candidate, executable, and missed-executable counts plus per-family appearances, selections, executable counts, average quality, average calculated R, and dominant blockers.
 
 If only one family produces executable candidates, the summary names it. Recommendations prioritize missed executable candidates, then candidate quality and frequency. They identify one family for inspection but do not change selection, thresholds, confirmation, or execution.
+
+## v2.0 Bearish BOS Contribution
+
+Calibration now states whether `bearish_bos_retest` produced closed production trades, only executable candidates, or neither. Compare its selection count, outcomes, total R, missed candidates, and blockers with `liquidity_sweep_reversal_short`; contribution alone does not justify further expansion.

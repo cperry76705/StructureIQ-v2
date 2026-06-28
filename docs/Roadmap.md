@@ -242,6 +242,17 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can distinguish absent opportunities from setup-family coverage and first-match selection gaps without changing production behavior.
 
-## Beyond Version 1.0
+## Version 2.0 — Bearish BOS Retest Expansion
+
+- Compare bearish BOS retests fairly with competing short liquidity-sweep reversals.
+- Require bearish structure, recent BOS, resistance retest, valid levels, confirmation, alignment, and at least `1.5R`.
+- Explain selection and preserve executable losing candidates in coverage diagnostics.
+- Report whether bearish BOS retests begin contributing production backtest trades.
+
+**Status:** implemented.
+
+**Outcome:** bearish BOS retests can become production-selected when continuation evidence is strongest, without relaxing confidence, confirmation, risk, strategy, or execution gates.
+
+## Beyond Version 2.0
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

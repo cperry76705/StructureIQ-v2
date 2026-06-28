@@ -185,3 +185,9 @@ The current BOS-retest implementation uses the relevant support or resistance zo
 The production first-match selector is unchanged. A separate observational pass enumerates plausible BOS retest, pullback, range, liquidity-sweep, and compression candidates supported by current context. Each candidate records selection, status, direction, level availability, geometry, calculated R:R, minimum-R result, quality, and its primary blocker.
 
 A non-selected candidate is counted as missed executable only when it independently passes the current direction, confirmation, level, geometry, and `1.5R` gates. Diagnostics cannot promote a setup or force a trade. BOS location failures are labeled `missing_retest_level`; bullish and bearish zone failures remain distinguishable.
+
+## v2.0 Bearish BOS Retest Selection
+
+When a bearish BOS retest and liquidity-sweep reversal short coexist, the Setup Engine compares them instead of unconditionally returning the sweep first. Bearish BOS can win only with bearish structure, a BOS among the three most recent events, a resistance retest, sell permission, confirmation, aligned-bearish or mixed-bearish context, valid production geometry, and at least `1.5R`.
+
+Bearish continuation evidence favors BOS; a latest liquidity sweep during `reversal_attempt` favors the sweep. The winner receives explicit supporting evidence. An otherwise executable loser receives `stronger_candidate_selected`, remains counted as a missed executable candidate, and cannot execute. No candidate is promoted when a hard gate fails.

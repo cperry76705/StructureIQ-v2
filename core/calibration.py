@@ -544,6 +544,7 @@ def _recommendations(
     coverage_recommendation = _setup_coverage_recommendation(setup_coverage)
     if coverage_recommendation is not None:
         recommendations.append(coverage_recommendation)
+    recommendations.append(_bearish_bos_contribution_recommendation(setups, setup_coverage))
 
     if metrics.total_trades and metrics.win_rate < 35.0:
         recommendations.append(
@@ -750,6 +751,40 @@ def _setup_coverage_recommendation(
     )
 
 
+def _bearish_bos_contribution_recommendation(
+    setups: tuple[SetupPerformance, ...],
+    coverage: SetupCoverageSummary,
+) -> CalibrationRecommendation:
+    performance = next(
+        (item for item in setups if item.setup_type == "bearish_bos_retest"),
+        None,
+    )
+    family = next(
+        (item for item in coverage.by_setup_type if item.setup_type == "bearish_bos_retest"),
+        None,
+    )
+    trades = performance.total_trades if performance is not None else 0
+    executable = family.executable_count if family is not None else 0
+    if trades:
+        return CalibrationRecommendation(
+            "setup_quality",
+            f"Bearish BOS retest contributed {trades} closed production trades.",
+            "low",
+            "Compare its outcomes, selection count, and missed candidates with liquidity-sweep reversals before further expansion.",
+        )
+    if executable:
+        return CalibrationRecommendation(
+            "setup_quality",
+            f"Bearish BOS retest produced {executable} executable candidates but no closed production trades.",
+            "medium",
+            "Inspect selection attribution and available future-candle outcomes before changing any gate.",
+        )
+    return CalibrationRecommendation(
+        "setup_quality",
+        "Bearish BOS retest did not produce executable or closed production trades.",
+        "medium",
+        "Inspect bearish BOS recency, retest location, alignment, and level geometry while preserving current gates.",
+    )
 def _decision_diagnostic_recommendation(
     diagnostics: DecisionDiagnosticsSummary,
 ) -> CalibrationRecommendation | None:

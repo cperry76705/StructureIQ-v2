@@ -1,6 +1,6 @@
 """Rule-based setup qualification for StructureIQ v0.5."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Literal
 
@@ -157,6 +157,18 @@ class SetupEngine:
             compression_detected=compression_detected,
             compression_breakout_direction=compression_breakout_direction,
         )
+        preselection_diagnostics = _evaluate_candidate_pool(
+            candidates=diagnostic_candidates,
+            selected=None,
+            decision=decision,
+            structure=market_structure,
+            multi_timeframe=multi_timeframe,
+            current_timeframe_confirmed=current_timeframe_confirmed,
+            current_price=current_price,
+            support_zone=support_zone,
+            resistance_zone=resistance_zone,
+            symbol=symbol,
+        )
         if decision.action is DecisionAction.AVOID:
             return _no_setup(
                 "No valid setup is considered because the Decision Engine returned avoid.",
@@ -172,18 +184,7 @@ class SetupEngine:
                     stop_loss=stop_loss,
                     target=target,
                 ),
-                setup_candidate_diagnostics=_evaluate_candidate_pool(
-                    candidates=diagnostic_candidates,
-                    selected=None,
-                    decision=decision,
-                    structure=market_structure,
-                    multi_timeframe=multi_timeframe,
-                    current_timeframe_confirmed=current_timeframe_confirmed,
-                    current_price=current_price,
-                    support_zone=support_zone,
-                    resistance_zone=resistance_zone,
-                    symbol=symbol,
-                ),
+                setup_candidate_diagnostics=preselection_diagnostics,
             )
         candidate = _select_candidate(
             decision_direction=decision_direction,
@@ -195,6 +196,17 @@ class SetupEngine:
             near_resistance=near_resistance,
             compression_detected=compression_detected,
             compression_breakout_direction=compression_breakout_direction,
+        )
+        candidate = _compare_bearish_bos_and_sweep(
+            selected=candidate,
+            candidates=diagnostic_candidates,
+            diagnostics=preselection_diagnostics,
+            structure=market_structure,
+            multi_timeframe=multi_timeframe,
+            estimated_risk_reward=estimated_risk_reward,
+            entry_zone=entry_zone,
+            stop_loss=stop_loss,
+            target=target,
         )
         if candidate is None:
             return _no_setup(
@@ -211,18 +223,7 @@ class SetupEngine:
                     stop_loss=stop_loss,
                     target=target,
                 ),
-                setup_candidate_diagnostics=_evaluate_candidate_pool(
-                    candidates=diagnostic_candidates,
-                    selected=None,
-                    decision=decision,
-                    structure=market_structure,
-                    multi_timeframe=multi_timeframe,
-                    current_timeframe_confirmed=current_timeframe_confirmed,
-                    current_price=current_price,
-                    support_zone=support_zone,
-                    resistance_zone=resistance_zone,
-                    symbol=symbol,
-                ),
+                setup_candidate_diagnostics=preselection_diagnostics,
             )
 
         conditions = _build_conditions(
@@ -496,6 +497,8 @@ def _evaluate_candidate_pool(
             blocker = "confirmation_missing"
         elif status is not SetupStatus.CONFIRMED:
             blocker = "setup_not_confirmed"
+        elif selected is not None and candidate.setup_type is not selected:
+            blocker = "stronger_candidate_selected"
         results.append(SetupCandidateDiagnostics(
             candidate_setup_type=candidate.setup_type.value,
             direction=candidate.direction,
@@ -515,6 +518,121 @@ def _evaluate_candidate_pool(
             ),
         ))
     return tuple(results)
+
+
+def _compare_bearish_bos_and_sweep(
+    *,
+    selected: _SetupCandidate | None,
+    candidates: tuple[_SetupCandidate, ...],
+    diagnostics: tuple[SetupCandidateDiagnostics, ...],
+    structure: MarketStructureResult,
+    multi_timeframe: MultiTimeframeResult,
+    estimated_risk_reward: float | None,
+    entry_zone: str | None,
+    stop_loss: str | None,
+    target: str | None,
+) -> _SetupCandidate | None:
+    """Resolve only the bearish BOS/sweep collision using existing hard gates."""
+
+    if selected is None or selected.setup_type is not SetupType.LIQUIDITY_SWEEP_REVERSAL_SHORT:
+        return selected
+    bos = next(
+        (item for item in candidates if item.setup_type is SetupType.BEARISH_BOS_RETEST),
+        None,
+    )
+    if bos is None or structure.trend != "bearish" or not _bearish_alignment(multi_timeframe):
+        return selected
+    recent_events = structure.structure_events[-3:]
+    if "bearish_bos" not in recent_events:
+        return selected
+    bos_diagnostic = next(
+        (item for item in diagnostics if item.candidate_setup_type == SetupType.BEARISH_BOS_RETEST.value),
+        None,
+    )
+    sweep_diagnostic = next(
+        (item for item in diagnostics if item.candidate_setup_type == SetupType.LIQUIDITY_SWEEP_REVERSAL_SHORT.value),
+        None,
+    )
+    production_risk = diagnose_risk_reward(
+        direction="bearish",
+        entry_zone=entry_zone,
+        stop_loss=stop_loss,
+        target=target,
+        minimum_required_r=MINIMUM_ACCEPTABLE_RISK_REWARD,
+    )
+    if (
+        bos_diagnostic is None
+        or bos_diagnostic.blocking_reason is not None
+        or not bos_diagnostic.has_valid_geometry
+        or not bos_diagnostic.meets_minimum_r
+        or estimated_risk_reward is None
+        or estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD
+        or not production_risk.passed
+    ):
+        return selected
+
+    bos_score = _bearish_selection_score(
+        bos_diagnostic,
+        setup_type=SetupType.BEARISH_BOS_RETEST,
+        structure=structure,
+        multi_timeframe=multi_timeframe,
+    )
+    sweep_score = _bearish_selection_score(
+        sweep_diagnostic,
+        setup_type=SetupType.LIQUIDITY_SWEEP_REVERSAL_SHORT,
+        structure=structure,
+        multi_timeframe=multi_timeframe,
+    )
+    if bos_score <= sweep_score:
+        return replace(
+            selected,
+            evidence=selected.evidence + (
+                "Liquidity-sweep reversal retained because its current evidence score "
+                "is at least as strong as the bearish BOS retest.",
+            ),
+        )
+    return replace(
+        bos,
+        evidence=bos.evidence + (
+            "Bearish structure and a recent bearish BOS support continuation.",
+            "Price is retesting resistance with bearish or mixed-bearish timeframe alignment.",
+            "Complete bearish levels meet the 1.5R execution-quality minimum.",
+            "The bearish BOS retest outranked the competing liquidity-sweep reversal.",
+        ),
+    )
+
+
+def _bearish_alignment(multi_timeframe: MultiTimeframeResult) -> bool:
+    return (
+        multi_timeframe.alignment is TimeframeAlignment.ALIGNED_BEARISH
+        or (
+            multi_timeframe.alignment is TimeframeAlignment.MIXED
+            and multi_timeframe.directional_bias == "bearish"
+        )
+    )
+
+
+def _bearish_selection_score(
+    diagnostic: SetupCandidateDiagnostics | None,
+    *,
+    setup_type: SetupType,
+    structure: MarketStructureResult,
+    multi_timeframe: MultiTimeframeResult,
+) -> float:
+    if diagnostic is None or diagnostic.blocking_reason is not None:
+        return -1.0
+    score = diagnostic.quality_score
+    latest_event = structure.structure_events[-1] if structure.structure_events else ""
+    if setup_type is SetupType.BEARISH_BOS_RETEST:
+        score += 12.0 if structure.trend == "bearish" else 0.0
+        score += 6.0 if latest_event == "bearish_bos" else 2.0
+        score += 8.0 if multi_timeframe.alignment is TimeframeAlignment.ALIGNED_BEARISH else 4.0
+    else:
+        score += 8.0
+        score += 8.0 if latest_event == "liquidity_sweep_high" else 0.0
+        score += 10.0 if structure.phase == "reversal_attempt" else 0.0
+        score += 4.0 if _bearish_alignment(multi_timeframe) else 0.0
+    return score
 
 
 def _select_candidate(

@@ -1106,7 +1106,7 @@ def _candidate_is_executable(item: SetupCandidateDiagnostics) -> bool:
         item.candidate_status == "confirmed"
         and item.has_entry and item.has_stop and item.has_target
         and item.has_valid_geometry and item.meets_minimum_r
-        and item.blocking_reason is None
+        and item.blocking_reason in {None, "stronger_candidate_selected"}
     )
 
 

@@ -157,6 +157,26 @@ def test_calibration_aggregates_setup_candidate_coverage() -> None:
     assert coverage.missed_executable_candidate_count == 1
 
 
+def test_calibration_reports_bearish_bos_trade_contribution() -> None:
+    runner = _Runner(
+        lambda request: [
+            _trade(
+                TradeOutcome.WIN,
+                2.0,
+                setup="bearish_bos_retest",
+                strategy="breakout_continuation",
+            )
+        ]
+    )
+
+    result = _engine(runner).run(_request())
+
+    assert any(
+        "Bearish BOS retest contributed 1 closed production trades" in item.message
+        for item in result.recommendations
+    )
+
+
 def test_aggregate_metrics_calculate_totals() -> None:
     runner = _Runner(
         lambda request: [

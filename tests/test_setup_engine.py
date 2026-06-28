@@ -168,6 +168,82 @@ def test_bearish_bos_retest_setup() -> None:
     assert result.setup_status is SetupStatus.CONFIRMED
 
 
+def test_bearish_bos_retest_outranks_sweep_when_continuation_evidence_is_stronger() -> None:
+    result = _analyze(
+        DecisionAction.SELL,
+        _structure(
+            "bearish",
+            "impulse",
+            ["liquidity_sweep_high", "bearish_bos"],
+        ),
+        direction="bearish",
+        price=105.0,
+        entry_zone="104-106",
+        stop_loss="110",
+        target="95",
+    )
+
+    assert result.setup_type is SetupType.BEARISH_BOS_RETEST
+    assert result.setup_status is SetupStatus.CONFIRMED
+    assert any("outranked" in reason for reason in result.supporting_evidence)
+    sweep = next(
+        item for item in result.setup_candidate_diagnostics
+        if item.candidate_setup_type == SetupType.LIQUIDITY_SWEEP_REVERSAL_SHORT.value
+    )
+    assert sweep.was_selected is False
+    assert sweep.blocking_reason == "stronger_candidate_selected"
+
+
+def test_liquidity_sweep_short_wins_when_reversal_evidence_is_stronger() -> None:
+    result = _analyze(
+        DecisionAction.SELL,
+        _structure(
+            "bearish",
+            "reversal_attempt",
+            ["bearish_bos", "liquidity_sweep_high"],
+        ),
+        direction="bearish",
+        price=105.0,
+        entry_zone="104-106",
+        stop_loss="110",
+        target="95",
+    )
+
+    assert result.setup_type is SetupType.LIQUIDITY_SWEEP_REVERSAL_SHORT
+    assert any("retained" in reason for reason in result.supporting_evidence)
+    bos = next(
+        item for item in result.setup_candidate_diagnostics
+        if item.candidate_setup_type == SetupType.BEARISH_BOS_RETEST.value
+    )
+    assert bos.blocking_reason == "stronger_candidate_selected"
+
+
+def test_bearish_bos_competition_does_not_bypass_risk_or_direction() -> None:
+    low_risk = _analyze(
+        DecisionAction.SELL,
+        _structure("bearish", "impulse", ["liquidity_sweep_high", "bearish_bos"]),
+        direction="bearish",
+        price=105.0,
+        risk_reward=1.2,
+        entry_zone="104-106",
+        stop_loss="110",
+        target="103",
+    )
+    wrong_direction = _analyze(
+        DecisionAction.BUY,
+        _structure("bearish", "impulse", ["liquidity_sweep_high", "bearish_bos"]),
+        direction="bullish",
+        price=105.0,
+        entry_zone="104-106",
+        stop_loss="110",
+        target="95",
+    )
+
+    assert low_risk.setup_type is SetupType.LIQUIDITY_SWEEP_REVERSAL_SHORT
+    assert low_risk.setup_status is SetupStatus.WAITING_FOR_CONFIRMATION
+    assert wrong_direction.setup_type is SetupType.NO_VALID_SETUP
+
+
 def test_bullish_pullback_continuation() -> None:
     result = _analyze(
         DecisionAction.BUY,

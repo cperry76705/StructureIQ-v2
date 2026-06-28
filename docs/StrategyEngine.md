@@ -118,6 +118,7 @@ Trend continuation remains a broader competing playbook when directional structu
 
 - Candidate weights and thresholds are deterministic heuristics and are not yet calibrated through backtesting.
 - Production ranking compares one selected setup against broader playbooks. Version 1.9 exposes additional Setup Engine candidates only to diagnostics; they do not enter strategy selection.
+- Version 2.0 leaves Strategy Engine scoring unchanged. A selected bearish BOS retest maps to `breakout_continuation`; a retained sweep maps to `liquidity_sweep_reversal`. Their conservative comparison happens upstream and cannot bypass strategy eligibility.
 - Indicator fit currently reflects the existing RSI confirmation only.
 - Risk fit uses the Setup Engine's approximate risk/reward.
 - Market-regime history and performance statistics belong to later journal/backtesting work.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `1.9.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -686,3 +686,5 @@ The trader-facing block does not recalculate action, confidence, setup qualifica
 ## v1.9 Additive Setup Coverage Fields
 
 `setup_plan.setup_candidate_diagnostics` and each backtest trade expose candidate type, direction, selection flag, status, level completeness, geometry validity, estimated R, minimum-R result, blocker, quality, and summary. `/backtest` adds `setup_coverage_summary`; `/calibrate` adds `aggregate_setup_coverage_summary` with counts and per-family records. These fields are observational and do not change the selected setup, strategy, or execution result.
+
+In v2.0, an executable non-selected BOS or sweep candidate may report `stronger_candidate_selected`. It remains executable for coverage and missed-candidate totals; the code records comparative selection rather than a failed execution-quality gate. Existing field shapes are unchanged.

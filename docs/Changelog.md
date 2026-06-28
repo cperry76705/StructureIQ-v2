@@ -2,6 +2,25 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.0.0 — Bearish BOS Retest Expansion — 2026-06-28
+
+### Added
+
+- Conservative production comparison between simultaneous bearish BOS retest and liquidity-sweep reversal short candidates.
+- Eligibility gates for bearish structure, recent BOS, resistance retest, bearish or mixed-bearish alignment, complete valid levels, confirmation, and at least `1.5R`.
+- Evidence-weighted tie-breaking with explicit selection and non-selection reasons.
+- Calibration reporting that states whether bearish BOS retests contribute closed production trades.
+
+### Compatibility
+
+- Liquidity-sweep reversal short remains selectable and wins when reversal evidence is stronger.
+- Confidence, confirmation, `1.5R`, strategy, and backtest execution gates are unchanged.
+- `/analysis` remains backward-compatible.
+
+### Verification
+
+- 184 automated tests pass together.
+
 ## Version 1.9.0 — Setup Expansion and Candidate Coverage Diagnostics — 2026-06-28
 
 ### Added
