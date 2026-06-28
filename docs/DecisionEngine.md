@@ -6,6 +6,8 @@ The Decision Engine converts analytical observations into an explainable assessm
 
 StructureIQ v0.4 implements this model in `core/decision_engine.py`. It is the primary source of `/analysis` action and confidence; the earlier scorer remains available only for compatibility.
 
+The Decision Engine answers exactly: **buy, sell, wait, or avoid—and with what confidence?** It does not identify the specific setup, select a broader strategy playbook, or build the trader-facing trade plan.
+
 ## Weighted Evidence Model
 
 | Evidence category | Weight |
@@ -100,3 +102,26 @@ Each category contributes no more than its configured weight:
 - Missing or sub-1:1 risk/reward blocks an actionable decision even when the aggregate score is otherwise sufficient.
 
 Every decision includes risk notes, structural invalidation notes, and a human-readable explanation. Confidence describes evidence quality and agreement; it is not a predicted win probability.
+
+## Output Boundary
+
+`DecisionResult` is internal engine output. It contains the directional action, weighted score breakdown, evidence ledger, risk notes, invalidation notes, and a factual summary suitable for downstream systems.
+
+This output is intentionally analytical rather than a complete trader experience. A decision can be bullish without a qualified entry setup, and a high confidence score is not permission to trade.
+
+## Relationship to Setup Engine
+
+The Setup Engine runs after the Decision Engine. It uses decision direction and confidence as constraints while checking whether a named setup is actually present.
+
+- `buy` permits evaluation of bullish setup candidates.
+- `sell` permits evaluation of bearish setup candidates.
+- `wait` permits developing candidates but not entry-ready qualification.
+- `avoid` prevents setup qualification.
+
+The Setup Engine may return no qualified setup even when the Decision Engine returns buy or sell. It cannot change the action or confidence.
+
+## Relationship to Analysis/Explanation Engine
+
+The Analysis/Explanation Engine explains the decision after it has received the relevant internal outputs. It translates evidence into plain language, combines the decision with setup and strategy results, and builds entry, invalidation, risk, and checklist views.
+
+It does not recalculate confidence or choose a different action. Wait and avoid reasoning must come from Decision Engine evidence and downstream qualification failures, not from invented narrative.

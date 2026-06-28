@@ -2,6 +2,30 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Blueprint Adjustment — Trader-Facing Decision Support — 2026-06-27
+
+### Changed
+
+- Reframed the product evolution from a raw analysis API toward a trader-facing decision-support platform.
+- Separated internal engine output from trader-facing analysis output.
+- Split setup qualification, broader strategy selection, and explanation into distinct architectural responsibilities.
+- Defined the Decision Engine as the sole owner of buy, sell, wait, avoid, and weighted confidence.
+- Positioned the Setup Engine after decision scoring and the Strategy Engine after setup qualification.
+- Defined the Analysis/Explanation Engine as a presentation layer that explains decisions and builds plans without making or changing them.
+- Expanded the roadmap through versions 0.5–0.8 before the version 1.0 platform milestone.
+- Documented the current `/analysis` response as engine-oriented and described the future additive trader-facing analysis direction.
+
+### Added
+
+- `docs/SetupEngine.md` with setup responsibilities, types, validation, entry checklists, invalidation, and engine relationships.
+- `docs/StrategyEngine.md` with post-qualification playbook selection and ownership boundaries.
+- Checklist-style trade plans as a formal trader-facing output concept.
+
+### Scope
+
+- Documentation and architecture only.
+- No application code, API behavior, dashboard, broker execution, or live trading functionality changed.
+
 ## Version 0.4 — Decision Engine — 2026-06-27
 
 ### Added

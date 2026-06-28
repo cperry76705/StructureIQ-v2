@@ -177,4 +177,49 @@ Example:
 
 ## Contract Evolution
 
-Future engine outputs should be introduced through explicit, typed, backward-compatible contracts or a versioned API. Evidence, confidence, and explanation metadata should remain machine-readable so API and dashboard consumers receive the same underlying analysis.
+### Current Engine-Oriented Response
+
+The current `/analysis` response is engine-oriented. Its top-level compatibility fields, `multi_timeframe`, and `decision` expose raw analytical state, scores, evidence, and implementation-facing summaries. This is useful for development, testing, integrations, journaling, and future backtesting, but it is not yet the final trader-facing product contract.
+
+The existing response must remain available while downstream engines mature. Setup or presentation logic must not be embedded ad hoc into the current fields.
+
+### Future Trader-Facing Analysis Block
+
+A future version will add a typed trader-facing block after the Setup, Strategy, and Analysis/Explanation Engines are implemented. The working direction is an additive object such as:
+
+```json
+{
+  "trader_analysis": {
+    "market_summary": "Higher-timeframe structure remains bullish while the current timeframe is completing a pullback.",
+    "recommended_setup": "bullish_bos_retest",
+    "setup_status": "developing",
+    "entry_conditions": [
+      {
+        "condition": "Current candle closes above the retest confirmation level",
+        "status": "pending"
+      }
+    ],
+    "invalidation": "Bullish thesis weakens below the latest confirmed swing low.",
+    "risk_notes": [
+      "Risk/reward must be recalculated after confirmation."
+    ],
+    "wait_avoid_reasoning": [
+      "Wait while the entry trigger remains unconfirmed."
+    ],
+    "trade_plan_checklist": [
+      {
+        "item": "Directional decision remains bullish",
+        "status": "satisfied"
+      },
+      {
+        "item": "BOS retest confirms on the current timeframe",
+        "status": "pending"
+      }
+    ]
+  }
+}
+```
+
+This example documents product direction, not a current API guarantee. Final field names and schemas will be versioned or introduced additively after the responsible engines exist.
+
+The trader-facing block will explain internal results; it will not recalculate action, confidence, setup qualification, or strategy ranking. Evidence and checklist states must remain traceable to typed engine output.

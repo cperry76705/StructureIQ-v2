@@ -2,93 +2,152 @@
 
 ## Architectural Goal
 
-StructureIQ uses a modular, API-first architecture in which market observations move through focused analytical engines. Each engine has a narrow responsibility, explicit inputs and outputs, and independent tests. This separation allows data providers, analytical methods, and strategies to evolve without coupling the platform to live order execution.
+StructureIQ is evolving from a raw market-analysis API into a trader-facing decision-support platform. Its architecture separates deterministic market intelligence from the language and plans presented to a trader.
 
-## Analysis Flow
+The separation protects three principles:
+
+1. Internal engines remain testable, reproducible, and independent of presentation.
+2. Trader-facing output remains traceable to structured evidence rather than invented narrative.
+3. Decision support remains separate from broker execution and live trading.
+
+## Output Boundaries
+
+### Internal Engine Output
+
+Internal output is machine-readable domain state produced by focused engines. It includes:
+
+- Raw market structure, confirmed swings, BOS, CHOCH, sweeps, trend, and phase.
+- Multi-timeframe alignment, alignment score, and directional context.
+- Weighted decision scoring and action.
+- Positive, negative, and neutral evidence.
+- Setup qualification, failed conditions, and invalidation levels.
+- Strategy and playbook comparisons.
+
+Internal output favors precision, provenance, and completeness. It may contain implementation-oriented fields that are useful for testing, APIs, journals, and backtesting but are too detailed for a trader's primary view.
+
+### Trader-Facing Analysis Output
+
+Trader-facing output translates the internal state into a concise decision-support experience. It includes:
+
+- A plain-English market summary.
+- The recommended setup, or an explicit statement that no setup qualifies.
+- Entry conditions that must become true before action.
+- Structural invalidation.
+- Risk and volatility notes.
+- Clear wait or avoid reasoning.
+- A checklist-style trade plan.
+
+Trader-facing output does not replace or mutate engine conclusions. Every statement and checklist item must be traceable to internal output.
+
+## Processing Flow
 
 ```text
-Market Data
-    -> Market Structure
-    -> Multi-Timeframe Context
-    -> Indicator and Context Evidence
-    -> Decision Model
-    -> Strategy Qualification
-    -> Intelligence and Explanation
-    -> API / Journal / Backtesting Consumers
+Market Data Engine
+    -> Market Structure Engine
+    -> Multi-Timeframe Engine + Indicator Framework
+    -> Decision Engine
+    -> Setup Engine
+    -> Strategy Engine
+    -> Analysis/Explanation Engine
+    -> Trader-Facing Analysis Output
+             |
+             +-> API / Future UI
+
+Internal outputs from every stage
+    -> Journal/Backtesting Engine
 ```
 
-The flow is analytical rather than transactional. No component in the core blueprint submits or manages broker orders.
+The numbered components below describe architectural responsibilities. At runtime, the Analysis/Explanation Engine is the presentation boundary and consumes all internal results required for the final plan, including setup and strategy output.
 
-## Engines
+## Components
 
 ### 1. Market Data Engine
 
-The Market Data Engine retrieves and normalizes candles and related market data from provider-specific formats into stable internal models. It owns provider abstraction, timeframe requests, validation, error handling, and data-quality checks.
+The Market Data Engine retrieves, validates, and normalizes candles and related market data into stable internal models. It owns provider abstraction, timeframe requests, chronological ordering, data-quality checks, and informative provider failures.
 
-Provider adapters must not leak provider-specific representations into downstream engines. Missing, stale, or invalid data must be surfaced explicitly rather than silently treated as valid evidence.
+Provider-specific representations must not leak into analytical engines. Missing, stale, or invalid data is reported explicitly rather than converted into false evidence.
 
 ### 2. Market Structure Engine
 
-The Market Structure Engine derives objective price behavior from normalized candles. It identifies confirmed swings, HH/HL/LH/LL sequences, BOS, CHOCH, liquidity sweeps, and structural phases such as impulse, pullback, range, compression, and expansion.
+The Market Structure Engine identifies confirmed swing highs and lows, HH/HL/LH/LL relationships, BOS, CHOCH, liquidity sweeps, and structural phases. It classifies trend as bullish, bearish, ranging, or unclear and returns both conclusions and timestamped supporting events.
 
-Its output is a typed structural snapshot with events, relevant levels, trend or range classification, and the evidence used to reach that classification.
+Market structure establishes the primary thesis. It does not choose a trade setup or write trader-facing guidance.
 
 ### 3. Multi-Timeframe Engine
 
-The Multi-Timeframe Engine relates higher-timeframe bias to lower-timeframe execution context. It determines whether timeframes are aligned, conflicting, or neutral and calculates an alignment score without allowing a lower timeframe to erase material higher-timeframe risk.
+The Multi-Timeframe Engine relates higher-timeframe directional context to current-timeframe execution structure. It returns aligned bullish, aligned bearish, mixed, conflicting, or unclear alignment; a `0–100` alignment score; unified directional bias; reasons; and a structured summary.
 
-The v0.3 implementation evaluates exactly two inputs from the existing analysis request:
-
-- `higher_timeframe` supplies directional bias and broad context.
-- `timeframe` supplies current execution context.
-
-Each side is represented by a typed `TimeframeAnalysis` derived from the Market Structure Engine. The resulting `MultiTimeframeResult` records both trends and phases, an alignment category, a `0–100` alignment score, unified directional bias, reasons, and a human-readable summary.
-
-Alignment is directional agreement, not prediction. Matching impulse structures receive strong alignment; an in-direction current pullback or range remains mixed within the higher-timeframe bias; opposite directional structures conflict; and unclear structure reduces the score. Strategy qualification and confidence consume this result without changing the underlying structure observations.
-
-The engine accepts named timeframe inputs rather than hard-coding a hierarchy, leaving room for a later multi-level implementation while deliberately limiting v0.3 to two timeframes.
+The current implementation evaluates exactly the `higher_timeframe` and `timeframe` supplied to `/analysis`. Its contracts allow a broader hierarchy later without requiring it now.
 
 ### 4. Indicator Framework
 
-The Indicator Framework calculates standardized indicator observations and translates them into evidence that confirms, weakens, or remains neutral toward the structure-led thesis. Indicators never create the primary thesis independently.
+The Indicator Framework calculates standardized indicator observations and interprets whether they confirm, weaken, or remain neutral toward the market-structure thesis. Indicators never create the primary thesis independently.
+
+Indicator results are evidence inputs. They do not select setups or actions.
 
 ### 5. Decision Engine
 
-The Decision Engine combines weighted evidence across market structure, multi-timeframe alignment, support/resistance and liquidity, indicators, and risk/reward and volatility. It produces a normalized score, confidence, evidence ledger, conflicts, and a decision state such as buy, sell, wait, or no trade.
+The Decision Engine determines directional action and confidence using weighted evidence. It answers one question: should the current evidence produce `buy`, `sell`, `wait`, or `avoid`?
 
-The v0.4 implementation is a dedicated domain engine independent of FastAPI. It consumes typed market-structure and multi-timeframe results plus normalized context inputs. `ScoreBreakdown` enforces the blueprint's `35/25/15/15/10` weighting, while `EvidenceItem` separates supportive, adverse, and neutral observations. Risk and invalidation notes remain first-class output rather than being reconstructed in the API layer.
+It applies the blueprint's `35/25/15/15/10` weighting across market structure, multi-timeframe alignment, support/resistance and liquidity, indicators, and risk/reward and volatility. Its output includes the action, confidence, score breakdown, evidence ledger, risk notes, invalidation notes, and a factual summary.
 
-Action selection occurs after scoring. Confidence thresholds, alignment agreement, current-timeframe confirmation, and minimum risk/reward act as explicit gates. The analysis orchestrator maps the result into both the new nested decision contract and the legacy top-level action and confidence fields; it does not maintain a second decision algorithm.
+The Decision Engine does not name a setup, choose a broader playbook, or build the trader-facing plan.
 
-### 6. Strategy Engine
+### 6. Setup Engine
 
-The Strategy Engine determines whether current conditions satisfy a named, rule-based setup. Initial strategy families are pullback continuation, breakout continuation, range reversal, liquidity sweep reversal, and compression breakout.
+The Setup Engine identifies the specific trade setup type and validates whether its required conditions are present. Initial setup families include:
 
-Strategies consume analytical state; they do not modify it to force qualification. Each setup must define prerequisites, confirmation, invalidation, and risk constraints.
+- Bullish BOS retest.
+- Bearish BOS retest.
+- Pullback continuation.
+- Range reversal.
+- Liquidity sweep reversal.
+- Compression breakout.
 
-### 7. Intelligence/Explanation Engine
+It returns qualification state, satisfied and missing conditions, entry conditions, invalidation rules, and relevant levels. A directional decision does not imply that a setup is ready; the Setup Engine may reject or defer every candidate.
 
-The Intelligence/Explanation Engine converts structured analytical output into concise, human-readable reasoning. It must distinguish observation from interpretation, identify conflicting evidence, state why confidence is high or low, and describe confirmation and invalidation conditions.
+### 7. Analysis/Explanation Engine
 
-Explanations must be traceable to engine outputs. They must not invent evidence or present probabilistic conclusions as certainty.
+The Analysis/Explanation Engine converts internal engine output into trader-facing language and structured plans. It does not make the decision itself.
 
-### 8. Journal/Backtesting Engine
+It explains the Decision Engine result, presents the recommended qualified setup, describes entry and invalidation conditions, summarizes risk, explains wait or avoid outcomes, and builds a checklist-style trade plan. It must preserve uncertainty and cite only supplied engine evidence.
 
-The Journal/Backtesting Engine records analysis snapshots, decisions, setup metadata, outcomes, and review notes. It applies the same deterministic analytical and strategy rules to historical data to measure behavior across market regimes.
+### 8. Strategy Engine
 
-Backtesting results must account for data quality, fees, slippage assumptions, and look-ahead bias. Historical performance is evidence about past behavior, not a guarantee of future results.
+The Strategy Engine selects broader playbooks and compares possible approaches based on current market conditions. It comes after Setup Engine qualification, not before it.
+
+For example, it may compare continuation and reversal playbooks when multiple setup candidates exist, rank valid approaches, or recommend observation when no playbook has sufficient edge. It cannot override a Decision Engine action or make an invalid setup valid.
+
+### 9. Journal/Backtesting Engine
+
+The Journal/Backtesting Engine records market snapshots, engine versions, decisions, setup qualifications, plans, user actions, and outcomes. It applies the same deterministic analytical rules to historical data while guarding against look-ahead bias.
+
+Backtesting must disclose data quality, fees, slippage, execution assumptions, and sample size. Historical performance is evidence about past behavior, not a future guarantee.
+
+## Ownership Rules
+
+| Question | Owning component |
+| --- | --- |
+| What is price doing? | Market Structure Engine |
+| Do the timeframes agree? | Multi-Timeframe Engine |
+| Do indicators confirm the thesis? | Indicator Framework |
+| Buy, sell, wait, or avoid—and with what confidence? | Decision Engine |
+| Which specific setup is present and valid? | Setup Engine |
+| Which broader playbook is most appropriate? | Strategy Engine |
+| How should the result be explained and presented as a plan? | Analysis/Explanation Engine |
+| How did the analysis and outcome perform over time? | Journal/Backtesting Engine |
 
 ## Shared Architectural Rules
 
 - Engines communicate through validated, typed contracts.
-- Engine outputs contain both conclusions and supporting evidence.
-- Configuration, thresholds, and model versions are recorded for reproducibility.
-- Market data providers are replaceable through dependency injection.
-- Analytical engines remain independent of FastAPI and external delivery channels.
-- The API coordinates engines but does not contain domain logic.
-- Failures are explicit and observable; ambiguous data produces uncertainty, not fabricated precision.
-- New functionality preserves backward compatibility unless a versioned contract intentionally changes it.
+- Conclusions retain their evidence, configuration, timeframe, and rule version.
+- Missing evidence lowers certainty; it is never silently treated as confirmation.
+- The API coordinates components but does not contain domain scoring or explanation logic.
+- The explanation layer cannot invent evidence, alter scores, or upgrade a setup.
+- Wait and avoid are successful analytical outcomes, not system failures.
+- New fields are introduced additively or through explicit API versioning.
+- No core component places orders or manages brokerage accounts.
 
 ## Current Platform State
 
-The current application provides a FastAPI service, a market data provider abstraction, normalized candle data, typed market structure analysis, two-timeframe alignment, a weighted decision engine, strategy setup routing, and tests. The blueprint describes the intended boundaries as these capabilities mature into independently versioned engines.
+Versions 0.1 through 0.4 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, and weighted Decision Engine. The current `/analysis` response is still engine-oriented. Versions 0.5 onward introduce setup qualification, trader-facing explanation, broader strategy playbooks, and journal/backtesting workflows.
