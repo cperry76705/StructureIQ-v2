@@ -543,6 +543,21 @@ Response shape:
     "most_common_blocked_gate": "directional_confidence",
     "human_readable_summary": "40 decision snapshots averaged 61.8/100; the most common blocked gate was directional confidence (40 records)."
   },
+  "threshold_sensitivity": [
+    {
+      "threshold": 50.0,
+      "directionally_eligible": 120,
+      "execution_ready": 8,
+      "missing_setup": 30,
+      "missing_levels": 24,
+      "risk_reward_failed": 28,
+      "setup_not_confirmed": 25,
+      "strategy_not_aligned": 5,
+      "still_blocked": 80,
+      "estimated_trade_candidates": 8,
+      "human_readable_summary": "At 50 confidence, 120 records are directionally eligible, 8 have execution-ready snapshots, and 8 pass both."
+    }
+  ],
   "setup_performance": [],
   "strategy_performance": [],
   "recommendations": [
@@ -561,6 +576,8 @@ Response shape:
 ```
 
 Calibration combinations are capped at 100 per request. Recommendations use `decision_threshold`, `setup_quality`, `strategy_selection`, `risk_reward`, `market_structure`, or `data_quality` categories with low, medium, or high severity.
+
+`threshold_sensitivity` always evaluates `[50, 55, 60, 65, 70]` without changing production decisions. Counts use existing backtest snapshots; `estimated_trade_candidates` is directional eligibility intersected with observed execution readiness, not a simulated outcome or profitability estimate.
 
 Calibration is deterministic for the same data and engine versions. It observes historical behavior and suggests areas to inspect; it does not optimize or change application logic automatically.
 

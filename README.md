@@ -117,7 +117,7 @@ The response preserves established top-level fields and adds typed internal bloc
 
 ## Roadmap and Release Information
 
-Version `1.3.0` separates directional confidence from execution readiness: risk/reward remains weighted evidence, while Setup and Backtesting own the final level and minimum-R:R gates. Diagnostics expose that ownership without making execution less conservative. Future work focuses on controlled sensitivity studies, data-quality controls, stronger out-of-sample validation, persistence options, observability, and client experiences—not autonomous execution.
+Version `1.4.0` adds a read-only Decision Threshold Sensitivity Study across confidence levels 50–70. It separates directional eligibility from observed execution readiness without changing production decisions or thresholds. Future work focuses on out-of-sample validation of any candidate policy, data-quality controls, persistence options, observability, and client experiences—not autonomous execution.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

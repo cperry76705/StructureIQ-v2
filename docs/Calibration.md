@@ -81,6 +81,21 @@ Failed-gate counts can overlap because one decision may fail several required co
 
 This separation makes bottleneck movement measurable: if directional evidence clears but execution data is incomplete, `by_blocking_engine` should shift from `decision_engine` toward `setup_engine` or `risk_engine`. Recommendations then distinguish confidence-distribution research from level derivation or execution-quality work.
 
+## Decision Threshold Sensitivity Study
+
+Version 1.4 evaluates confidence thresholds `50`, `55`, `60`, `65`, and `70` over the immutable snapshots already collected by backtesting. It does not rerun the Decision Engine, alter stored actions, upgrade setup states, or change the production threshold.
+
+A record is directionally eligible when its raw decision score reaches the studied threshold, its intended direction is bullish or bearish, and its structure and multi-timeframe gates passed. Execution readiness is evaluated separately from the recorded downstream snapshot and requires:
+
+- Confirmed setup and actionable trader plan.
+- Parseable entry, stop, and target.
+- Estimated risk/reward of at least `1.5R`.
+- A preferred strategy that does not conflict with the decision.
+
+`ThresholdSensitivityResult` reports directional eligibility, total observed execution-ready snapshots, their intersection as estimated trade candidates, records still directionally blocked, and execution blockers split into missing setup, missing levels, failed risk/reward, unconfirmed setup, and strategy misalignment.
+
+Execution-ready is intentionally independent of the tested threshold; `estimated_trade_candidates` is the intersection that passes both tests. Because downstream snapshots retain their original state, this study is conservative and does not assume a waiting setup would automatically become confirmed after a hypothetical decision change.
+
 ## Setup and Strategy Performance
 
 Closed and skipped records are grouped by `setup_type` and `strategy_type`. Each group reports record count, closed trade count, skipped count, outcomes, win rate, average R, total R, and profit factor.
@@ -110,7 +125,7 @@ The v0.9 rules flag:
 - Missing evaluable records.
 - Dominant actionability skip reasons and their owning gates.
 
-Recommendations now name the specific gate to inspect—for example, the distance below 70 confidence, structure direction, mixed/conflicting timeframe states, risk/reward availability, unmet Setup Engine confirmation conditions, level derivation, or strategy eligibility. They do not apply parameter changes or recommend loosening a threshold without first measuring its distribution and historical sensitivity.
+Recommendations now compare the lowest studied threshold with production. If lower thresholds add directional records but no estimated executable candidates, calibration identifies the dominant execution blocker and explicitly states that the study does not justify lowering confidence. If candidate counts increase, it recommends out-of-sample validation rather than changing production automatically.
 
 ## Determinism
 

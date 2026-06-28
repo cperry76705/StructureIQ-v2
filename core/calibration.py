@@ -14,13 +14,16 @@ from core.backtesting import (
     BacktestTrade,
     BacktestingEngine,
     DecisionDiagnosticsSummary,
+    ExecutionReadinessSnapshot,
     SkipDiagnostics,
     calculate_backtest_metrics,
     calculate_decision_diagnostics_summary,
     calculate_skip_diagnostics,
+    parse_price_level,
 )
 from core.journal import TradeOutcome
 from core.market_data import MarketDataProvider
+from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from core.symbols import normalize_yahoo_symbol
 
 
@@ -33,6 +36,7 @@ RecommendationCategory = Literal[
     "data_quality",
 ]
 RecommendationSeverity = Literal["low", "medium", "high"]
+SENSITIVITY_THRESHOLDS = (50.0, 55.0, 60.0, 65.0, 70.0)
 
 
 class CalibrationRequest(BaseModel):
@@ -157,11 +161,27 @@ class CalibrationRecommendation:
 
 
 @dataclass(frozen=True)
+class ThresholdSensitivityResult:
+    threshold: float
+    directionally_eligible: int
+    execution_ready: int
+    missing_setup: int
+    missing_levels: int
+    risk_reward_failed: int
+    setup_not_confirmed: int
+    strategy_not_aligned: int
+    still_blocked: int
+    estimated_trade_candidates: int
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class CalibrationResult:
     runs: tuple[CalibrationRun, ...]
     aggregate_metrics: CalibrationMetrics
     aggregate_skip_diagnostics: SkipDiagnostics
     aggregate_decision_diagnostics: DecisionDiagnosticsSummary
+    threshold_sensitivity: tuple[ThresholdSensitivityResult, ...]
     setup_performance: tuple[SetupPerformance, ...]
     strategy_performance: tuple[StrategyPerformance, ...]
     recommendations: tuple[CalibrationRecommendation, ...]
@@ -232,6 +252,7 @@ class CalibrationEngine:
         aggregate_decision_diagnostics = calculate_decision_diagnostics_summary(
             all_trades
         )
+        threshold_sensitivity = calculate_threshold_sensitivity(all_trades)
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -241,6 +262,7 @@ class CalibrationEngine:
             strategy_performance,
             aggregate_skip_diagnostics,
             aggregate_decision_diagnostics,
+            threshold_sensitivity,
         )
         summary = (
             f"Calibration completed {aggregate.total_runs} runs with "
@@ -252,6 +274,7 @@ class CalibrationEngine:
             aggregate_metrics=aggregate,
             aggregate_skip_diagnostics=aggregate_skip_diagnostics,
             aggregate_decision_diagnostics=aggregate_decision_diagnostics,
+            threshold_sensitivity=threshold_sensitivity,
             setup_performance=setup_performance,
             strategy_performance=strategy_performance,
             recommendations=recommendations,
@@ -321,6 +344,96 @@ def _performance_record(name: str, records: list[BacktestTrade], model):
     )
 
 
+def calculate_threshold_sensitivity(
+    records: list[BacktestTrade],
+    thresholds: tuple[float, ...] = SENSITIVITY_THRESHOLDS,
+) -> tuple[ThresholdSensitivityResult, ...]:
+    """Evaluate confidence alternatives without changing stored decisions or trades."""
+
+    execution_ready_records = {
+        index
+        for index, record in enumerate(records)
+        if _execution_blocker(record.execution_readiness) is None
+    }
+    results: list[ThresholdSensitivityResult] = []
+    for threshold in thresholds:
+        eligible = {
+            index
+            for index, record in enumerate(records)
+            if _directionally_eligible(record, threshold)
+        }
+        blockers: defaultdict[str, int] = defaultdict(int)
+        for index in eligible:
+            blocker = _execution_blocker(records[index].execution_readiness)
+            if blocker is not None:
+                blockers[blocker] += 1
+        candidates = eligible & execution_ready_records
+        results.append(
+            ThresholdSensitivityResult(
+                threshold=threshold,
+                directionally_eligible=len(eligible),
+                execution_ready=len(execution_ready_records),
+                missing_setup=blockers["missing_setup"],
+                missing_levels=blockers["missing_levels"],
+                risk_reward_failed=blockers["risk_reward_failed"],
+                setup_not_confirmed=blockers["setup_not_confirmed"],
+                strategy_not_aligned=blockers["strategy_not_aligned"],
+                still_blocked=len(records) - len(eligible),
+                estimated_trade_candidates=len(candidates),
+                human_readable_summary=(
+                    f"At {threshold:.0f} confidence, {len(eligible)} records are "
+                    f"directionally eligible, {len(execution_ready_records)} have "
+                    f"execution-ready snapshots, and {len(candidates)} pass both."
+                ),
+            )
+        )
+    return tuple(results)
+
+
+def _directionally_eligible(record: BacktestTrade, threshold: float) -> bool:
+    diagnostics = record.decision_diagnostics
+    if diagnostics is None or not diagnostics.gate_results:
+        return False
+    if diagnostics.intended_direction not in {"bullish", "bearish"}:
+        return False
+    gates = {gate.gate_name: gate for gate in diagnostics.gate_results}
+    if not gates.get("structure_alignment") or not gates["structure_alignment"].passed:
+        return False
+    if (
+        not gates.get("multi_timeframe_alignment")
+        or not gates["multi_timeframe_alignment"].passed
+    ):
+        return False
+    return diagnostics.raw_score >= threshold
+
+
+def _execution_blocker(
+    snapshot: ExecutionReadinessSnapshot | None,
+) -> str | None:
+    if snapshot is None or snapshot.setup_status in {"no_setup", "invalid", "unknown"}:
+        return "missing_setup"
+    levels = (
+        parse_price_level(snapshot.entry_zone, midpoint=True),
+        parse_price_level(snapshot.stop_loss),
+        parse_price_level(snapshot.target),
+    )
+    if any(level is None for level in levels):
+        return "missing_levels"
+    if (
+        snapshot.estimated_risk_reward is None
+        or snapshot.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD
+    ):
+        return "risk_reward_failed"
+    if snapshot.setup_status != "confirmed" or snapshot.plan_status != "actionable":
+        return "setup_not_confirmed"
+    if snapshot.preferred_strategy == "no_strategy" or snapshot.strategy_alignment in {
+        "conflicts_with_decision",
+        "no_clear_strategy",
+    }:
+        return "strategy_not_aligned"
+    return None
+
+
 def _recommendations(
     metrics: CalibrationMetrics,
     records: list[BacktestTrade],
@@ -328,6 +441,7 @@ def _recommendations(
     strategies: tuple[StrategyPerformance, ...],
     skip_diagnostics: SkipDiagnostics,
     decision_diagnostics: DecisionDiagnosticsSummary,
+    threshold_sensitivity: tuple[ThresholdSensitivityResult, ...],
 ) -> tuple[CalibrationRecommendation, ...]:
     recommendations: list[CalibrationRecommendation] = []
     record_count = len(records)
@@ -361,6 +475,12 @@ def _recommendations(
     )
     if decision_recommendation is not None:
         recommendations.append(decision_recommendation)
+
+    sensitivity_recommendation = _threshold_sensitivity_recommendation(
+        threshold_sensitivity
+    )
+    if sensitivity_recommendation is not None:
+        recommendations.append(sensitivity_recommendation)
 
     if metrics.total_trades and metrics.win_rate < 35.0:
         recommendations.append(
@@ -589,6 +709,66 @@ def _decision_diagnostic_recommendation(
         f"Decision gate {gate.replace('_', ' ')} blocked {count} records.",
         severity,
         action,
+    )
+
+
+def _threshold_sensitivity_recommendation(
+    sensitivity: tuple[ThresholdSensitivityResult, ...],
+) -> CalibrationRecommendation | None:
+    if not sensitivity:
+        return None
+    lowest = min(sensitivity, key=lambda result: result.threshold)
+    production = max(sensitivity, key=lambda result: result.threshold)
+    gained = lowest.directionally_eligible - production.directionally_eligible
+
+    if gained > 0 and lowest.estimated_trade_candidates == 0:
+        execution_counts = {
+            "missing setup": lowest.missing_setup,
+            "missing levels": lowest.missing_levels,
+            "risk/reward": lowest.risk_reward_failed,
+            "setup confirmation": lowest.setup_not_confirmed,
+            "strategy alignment": lowest.strategy_not_aligned,
+        }
+        dominant = max(execution_counts, key=execution_counts.get)
+        return CalibrationRecommendation(
+            "setup_quality" if dominant != "risk/reward" else "risk_reward",
+            (
+                f"Lowering the studied confidence threshold from "
+                f"{production.threshold:.0f} to {lowest.threshold:.0f} adds {gained} "
+                "directionally eligible records but produces no executable trade candidates."
+            ),
+            "high",
+            (
+                f"Inspect {dominant} before considering a production confidence "
+                "change; the sensitivity study does not justify lowering the threshold."
+            ),
+        )
+    if lowest.estimated_trade_candidates > production.estimated_trade_candidates:
+        increase = (
+            lowest.estimated_trade_candidates
+            - production.estimated_trade_candidates
+        )
+        return CalibrationRecommendation(
+            "decision_threshold",
+            (
+                f"The {lowest.threshold:.0f} sensitivity threshold produces {increase} "
+                "additional estimated trade candidates versus the production threshold."
+            ),
+            "medium",
+            "Validate those candidates out of sample before considering any threshold change.",
+        )
+    if lowest.directionally_eligible == 0:
+        return CalibrationRecommendation(
+            "market_structure",
+            "No records are directionally eligible at any studied threshold.",
+            "high",
+            "Inspect structure and timeframe alignment rather than confidence thresholds.",
+        )
+    return CalibrationRecommendation(
+        "decision_threshold",
+        "Studied threshold changes do not increase estimated executable candidates.",
+        "low",
+        "Keep the production threshold unchanged and inspect downstream execution blockers.",
     )
 
 

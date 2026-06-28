@@ -86,6 +86,20 @@ class BacktestRequest(BaseModel):
 
 
 @dataclass(frozen=True)
+class ExecutionReadinessSnapshot:
+    """Downstream state retained for threshold sensitivity analysis."""
+
+    setup_status: str
+    plan_status: str
+    entry_zone: str | None
+    stop_loss: str | None
+    target: str | None
+    estimated_risk_reward: float | None
+    preferred_strategy: str
+    strategy_alignment: str
+
+
+@dataclass(frozen=True)
 class BacktestTrade:
     timestamp: int
     symbol: str
@@ -104,6 +118,7 @@ class BacktestTrade:
     blocking_engine: BlockingEngine | None = None
     actionability_status: ActionabilityStatus = "actionable"
     decision_diagnostics: DecisionDiagnostics | None = None
+    execution_readiness: ExecutionReadinessSnapshot | None = None
 
 
 @dataclass(frozen=True)
@@ -252,6 +267,7 @@ def build_backtest_trade(
     decision_diagnostics = getattr(
         analysis.decision, "decision_diagnostics", None
     )
+    execution_readiness = _build_execution_readiness_snapshot(analysis)
     if plan.status != "actionable" or action not in {"buy", "sell"}:
         code, engine, detail = diagnose_non_actionable_analysis(analysis)
         return _skipped_trade(
@@ -267,6 +283,7 @@ def build_backtest_trade(
             blocking_engine=engine,
             actionability_status=_actionability_status(plan.status),
             decision_diagnostics=decision_diagnostics,
+            execution_readiness=execution_readiness,
         )
 
     entry = parse_price_level(plan.entry_zone, midpoint=True)
@@ -292,6 +309,7 @@ def build_backtest_trade(
             blocking_engine="setup_engine",
             actionability_status=_actionability_status(plan.status),
             decision_diagnostics=decision_diagnostics,
+            execution_readiness=execution_readiness,
         )
 
     if plan.estimated_risk_reward is None:
@@ -316,6 +334,7 @@ def build_backtest_trade(
             blocking_engine="risk_engine",
             actionability_status=_actionability_status(plan.status),
             decision_diagnostics=decision_diagnostics,
+            execution_readiness=execution_readiness,
         )
     if plan.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
         return BacktestTrade(
@@ -339,6 +358,7 @@ def build_backtest_trade(
             blocking_engine="risk_engine",
             actionability_status=_actionability_status(plan.status),
             decision_diagnostics=decision_diagnostics,
+            execution_readiness=execution_readiness,
         )
 
     outcome, realized_r, reason = simulate_trade_outcome(
@@ -364,6 +384,7 @@ def build_backtest_trade(
         reason=reason,
         actionability_status="actionable",
         decision_diagnostics=decision_diagnostics,
+        execution_readiness=execution_readiness,
     )
 
 
@@ -449,6 +470,28 @@ def diagnose_non_actionable_analysis(
         "unknown",
         "backtesting_engine",
         "The analysis was non-actionable but no known blocking gate was identified.",
+    )
+
+
+def _build_execution_readiness_snapshot(
+    analysis: AnalysisResponse,
+) -> ExecutionReadinessSnapshot:
+    plan = analysis.trader_analysis.trade_plan
+    setup = analysis.setup_plan
+    strategy = analysis.strategy
+    return ExecutionReadinessSnapshot(
+        setup_status=_enum_value(getattr(setup, "setup_status", None)) or "unknown",
+        plan_status=_enum_value(getattr(plan, "status", None)) or "unknown",
+        entry_zone=getattr(plan, "entry_zone", None),
+        stop_loss=getattr(plan, "stop_loss", None),
+        target=getattr(plan, "target", None),
+        estimated_risk_reward=getattr(plan, "estimated_risk_reward", None),
+        preferred_strategy=(
+            _enum_value(getattr(strategy, "preferred_strategy", None)) or "unknown"
+        ),
+        strategy_alignment=(
+            _enum_value(getattr(strategy, "strategy_alignment", None)) or "unknown"
+        ),
     )
 
 
@@ -566,6 +609,7 @@ def _skipped_trade(
     blocking_engine: BlockingEngine,
     actionability_status: ActionabilityStatus,
     decision_diagnostics: DecisionDiagnostics | None,
+    execution_readiness: ExecutionReadinessSnapshot | None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=timestamp,
@@ -585,6 +629,7 @@ def _skipped_trade(
         blocking_engine=blocking_engine,
         actionability_status=actionability_status,
         decision_diagnostics=decision_diagnostics,
+        execution_readiness=execution_readiness,
     )
 
 

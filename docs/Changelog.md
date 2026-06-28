@@ -2,6 +2,34 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.4.0 — Decision Threshold Sensitivity Study — 2026-06-27
+
+### Added
+
+- Typed `ThresholdSensitivityResult` output for thresholds 50, 55, 60, 65, and 70.
+- Immutable execution-readiness snapshots on backtest records.
+- Directional eligibility based on raw score plus existing structure and timeframe gates.
+- Separate execution blocker counts for missing setup, levels, risk/reward, confirmation, and strategy alignment.
+- Estimated trade-candidate counts using the intersection of directional and execution eligibility.
+- Calibration recommendations explaining when lower confidence thresholds would still produce no executable candidates.
+
+### Compatibility
+
+- Production Decision Engine behavior and thresholds are unchanged.
+- Existing backtest trades and outcomes are unchanged.
+- `/analysis` request and response remain unchanged.
+- `/calibrate` and backtest records only add response fields.
+- No dashboard, broker execution, live trading, or automatic tuning was added.
+
+### Changed
+
+- Application and OpenAPI version are now `1.4.0`.
+
+### Verification
+
+- 147 automated tests pass together.
+- Tests confirm threshold 50 increases directional eligibility relative to 70 without mutating production decisions or backtest outcomes.
+
 ## Version 1.3.0 — Risk/Reward Calibration and Gate Refinement — 2026-06-27
 
 ### Changed

@@ -40,6 +40,9 @@ def test_calibrate_endpoint_works() -> None:
     assert response.json()["aggregate_metrics"]["total_runs"] == 2
     assert response.json()["aggregate_skip_diagnostics"]["total_skipped"] == 2
     assert response.json()["aggregate_decision_diagnostics"]["by_blocked_gate"]
+    assert [
+        item["threshold"] for item in response.json()["threshold_sensitivity"]
+    ] == [50.0, 55.0, 60.0, 65.0, 70.0]
     assert response.json()["recommendations"]
 
 

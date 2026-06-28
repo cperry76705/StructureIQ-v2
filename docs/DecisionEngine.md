@@ -132,6 +132,12 @@ Missing or low risk/reward no longer acts as an independent directional veto. Th
 
 This boundary allows a strong directional thesis to return buy or sell while its setup remains developing or waiting. Trader-facing output and backtesting continue to withhold action until execution readiness is complete.
 
+## v1.4 Threshold Sensitivity Boundary
+
+Calibration may compare historical raw scores with alternative thresholds of 50, 55, 60, 65, and 70. This is a read-only research calculation over stored diagnostics. The production Decision Engine continues to use 50 for avoid, 70 for directional action, and every existing structure and timeframe gate.
+
+Sensitivity eligibility is not a new decision and is never written back into `/analysis`, backtest outcomes, setup status, or strategy state. An estimated trade candidate must independently pass the recorded execution-readiness snapshot.
+
 ## Output Boundary
 
 `DecisionResult` is internal engine output. It contains the directional action, weighted score breakdown, evidence ledger, risk notes, invalidation notes, decision diagnostics, and a factual summary suitable for downstream systems.

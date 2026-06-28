@@ -171,6 +171,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** strong directional evidence can progress without a premature risk-plan veto, while incomplete or low-quality execution plans remain non-actionable. Calibration can now distinguish Decision Engine conservatism from Setup and risk-plan incompleteness.
 
+## Version 1.4 — Decision Threshold Sensitivity Study
+
+- Compare directional eligibility at confidence thresholds 50, 55, 60, 65, and 70.
+- Preserve production decisions and thresholds.
+- Retain immutable setup, plan, level, risk/reward, and strategy snapshots.
+- Separate directional eligibility, observed execution readiness, and their candidate intersection.
+- Recommend confidence research only when lower thresholds produce executable candidates.
+
+**Status:** implemented.
+
+**Outcome:** calibration can show whether confidence is the binding constraint or merely the first visible gate. Lower-threshold records remain non-candidates when their original execution plans lack setup confirmation, levels, risk quality, or strategy alignment.
+
 ## Beyond Version 1.0
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
