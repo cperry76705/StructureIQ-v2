@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.config import SUPPORTED_TIMEFRAMES
 from core.analysis_engine import AnalysisEngine
+from core.decision_engine import DecisionDiagnostics
 from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
@@ -102,6 +103,7 @@ class BacktestTrade:
     skip_reason_detail: str | None = None
     blocking_engine: BlockingEngine | None = None
     actionability_status: ActionabilityStatus = "actionable"
+    decision_diagnostics: DecisionDiagnostics | None = None
 
 
 @dataclass(frozen=True)
@@ -127,6 +129,16 @@ class SkipDiagnostics:
 
 
 @dataclass(frozen=True)
+class DecisionDiagnosticsSummary:
+    by_confidence_band: dict[str, int]
+    by_blocked_gate: dict[str, int]
+    average_confidence: float
+    average_raw_score: float
+    most_common_blocked_gate: str | None
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class BacktestResult:
     request: BacktestRequest
     trades: tuple[BacktestTrade, ...]
@@ -135,6 +147,9 @@ class BacktestResult:
     limitations: tuple[str, ...]
     skip_diagnostics: SkipDiagnostics = field(
         default_factory=lambda: _empty_skip_diagnostics()
+    )
+    decision_diagnostics_summary: DecisionDiagnosticsSummary = field(
+        default_factory=lambda: _empty_decision_diagnostics_summary()
     )
 
 
@@ -200,6 +215,9 @@ class BacktestingEngine:
 
         metrics = calculate_backtest_metrics(trades)
         skip_diagnostics = calculate_skip_diagnostics(trades)
+        decision_diagnostics_summary = calculate_decision_diagnostics_summary(
+            trades
+        )
         limitations = backtest_limitations()
         summary = (
             f"Backtest evaluated {len(trades)} analysis windows and produced "
@@ -214,6 +232,7 @@ class BacktestingEngine:
             human_readable_summary=summary,
             limitations=limitations,
             skip_diagnostics=skip_diagnostics,
+            decision_diagnostics_summary=decision_diagnostics_summary,
         )
 
 
@@ -230,6 +249,9 @@ def build_backtest_trade(
     action = analysis.decision.action.value
     setup_type = analysis.setup_plan.setup_type.value
     strategy_type = analysis.strategy.preferred_strategy.value
+    decision_diagnostics = getattr(
+        analysis.decision, "decision_diagnostics", None
+    )
     if plan.status != "actionable" or action not in {"buy", "sell"}:
         code, engine, detail = diagnose_non_actionable_analysis(analysis)
         return _skipped_trade(
@@ -244,6 +266,7 @@ def build_backtest_trade(
             skip_reason_detail=detail,
             blocking_engine=engine,
             actionability_status=_actionability_status(plan.status),
+            decision_diagnostics=decision_diagnostics,
         )
 
     entry = parse_price_level(plan.entry_zone, midpoint=True)
@@ -268,6 +291,7 @@ def build_backtest_trade(
             skip_reason_detail=detail,
             blocking_engine="setup_engine",
             actionability_status=_actionability_status(plan.status),
+            decision_diagnostics=decision_diagnostics,
         )
 
     outcome, realized_r, reason = simulate_trade_outcome(
@@ -292,6 +316,7 @@ def build_backtest_trade(
         realized_r=realized_r,
         reason=reason,
         actionability_status="actionable",
+        decision_diagnostics=decision_diagnostics,
     )
 
 
@@ -410,8 +435,75 @@ def calculate_skip_diagnostics(trades: list[BacktestTrade]) -> SkipDiagnostics:
     )
 
 
+def calculate_decision_diagnostics_summary(
+    trades: list[BacktestTrade],
+) -> DecisionDiagnosticsSummary:
+    """Aggregate available Decision Engine snapshots across analysis windows."""
+
+    diagnostics = [
+        trade.decision_diagnostics
+        for trade in trades
+        if trade.decision_diagnostics is not None
+        and trade.decision_diagnostics.gate_results
+    ]
+    bands = Counter(item.confidence_band for item in diagnostics)
+    blocked_gates = Counter(
+        gate for item in diagnostics for gate in item.blocked_by
+    )
+    most_common = (
+        sorted(
+            blocked_gates,
+            key=lambda key: (-blocked_gates[key], key),
+        )[0]
+        if blocked_gates
+        else None
+    )
+    average_confidence = (
+        round(sum(item.final_confidence for item in diagnostics) / len(diagnostics), 2)
+        if diagnostics
+        else 0.0
+    )
+    average_raw_score = (
+        round(sum(item.raw_score for item in diagnostics) / len(diagnostics), 2)
+        if diagnostics
+        else 0.0
+    )
+    if not diagnostics:
+        summary = "No Decision Engine diagnostic snapshots were available."
+    elif most_common is None:
+        summary = (
+            f"{len(diagnostics)} decision snapshots averaged "
+            f"{average_confidence:.1f}/100 and no required gate was blocked."
+        )
+    else:
+        summary = (
+            f"{len(diagnostics)} decision snapshots averaged "
+            f"{average_confidence:.1f}/100; the most common blocked gate was "
+            f"{most_common.replace('_', ' ')} ({blocked_gates[most_common]} records)."
+        )
+    return DecisionDiagnosticsSummary(
+        by_confidence_band=dict(sorted(bands.items())),
+        by_blocked_gate=dict(sorted(blocked_gates.items())),
+        average_confidence=average_confidence,
+        average_raw_score=average_raw_score,
+        most_common_blocked_gate=most_common,
+        human_readable_summary=summary,
+    )
+
+
 def _empty_skip_diagnostics() -> SkipDiagnostics:
     return SkipDiagnostics(0, {}, {}, None, "No analysis records were skipped.")
+
+
+def _empty_decision_diagnostics_summary() -> DecisionDiagnosticsSummary:
+    return DecisionDiagnosticsSummary(
+        {},
+        {},
+        0.0,
+        0.0,
+        None,
+        "No Decision Engine diagnostic snapshots were available.",
+    )
 
 
 def _skipped_trade(
@@ -427,6 +519,7 @@ def _skipped_trade(
     skip_reason_detail: str,
     blocking_engine: BlockingEngine,
     actionability_status: ActionabilityStatus,
+    decision_diagnostics: DecisionDiagnostics | None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=timestamp,
@@ -445,6 +538,7 @@ def _skipped_trade(
         skip_reason_detail=skip_reason_detail,
         blocking_engine=blocking_engine,
         actionability_status=actionability_status,
+        decision_diagnostics=decision_diagnostics,
     )
 
 

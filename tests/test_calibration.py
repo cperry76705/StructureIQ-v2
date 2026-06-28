@@ -10,6 +10,7 @@ from core.backtesting import (
     calculate_backtest_metrics,
 )
 from core.calibration import CalibrationEngine, CalibrationRequest
+from core.decision_engine import DecisionDiagnostics, GateResult
 from core.journal import TradeOutcome
 from core.market_data import Candle
 
@@ -22,6 +23,7 @@ def _trade(
     strategy: str = "pullback_continuation",
     skip_reason_code: str | None = None,
     blocking_engine: str | None = None,
+    decision_diagnostics: DecisionDiagnostics | None = None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=1,
@@ -41,6 +43,7 @@ def _trade(
         actionability_status="waiting"
         if outcome is TradeOutcome.SKIPPED
         else "actionable",
+        decision_diagnostics=decision_diagnostics,
     )
 
 
@@ -164,6 +167,50 @@ def test_calibration_aggregates_skip_diagnostics_across_runs() -> None:
     }
     assert any(
         "dominant skip reason" in recommendation.message.lower()
+        for recommendation in result.recommendations
+    )
+
+
+def test_calibration_aggregates_blocked_decision_gates_across_runs() -> None:
+    diagnostics = DecisionDiagnostics(
+        raw_score=61.0,
+        final_confidence=61.0,
+        intended_direction="bullish",
+        confidence_band="wait",
+        blocked_by=("confidence_threshold",),
+        gate_results=(
+            GateResult(
+                "confidence_threshold",
+                False,
+                True,
+                61.0,
+                ">= 70.0",
+                -9.0,
+                "Confidence is below the threshold.",
+            ),
+        ),
+        human_readable_summary="Synthetic decision diagnostics.",
+    )
+    runner = _Runner(
+        lambda request: [
+            _trade(
+                TradeOutcome.SKIPPED,
+                None,
+                skip_reason_code="decision_not_actionable",
+                blocking_engine="decision_engine",
+                decision_diagnostics=diagnostics,
+            )
+        ]
+    )
+    result = _engine(runner).run(
+        _request(symbols=["BTC-USD", "ETH-USD"])
+    )
+
+    aggregate = result.aggregate_decision_diagnostics
+    assert aggregate.by_blocked_gate == {"confidence_threshold": 2}
+    assert aggregate.most_common_blocked_gate == "confidence_threshold"
+    assert any(
+        "confidence threshold" in recommendation.message.lower()
         for recommendation in result.recommendations
     )
 

@@ -13,8 +13,10 @@ from core.backtesting import (
     BacktestResult,
     BacktestTrade,
     BacktestingEngine,
+    DecisionDiagnosticsSummary,
     SkipDiagnostics,
     calculate_backtest_metrics,
+    calculate_decision_diagnostics_summary,
     calculate_skip_diagnostics,
 )
 from core.journal import TradeOutcome
@@ -159,6 +161,7 @@ class CalibrationResult:
     runs: tuple[CalibrationRun, ...]
     aggregate_metrics: CalibrationMetrics
     aggregate_skip_diagnostics: SkipDiagnostics
+    aggregate_decision_diagnostics: DecisionDiagnosticsSummary
     setup_performance: tuple[SetupPerformance, ...]
     strategy_performance: tuple[StrategyPerformance, ...]
     recommendations: tuple[CalibrationRecommendation, ...]
@@ -226,6 +229,9 @@ class CalibrationEngine:
 
         aggregate = _aggregate_metrics(runs, all_trades)
         aggregate_skip_diagnostics = calculate_skip_diagnostics(all_trades)
+        aggregate_decision_diagnostics = calculate_decision_diagnostics_summary(
+            all_trades
+        )
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -234,6 +240,7 @@ class CalibrationEngine:
             setup_performance,
             strategy_performance,
             aggregate_skip_diagnostics,
+            aggregate_decision_diagnostics,
         )
         summary = (
             f"Calibration completed {aggregate.total_runs} runs with "
@@ -244,6 +251,7 @@ class CalibrationEngine:
             runs=tuple(runs),
             aggregate_metrics=aggregate,
             aggregate_skip_diagnostics=aggregate_skip_diagnostics,
+            aggregate_decision_diagnostics=aggregate_decision_diagnostics,
             setup_performance=setup_performance,
             strategy_performance=strategy_performance,
             recommendations=recommendations,
@@ -319,6 +327,7 @@ def _recommendations(
     setups: tuple[SetupPerformance, ...],
     strategies: tuple[StrategyPerformance, ...],
     skip_diagnostics: SkipDiagnostics,
+    decision_diagnostics: DecisionDiagnosticsSummary,
 ) -> tuple[CalibrationRecommendation, ...]:
     recommendations: list[CalibrationRecommendation] = []
     record_count = len(records)
@@ -346,6 +355,12 @@ def _recommendations(
     diagnostic_recommendation = _skip_diagnostic_recommendation(skip_diagnostics)
     if diagnostic_recommendation is not None:
         recommendations.append(diagnostic_recommendation)
+
+    decision_recommendation = _decision_diagnostic_recommendation(
+        decision_diagnostics
+    )
+    if decision_recommendation is not None:
+        recommendations.append(decision_recommendation)
 
     if metrics.total_trades and metrics.win_rate < 35.0:
         recommendations.append(
@@ -508,6 +523,65 @@ def _skip_diagnostic_recommendation(
         ),
         severity=severity,
         suggested_action=action,
+    )
+
+
+def _decision_diagnostic_recommendation(
+    diagnostics: DecisionDiagnosticsSummary,
+) -> CalibrationRecommendation | None:
+    """Recommend inspection of the dominant existing Decision Engine gate."""
+
+    gate = diagnostics.most_common_blocked_gate
+    if gate is None:
+        return None
+    count = diagnostics.by_blocked_gate.get(gate, 0)
+    recommendations: dict[
+        str, tuple[RecommendationCategory, RecommendationSeverity, str]
+    ] = {
+        "confidence_threshold": (
+            "decision_threshold",
+            "high",
+            "Inspect the raw-score and confidence-band distribution, especially the "
+            "distance below 70, before testing any confidence threshold change.",
+        ),
+        "structure_alignment": (
+            "market_structure",
+            "high",
+            "Group failures by structure trend and intended direction to determine "
+            "whether unclear or opposing structure dominates.",
+        ),
+        "multi_timeframe_alignment": (
+            "market_structure",
+            "high",
+            "Break alignment failures into mixed, conflicting, and unclear states and "
+            "measure whether current-timeframe confirmation changes outcomes.",
+        ),
+        "risk_reward_available": (
+            "risk_reward",
+            "high",
+            "Inspect support, resistance, entry, and invalidation derivation when "
+            "risk/reward cannot be calculated.",
+        ),
+        "risk_reward_minimum": (
+            "risk_reward",
+            "medium",
+            "Measure the risk/reward distribution around the existing 1.0 Decision "
+            "Engine minimum before running a sensitivity experiment.",
+        ),
+    }
+    if gate not in recommendations:
+        return CalibrationRecommendation(
+            "data_quality",
+            f"Decision gate {gate.replace('_', ' ')} blocked {count} records.",
+            "medium",
+            "Inspect the underlying gate results before changing decision policy.",
+        )
+    category, severity, action = recommendations[gate]
+    return CalibrationRecommendation(
+        category,
+        f"Decision gate {gate.replace('_', ' ')} blocked {count} records.",
+        severity,
+        action,
     )
 
 

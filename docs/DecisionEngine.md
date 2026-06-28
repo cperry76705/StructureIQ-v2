@@ -103,9 +103,32 @@ Each category contributes no more than its configured weight:
 
 Every decision includes risk notes, structural invalidation notes, and a human-readable explanation. Confidence describes evidence quality and agreement; it is not a predicted win probability.
 
+## v1.2 Decision Diagnostics
+
+`DecisionResult.decision_diagnostics` exposes the existing action gates without changing their evaluation. It contains the unrounded category sum (`raw_score`), final rounded confidence, intended direction, confidence band, required gates that failed, every gate result, and a readable summary.
+
+Confidence bands are observational labels:
+
+- Below 50: `avoid`.
+- 50 through 69.9: `wait`.
+- 70 through 84.9: `tradable`, subject to every other required gate.
+- 85 through 100: `high_conviction`, which remains uncertain and is not a guarantee.
+
+Required directional gates mirror the current action selector exactly:
+
+- `confidence_threshold`: final confidence is at least 70.
+- `structure_alignment`: execution structure matches the intended direction.
+- `multi_timeframe_alignment`: timeframes align, or mixed context has directional structure and current-timeframe confirmation.
+- `risk_reward_available`: a ratio can be calculated.
+- `risk_reward_minimum`: the ratio meets the existing 1.0 Decision Engine minimum.
+
+Supporting diagnostics—`conflicting_evidence`, `liquidity_confirmation`, and `indicator_confirmation`—describe evidence but are not standalone action gates. `setup_confirmation` is marked non-required and unavailable at decision time because the Setup Engine runs afterward. This distinction prevents diagnostics from inventing dependencies or misrepresenting downstream output as a cause of the decision.
+
+Each `GateResult` records its name, pass state, whether it is required, observed and expected values, diagnostic impact, and blocking reason. For `wait` and `avoid`, `blocked_by` contains only failed required gates.
+
 ## Output Boundary
 
-`DecisionResult` is internal engine output. It contains the directional action, weighted score breakdown, evidence ledger, risk notes, invalidation notes, and a factual summary suitable for downstream systems.
+`DecisionResult` is internal engine output. It contains the directional action, weighted score breakdown, evidence ledger, risk notes, invalidation notes, decision diagnostics, and a factual summary suitable for downstream systems.
 
 This output is intentionally analytical rather than a complete trader experience. A decision can be bullish without a qualified entry setup, and a high confidence score is not permission to trade.
 

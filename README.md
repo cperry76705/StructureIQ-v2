@@ -117,7 +117,7 @@ The response preserves established top-level fields and adds typed internal bloc
 
 ## Roadmap and Release Information
 
-Version `1.1.0` extends the Stable MVP with actionability diagnostics: backtests and calibration now explain which existing gate causes skipped records without loosening thresholds. Future work focuses on controlled sensitivity studies, data-quality controls, stronger out-of-sample validation, persistence options, observability, and client experiences—not autonomous execution.
+Version `1.2.0` extends the Stable MVP with Decision Engine sensitivity reporting: analysis, backtests, and calibration now expose which existing decision gates block directional action without loosening thresholds. Future work focuses on controlled sensitivity studies, data-quality controls, stronger out-of-sample validation, persistence options, observability, and client experiences—not autonomous execution.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

@@ -1,6 +1,6 @@
 """Weighted, explainable trade-decision engine for StructureIQ v0.4."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
@@ -16,6 +16,9 @@ EvidenceCategory = Literal[
     "risk_reward_volatility",
 ]
 TradeDirection = Literal["bullish", "bearish"]
+IntendedDirection = Literal["bullish", "bearish", "neutral", "unclear"]
+ConfidenceBand = Literal["avoid", "wait", "tradable", "high_conviction"]
+GateValue = str | float | bool | None
 
 
 class DecisionAction(str, Enum):
@@ -69,6 +72,32 @@ class ScoreBreakdown:
 
 
 @dataclass(frozen=True)
+class GateResult:
+    """Observed result for one decision gate or supporting diagnostic."""
+
+    gate_name: str
+    passed: bool
+    required: bool
+    actual_value: GateValue
+    expected_value: GateValue
+    impact: float
+    blocking_reason: str | None
+
+
+@dataclass(frozen=True)
+class DecisionDiagnostics:
+    """Deterministic explanation of why a directional action did or did not pass."""
+
+    raw_score: float
+    final_confidence: float
+    intended_direction: IntendedDirection
+    confidence_band: ConfidenceBand
+    blocked_by: tuple[str, ...]
+    gate_results: tuple[GateResult, ...]
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class DecisionResult:
     """Complete decision, score, evidence, and risk explanation."""
 
@@ -81,6 +110,9 @@ class DecisionResult:
     risk_notes: tuple[str, ...]
     invalidation_notes: tuple[str, ...]
     human_readable_summary: str
+    decision_diagnostics: DecisionDiagnostics = field(
+        default_factory=lambda: _empty_decision_diagnostics()
+    )
 
 
 class DecisionEngine:
@@ -133,6 +165,14 @@ class DecisionEngine:
             indicators=indicator_points,
             risk_reward_volatility=risk_points,
         )
+        raw_score = round(
+            structure_points
+            + timeframe_points
+            + context_points
+            + indicator_points
+            + risk_points,
+            3,
+        )
 
         action = _select_action(
             confidence=breakdown.total,
@@ -144,6 +184,20 @@ class DecisionEngine:
         )
         invalidation_notes = _build_invalidation_notes(
             direction, market_structure
+        )
+        diagnostics = _build_decision_diagnostics(
+            raw_score=raw_score,
+            final_confidence=breakdown.total,
+            action=action,
+            direction=direction,
+            market_structure=market_structure,
+            multi_timeframe=multi_timeframe,
+            current_timeframe_confirmed=current_timeframe_confirmed,
+            risk_reward_ratio=risk_reward_ratio,
+            indicator_supportive=indicator_supportive,
+            positive=positive,
+            negative=negative,
+            breakdown=breakdown,
         )
 
         return DecisionResult(
@@ -162,6 +216,7 @@ class DecisionEngine:
                 multi_timeframe,
                 current_timeframe_confirmed,
             ),
+            decision_diagnostics=diagnostics,
         )
 
 
@@ -477,6 +532,240 @@ def _select_action(
     if risk_reward_ratio is None or risk_reward_ratio < 1.0:
         return DecisionAction.WAIT
     return DecisionAction.BUY if direction == "bullish" else DecisionAction.SELL
+
+
+def _build_decision_diagnostics(
+    *,
+    raw_score: float,
+    final_confidence: float,
+    action: DecisionAction,
+    direction: TradeDirection | None,
+    market_structure: MarketStructureResult,
+    multi_timeframe: MultiTimeframeResult,
+    current_timeframe_confirmed: bool,
+    risk_reward_ratio: float | None,
+    indicator_supportive: bool | None,
+    positive: list[EvidenceItem],
+    negative: list[EvidenceItem],
+    breakdown: ScoreBreakdown,
+) -> DecisionDiagnostics:
+    """Describe existing decision gates without modifying their evaluation."""
+
+    intended_direction: IntendedDirection
+    if direction is not None:
+        intended_direction = direction
+    elif (
+        market_structure.trend == "ranging"
+        or multi_timeframe.directional_bias == "neutral"
+    ):
+        intended_direction = "neutral"
+    else:
+        intended_direction = "unclear"
+
+    confidence_passed = final_confidence >= 70.0
+    structure_passed = (
+        direction is not None and market_structure.trend == direction
+    )
+    expected_alignment = (
+        TimeframeAlignment.ALIGNED_BULLISH
+        if direction == "bullish"
+        else TimeframeAlignment.ALIGNED_BEARISH
+        if direction == "bearish"
+        else None
+    )
+    alignment_passed = bool(
+        expected_alignment is not None
+        and (
+            multi_timeframe.alignment is expected_alignment
+            or (
+                multi_timeframe.alignment is TimeframeAlignment.MIXED
+                and structure_passed
+                and current_timeframe_confirmed
+            )
+        )
+    )
+    risk_available = risk_reward_ratio is not None
+    risk_minimum_passed = (
+        risk_reward_ratio is not None and risk_reward_ratio >= 1.0
+    )
+    positive_impact = round(sum(max(item.impact, 0.0) for item in positive), 1)
+    negative_impact = round(abs(sum(min(item.impact, 0.0) for item in negative)), 1)
+    evidence_passed = positive_impact >= negative_impact
+
+    favorable_sweep = (
+        "liquidity_sweep_low"
+        if direction == "bullish"
+        else "liquidity_sweep_high"
+        if direction == "bearish"
+        else None
+    )
+    liquidity_passed = bool(
+        favorable_sweep and favorable_sweep in market_structure.structure_events
+    )
+    gate_results = (
+        GateResult(
+            "confidence_threshold",
+            confidence_passed,
+            True,
+            final_confidence,
+            ">= 70.0",
+            round(min(0.0, final_confidence - 70.0), 1),
+            None
+            if confidence_passed
+            else "Confidence is below the existing directional-action threshold.",
+        ),
+        GateResult(
+            "structure_alignment",
+            structure_passed,
+            True,
+            market_structure.trend,
+            direction or "bullish or bearish directional agreement",
+            0.0 if structure_passed else round(breakdown.market_structure - 35.0, 1),
+            None
+            if structure_passed
+            else "Execution structure does not match a clear intended direction.",
+        ),
+        GateResult(
+            "multi_timeframe_alignment",
+            alignment_passed,
+            True,
+            multi_timeframe.alignment.value,
+            (
+                expected_alignment.value
+                if expected_alignment is not None
+                else "clear directional alignment"
+            ),
+            0.0
+            if alignment_passed
+            else round(multi_timeframe.alignment_score - 70.0, 1),
+            None
+            if alignment_passed
+            else "Timeframes are not directionally aligned, or mixed context lacks confirmation.",
+        ),
+        GateResult(
+            "setup_confirmation",
+            True,
+            False,
+            "not_available_at_decision_time",
+            "evaluated downstream by Setup Engine",
+            0.0,
+            None,
+        ),
+        GateResult(
+            "risk_reward_available",
+            risk_available,
+            True,
+            risk_reward_ratio,
+            "available",
+            0.0 if risk_available else -10.0,
+            None if risk_available else "Risk/reward could not be established.",
+        ),
+        GateResult(
+            "risk_reward_minimum",
+            risk_minimum_passed,
+            True,
+            risk_reward_ratio,
+            ">= 1.0",
+            0.0
+            if risk_minimum_passed
+            else round(min(0.0, (risk_reward_ratio or 0.0) - 1.0), 1),
+            None
+            if risk_minimum_passed
+            else "Risk/reward is below the existing Decision Engine minimum.",
+        ),
+        GateResult(
+            "conflicting_evidence",
+            evidence_passed,
+            False,
+            f"positive={positive_impact}, negative={negative_impact}",
+            "positive impact >= negative impact",
+            round(positive_impact - negative_impact, 1),
+            None
+            if evidence_passed
+            else "Negative evidence impact exceeds positive evidence impact.",
+        ),
+        GateResult(
+            "liquidity_confirmation",
+            liquidity_passed,
+            False,
+            favorable_sweep if liquidity_passed else "not present",
+            favorable_sweep or "directional liquidity event",
+            0.0,
+            None
+            if liquidity_passed
+            else "No favorable liquidity sweep confirms the intended direction.",
+        ),
+        GateResult(
+            "indicator_confirmation",
+            indicator_supportive is True,
+            False,
+            (
+                "supportive"
+                if indicator_supportive is True
+                else "opposing"
+                if indicator_supportive is False
+                else "unavailable"
+            ),
+            "supportive",
+            round(breakdown.indicators - 12.0, 1),
+            None
+            if indicator_supportive is True
+            else "Indicator context is not supportive, but cannot create the thesis.",
+        ),
+    )
+    blocked_by = (
+        tuple(
+            gate.gate_name
+            for gate in gate_results
+            if gate.required and not gate.passed
+        )
+        if action in {DecisionAction.WAIT, DecisionAction.AVOID}
+        else ()
+    )
+    confidence_band = _confidence_band(final_confidence)
+    if blocked_by:
+        readable = ", ".join(name.replace("_", " ") for name in blocked_by)
+        summary = (
+            f"The {action.value} decision is blocked by {readable}; confidence is "
+            f"{final_confidence:.1f}/100 ({confidence_band.replace('_', ' ')})."
+        )
+    else:
+        summary = (
+            f"The {action.value} decision cleared every required directional gate; "
+            f"confidence is {final_confidence:.1f}/100 "
+            f"({confidence_band.replace('_', ' ')})."
+        )
+    return DecisionDiagnostics(
+        raw_score=raw_score,
+        final_confidence=final_confidence,
+        intended_direction=intended_direction,
+        confidence_band=confidence_band,
+        blocked_by=blocked_by,
+        gate_results=gate_results,
+        human_readable_summary=summary,
+    )
+
+
+def _confidence_band(confidence: float) -> ConfidenceBand:
+    if confidence < 50.0:
+        return "avoid"
+    if confidence < 70.0:
+        return "wait"
+    if confidence < 85.0:
+        return "tradable"
+    return "high_conviction"
+
+
+def _empty_decision_diagnostics() -> DecisionDiagnostics:
+    return DecisionDiagnostics(
+        raw_score=0.0,
+        final_confidence=0.0,
+        intended_direction="unclear",
+        confidence_band="avoid",
+        blocked_by=(),
+        gate_results=(),
+        human_readable_summary="Decision diagnostics were not supplied.",
+    )
 
 
 def _build_invalidation_notes(

@@ -1,9 +1,18 @@
 """Focused diagnostics for unchanged backtest actionability gates."""
 
+from dataclasses import replace
 from types import SimpleNamespace
 
-from core.backtesting import build_backtest_trade, calculate_skip_diagnostics
-from core.decision_engine import DecisionAction
+from core.backtesting import (
+    build_backtest_trade,
+    calculate_decision_diagnostics_summary,
+    calculate_skip_diagnostics,
+)
+from core.decision_engine import (
+    DecisionAction,
+    DecisionDiagnostics,
+    GateResult,
+)
 from core.journal import TradeOutcome
 from core.market_data import Candle
 from core.setup_engine import SetupStatus, SetupType
@@ -144,3 +153,40 @@ def test_actionable_trade_simulation_behavior_is_unchanged() -> None:
     assert trade.skip_reason_code is None
     assert trade.blocking_engine is None
     assert trade.actionability_status == "actionable"
+
+
+def test_backtest_aggregates_blocked_decision_gates() -> None:
+    snapshot = DecisionDiagnostics(
+        raw_score=62.4,
+        final_confidence=62.4,
+        intended_direction="bullish",
+        confidence_band="wait",
+        blocked_by=("confidence_threshold",),
+        gate_results=(
+            GateResult(
+                "confidence_threshold",
+                False,
+                True,
+                62.4,
+                ">= 70.0",
+                -7.6,
+                "Confidence is below the threshold.",
+            ),
+        ),
+        human_readable_summary="Wait because confidence is below threshold.",
+    )
+    trades = [
+        replace(
+            _trade(_analysis(decision=DecisionAction.WAIT)),
+            decision_diagnostics=snapshot,
+        )
+        for _ in range(2)
+    ]
+
+    summary = calculate_decision_diagnostics_summary(trades)
+
+    assert summary.by_confidence_band == {"wait": 2}
+    assert summary.by_blocked_gate == {"confidence_threshold": 2}
+    assert summary.average_confidence == 62.4
+    assert summary.average_raw_score == 62.4
+    assert summary.most_common_blocked_gate == "confidence_threshold"

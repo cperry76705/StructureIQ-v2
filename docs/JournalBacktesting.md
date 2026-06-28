@@ -80,6 +80,12 @@ Reason codes cover non-actionable decisions, unconfirmed or absent setups, missi
 
 Diagnostics do not add an execution gate. The existing behavior remains unchanged: only a directional decision with an actionable trader plan and parseable entry, stop, and target is simulated.
 
+### Decision Diagnostics Summary
+
+Version 1.2 snapshots `decision_diagnostics` on each backtest record when available. `BacktestResult.decision_diagnostics_summary` aggregates confidence bands, failed required gates, average final confidence, average raw score, and the most common blocked gate.
+
+One record may fail more than one required Decision Engine gate, so blocked-gate counts answer a different question from the single primary skip reason. This report measures decision sensitivity while `skip_diagnostics` identifies the first engine-level actionability blocker. Neither changes whether the record is simulated.
+
 ### Outcome Rules
 
 - Target before stop produces a win and the estimated or level-derived reward multiple.
@@ -104,7 +110,7 @@ The v0.9 Calibration Engine composes multiple Backtesting Engine runs across sym
 
 Calibration does not change the backtest simulation model and does not tune application rules. Its recommendations identify historical behavior for human inspection.
 
-Version 1.1 aggregates the same skip diagnostics across calibration runs so maintainers can distinguish Decision, Setup, Strategy, Explanation, risk-context, and backtesting blockers before considering any threshold change.
+Version 1.1 aggregates skip diagnostics across calibration runs so maintainers can distinguish Decision, Setup, Strategy, Explanation, risk-context, and backtesting blockers. Version 1.2 additionally aggregates the Decision Engine's confidence bands and required gate failures before any threshold experiment is designed.
 
 Known forex symbols are normalized only when the Yahoo provider is queried. Backtest and calibration requests and results preserve the user-facing symbol.
 

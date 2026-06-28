@@ -85,7 +85,18 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "risk_notes",
         "invalidation_notes",
         "human_readable_summary",
+        "decision_diagnostics",
     }
+    assert set(payload["decision"]["decision_diagnostics"]) == {
+        "raw_score",
+        "final_confidence",
+        "intended_direction",
+        "confidence_band",
+        "blocked_by",
+        "gate_results",
+        "human_readable_summary",
+    }
+    assert payload["decision"]["decision_diagnostics"]["gate_results"]
     decision = payload["decision"]
     expected_legacy_action = (
         "no_trade" if decision["action"] == "avoid" else decision["action"]

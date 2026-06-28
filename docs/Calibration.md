@@ -73,6 +73,12 @@ The breakdown answers two distinct questions:
 - **Reason code:** which condition prevented actionability?
 - **Blocking engine:** which engine owns the condition that should be inspected?
 
+## Aggregate Decision Diagnostics
+
+`CalibrationResult.aggregate_decision_diagnostics` combines Decision Engine snapshots from all backtest windows. It reports counts by confidence band and failed required gate, average final confidence, average raw score, the most common blocked gate, and a readable summary.
+
+Failed-gate counts can overlap because one decision may fail several required conditions. The report therefore distinguishes a low composite score from structural disagreement, timeframe conflict, unavailable risk/reward, or a sub-1.0 Decision Engine ratio. Setup confirmation is explicitly downstream and is not treated as a Decision Engine blocker.
+
 ## Setup and Strategy Performance
 
 Closed and skipped records are grouped by `setup_type` and `strategy_type`. Each group reports record count, closed trade count, skipped count, outcomes, win rate, average R, total R, and profit factor.
@@ -102,7 +108,7 @@ The v0.9 rules flag:
 - Missing evaluable records.
 - Dominant actionability skip reasons and their owning gates.
 
-Recommendations now name the specific gate to inspect—for example, Decision Engine evidence distributions, unmet Setup Engine confirmation conditions, level derivation, risk/reward availability, or strategy eligibility. They do not apply parameter changes or recommend loosening a threshold without first measuring its distribution and historical sensitivity.
+Recommendations now name the specific gate to inspect—for example, the distance below 70 confidence, structure direction, mixed/conflicting timeframe states, risk/reward availability, unmet Setup Engine confirmation conditions, level derivation, or strategy eligibility. They do not apply parameter changes or recommend loosening a threshold without first measuring its distribution and historical sensitivity.
 
 ## Determinism
 

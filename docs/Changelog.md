@@ -2,6 +2,33 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.2.0 — Decision Engine Sensitivity Report — 2026-06-27
+
+### Added
+
+- Typed `DecisionDiagnostics` and `GateResult` output on every engine-generated decision.
+- Raw score, final confidence, intended direction, confidence band, failed required gates, and deterministic gate results.
+- Decision diagnostic snapshots on backtest records and result-level confidence/gate aggregation.
+- Aggregate Decision Engine diagnostics and dominant-gate recommendations in calibration.
+- Focused decision, backtest, calibration, API, and unchanged-action tests.
+
+### Changed
+
+- Application and OpenAPI version are now `1.2.0`.
+- Analysis, backtest, and calibration responses add diagnostic fields without changing existing fields or decision behavior.
+
+### Compatibility
+
+- The `/analysis` request body and existing response fields are unchanged.
+- Existing confidence, structure, timeframe, and risk/reward thresholds are unchanged.
+- Setup confirmation is identified as downstream rather than misrepresented as a Decision Engine gate.
+- No dashboard, broker execution, or live trading was added.
+
+### Verification
+
+- 139 automated tests pass together.
+- Regression coverage confirms diagnostics do not alter buy, sell, wait, or avoid actions.
+
 ## Version 1.1.0 — Actionability Diagnostics — 2026-06-27
 
 ### Added

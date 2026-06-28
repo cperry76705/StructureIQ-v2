@@ -113,6 +113,8 @@ def test_mixed_bullish_pullback_returns_wait_without_confirmation() -> None:
 
     assert result.action is DecisionAction.WAIT
     assert result.confidence >= 70
+    assert result.decision_diagnostics.blocked_by
+    assert "multi_timeframe_alignment" in result.decision_diagnostics.blocked_by
 
 
 def test_conflicting_alignment_returns_wait_or_avoid() -> None:
@@ -128,6 +130,12 @@ def test_conflicting_alignment_returns_wait_or_avoid() -> None:
 
     assert result.action in {DecisionAction.WAIT, DecisionAction.AVOID}
     assert any("conflict" in item.message for item in result.negative_evidence)
+    timeframe_gate = next(
+        gate for gate in result.decision_diagnostics.gate_results
+        if gate.gate_name == "multi_timeframe_alignment"
+    )
+    assert timeframe_gate.passed is False
+    assert timeframe_gate.actual_value == "conflicting"
 
 
 def test_confidence_below_fifty_returns_avoid() -> None:
@@ -148,6 +156,52 @@ def test_confidence_below_fifty_returns_avoid() -> None:
 
     assert result.confidence < 50
     assert result.action is DecisionAction.AVOID
+    diagnostics = result.decision_diagnostics
+    assert diagnostics.confidence_band == "avoid"
+    assert "confidence_threshold" in diagnostics.blocked_by
+    confidence_gate = next(
+        gate for gate in diagnostics.gate_results
+        if gate.gate_name == "confidence_threshold"
+    )
+    assert confidence_gate.passed is False
+    assert confidence_gate.expected_value == ">= 70.0"
+
+
+def test_wait_and_avoid_decisions_include_readable_diagnostics() -> None:
+    wait_result = _decision(
+        _structure("bullish", "pullback"),
+        _multi_timeframe("bullish", TimeframeAlignment.MIXED, 70),
+        confirmed=False,
+    )
+    avoid_result = ENGINE.analyze(
+        market_structure=_structure("unclear", "unclear"),
+        multi_timeframe=_multi_timeframe(
+            "neutral",
+            TimeframeAlignment.UNCLEAR,
+            15,
+            current_trend="unclear",
+            current_phase="unclear",
+        ),
+        price_near_level=False,
+        indicator_supportive=False,
+        current_timeframe_confirmed=False,
+        risk_reward_ratio=None,
+    )
+
+    assert "wait decision is blocked" in wait_result.decision_diagnostics.human_readable_summary
+    assert "avoid decision is blocked" in avoid_result.decision_diagnostics.human_readable_summary
+
+
+def test_diagnostics_do_not_change_directional_decision() -> None:
+    result = _decision(
+        _structure("bullish", "impulse", ["bullish_bos"]),
+        _multi_timeframe("bullish", TimeframeAlignment.ALIGNED_BULLISH, 95),
+    )
+
+    assert result.action is DecisionAction.BUY
+    assert result.decision_diagnostics.blocked_by == ()
+    assert result.decision_diagnostics.final_confidence == result.confidence
+    assert result.decision_diagnostics.confidence_band == "high_conviction"
 
 
 def test_score_breakdown_total_is_sum_of_weighted_categories() -> None:

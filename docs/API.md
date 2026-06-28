@@ -118,7 +118,26 @@ Status: `200 OK`
     "invalidation_notes": [
       "Bullish thesis weakens if price closes below the latest confirmed swing low."
     ],
-    "human_readable_summary": "StructureIQ recommends waiting because the evidence has not cleared every direction and risk gate; confidence is 68.0/100."
+    "human_readable_summary": "StructureIQ recommends waiting because the evidence has not cleared every direction and risk gate; confidence is 68.0/100.",
+    "decision_diagnostics": {
+      "raw_score": 68.0,
+      "final_confidence": 68.0,
+      "intended_direction": "bullish",
+      "confidence_band": "wait",
+      "blocked_by": ["confidence_threshold"],
+      "gate_results": [
+        {
+          "gate_name": "confidence_threshold",
+          "passed": false,
+          "required": true,
+          "actual_value": 68.0,
+          "expected_value": ">= 70.0",
+          "impact": -2.0,
+          "blocking_reason": "Confidence is below the existing directional-action threshold."
+        }
+      ],
+      "human_readable_summary": "The wait decision is blocked by confidence threshold; confidence is 68.0/100 (wait)."
+    }
   },
   "setup_plan": {
     "setup_type": "bullish_pullback_continuation",
@@ -419,6 +438,8 @@ The response contains the validated request, simulated or skipped trade records,
 
 Skipped trade records add `skip_reason_code`, `skip_reason_detail`, `blocking_engine`, and `actionability_status`. Actionable records retain these fields with null skip metadata and `actionability_status: "actionable"`.
 
+Each record also snapshots `decision_diagnostics` when supplied by the analysis pipeline. The result-level `decision_diagnostics_summary` contains `by_confidence_band`, `by_blocked_gate`, `average_confidence`, `average_raw_score`, `most_common_blocked_gate`, and a readable summary.
+
 ```json
 {
   "skip_diagnostics": {
@@ -511,6 +532,14 @@ Response shape:
     },
     "most_common_reason": "decision_not_actionable",
     "human_readable_summary": "40 records were skipped; the most common reason was decision not actionable, primarily blocked by decision engine."
+  },
+  "aggregate_decision_diagnostics": {
+    "by_confidence_band": {"avoid": 8, "wait": 32},
+    "by_blocked_gate": {"confidence_threshold": 40},
+    "average_confidence": 61.8,
+    "average_raw_score": 61.77,
+    "most_common_blocked_gate": "confidence_threshold",
+    "human_readable_summary": "40 decision snapshots averaged 61.8/100; the most common blocked gate was confidence threshold (40 records)."
   },
   "setup_performance": [],
   "strategy_performance": [],
