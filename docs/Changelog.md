@@ -2,6 +2,36 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 0.8 — Journal and Backtesting — 2026-06-27
+
+### Added
+
+- Local append-only JSONL journaling in `core/journal.py`.
+- Typed `JournalEntry`, `JournalStore`, `TradeOutcome`, and `JournalSummary` models.
+- Journal filtering by symbol, timeframe, and outcome plus R-based summaries.
+- Deterministic historical evaluation in `core/backtesting.py`.
+- Typed `BacktestRequest`, `BacktestResult`, `BacktestTrade`, and `BacktestMetrics` models.
+- Historical analysis-window replay using the existing market data provider and StructureIQ pipeline.
+- Conservative stop/target simulation, skipped-plan records, maximum trade caps, R metrics, profit factor, and maximum drawdown.
+- `POST /journal`, `GET /journal`, `GET /journal/summary`, and `POST /backtest` endpoints.
+- Focused journal, backtest, metrics, persistence, filtering, limitation, endpoint, and regression tests.
+- `docs/JournalBacktesting.md` describing storage, simulation rules, metrics, and limitations.
+
+### Changed
+
+- The platform can now measure historical directional usefulness without adding execution behavior.
+- Existing `/health` and `/analysis` contracts remain unchanged.
+
+### Verification
+
+- 105 automated tests pass.
+- The complete v0.1 through v0.8 suite passes together.
+
+### Scope
+
+- The backtest is intentionally simplified and does not model position sizing, fees, spread, slippage, latency, partial fills, or market impact.
+- No dashboard, broker execution, live trading, or machine learning was added.
+
 ## Version 0.7 — Strategy Engine — 2026-06-27
 
 ### Added

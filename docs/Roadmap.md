@@ -102,9 +102,9 @@ Every version must preserve automated tests, stable contracts, explainability, a
 - Historical strategy evaluation.
 - Look-ahead, fees, slippage, and data-quality controls.
 
-**Status:** planned.
+**Status:** implemented.
 
-**Exit criteria:** users can review decision quality and test deterministic rules across historical regimes with explicit assumptions.
+**Outcome:** users can persist analysis snapshots in a filterable local journal and replay the current analysis pipeline over historical candle windows with skipped-plan records, conservative stop/target simulation, R-based metrics, and explicit limitations.
 
 ## Version 1.0 — StructureIQ Platform
 

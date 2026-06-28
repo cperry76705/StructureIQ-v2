@@ -130,6 +130,8 @@ The Journal/Backtesting Engine records market snapshots, engine versions, decisi
 
 Backtesting must disclose data quality, fees, slippage, execution assumptions, and sample size. Historical performance is evidence about past behavior, not a future guarantee.
 
+The v0.8 implementation stores journal records in a local append-only JSONL file and provides a deterministic historical candle-window runner. Non-actionable analyses are retained as skipped records, while actionable plans use first-touch stop/target simulation and R-based metrics. The implementation explicitly reports its execution-model limitations.
+
 ## Ownership Rules
 
 | Question | Owning component |
@@ -156,4 +158,4 @@ Backtesting must disclose data quality, fees, slippage, execution assumptions, a
 
 ## Current Platform State
 
-Versions 0.1 through 0.7 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, weighted Decision Engine, Setup Engine, trader-facing Analysis/Explanation Engine, and ranked strategy playbooks. Version 0.8 adds journal/backtesting workflows before the platform milestone.
+Versions 0.1 through 0.8 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, weighted Decision Engine, Setup Engine, trader-facing Analysis/Explanation Engine, ranked strategy playbooks, local journaling, and deterministic historical evaluation. The remaining milestone is packaging these capabilities into the cohesive version 1.0 platform.

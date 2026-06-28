@@ -332,6 +332,91 @@ Example:
 }
 ```
 
+## `POST /journal`
+
+Appends a journal record to the local JSONL store. The body may contain explicit `JournalEntry`-compatible fields or a complete `/analysis` response. Missing ID and timestamp values are generated automatically.
+
+Example explicit payload:
+
+```json
+{
+  "symbol": "BTC-USD",
+  "timeframe": "5m",
+  "higher_timeframe": "1h",
+  "action": "wait",
+  "confidence": 64,
+  "decision_action": "wait",
+  "setup_type": "bullish_pullback_continuation",
+  "setup_status": "developing",
+  "strategy_type": "pullback_continuation",
+  "entry_zone": "100-101",
+  "stop_loss": "98",
+  "target": "105",
+  "estimated_risk_reward": 2.0,
+  "outcome": "unknown",
+  "realized_r_multiple": null,
+  "notes": ["Waiting for confirmation"],
+  "raw_analysis_snapshot": {}
+}
+```
+
+The saved `JournalEntry` is returned.
+
+## `GET /journal`
+
+Returns journal entries in append order. Optional query parameters are:
+
+- `symbol` — case-insensitive exact symbol filter.
+- `timeframe` — exact timeframe filter.
+- `outcome` — `win`, `loss`, `breakeven`, `skipped`, `open`, or `unknown`.
+
+An absent journal file returns an empty array.
+
+## `GET /journal/summary`
+
+Returns journal counts and R-based aggregate statistics:
+
+```json
+{
+  "total_entries": 4,
+  "wins": 1,
+  "losses": 1,
+  "breakeven": 1,
+  "skipped": 1,
+  "open": 0,
+  "unknown": 0,
+  "win_rate": 33.33,
+  "average_r": 0.33,
+  "total_r": 1.0,
+  "best_trade_r": 2.0,
+  "worst_trade_r": -1.0
+}
+```
+
+## `POST /backtest`
+
+Runs the simplified deterministic historical evaluator using the configured market data provider.
+
+Request:
+
+```json
+{
+  "symbol": "BTC-USD",
+  "timeframe": "5m",
+  "higher_timeframe": "1h",
+  "lookback": 500,
+  "starting_balance": 10000,
+  "risk_per_trade_percent": 1,
+  "max_trades": 100
+}
+```
+
+The response contains the validated request, simulated or skipped trade records, aggregate metrics, a summary, and explicit limitations. `max_trades` caps returned analysis-window records, including skipped records.
+
+`BacktestMetrics.total_trades` counts closed wins, losses, and breakeven trades; skipped and open records remain visible in `trades` but are excluded from closed-trade metrics. Profit factor is `null` when no losing R exists.
+
+This endpoint is synchronous and research-oriented. It does not model live execution or guarantee profitability.
+
 ## Contract Evolution
 
 The `/analysis` response now exposes both architectural layers:
@@ -339,4 +424,4 @@ The `/analysis` response now exposes both architectural layers:
 - `multi_timeframe`, `decision`, `setup_plan`, and `strategy` preserve detailed internal engine output.
 - `trader_analysis` translates those results into a readable narrative and checklist plan.
 
-The trader-facing block does not recalculate action, confidence, setup qualification, or future strategy ranking. Evidence and checklist states remain traceable to typed engine output. Future versions may extend the plan additively as the Strategy and Journal/Backtesting Engines are implemented.
+The trader-facing block does not recalculate action, confidence, setup qualification, or strategy ranking. Evidence and checklist states remain traceable to typed engine output. Journal and backtest endpoints consume or replay these contracts without changing `/analysis` request or response behavior.
