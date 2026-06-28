@@ -117,7 +117,7 @@ The response preserves established top-level fields and adds typed internal bloc
 
 ## Roadmap and Release Information
 
-Version `1.6.0` makes zone widths and price precision instrument-aware. Forex retains five decimal places, crypto retains two, and zones use tick floors plus percentage/ATR scaling instead of a fixed 25-point width. Execution gates and the `1.5R` minimum remain unchanged.
+Version `1.7.0` adds executed-trade path diagnostics: first touch, bars to outcome, MFE/MAE in R, initial directional follow-through, and deterministic loss classifications. The simulator, strategy selection, thresholds, stops, and targets remain unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

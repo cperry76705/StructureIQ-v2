@@ -2,6 +2,33 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.7.0 — Trade Outcome Diagnostics — 2026-06-28
+
+### Added
+
+- Typed `TradeOutcomeDiagnostics`, `LossReason`, first-touch state, bars to outcome, and R-based MFE/MAE.
+- Initial directional follow-through detection requiring a completed `+0.5R` move before stop.
+- Per-backtest and aggregate calibration outcome summaries.
+- Dominant-loss recommendations for entry timing, confirmation, structure/alignment, ambiguity, and risk review.
+- Focused target-first, stop-first, ambiguity, bullish/bearish excursion, immediate-stop, no-follow-through, aggregation, and unchanged-outcome tests.
+
+### Compatibility
+
+- The existing simulator and conservative same-candle loss rule are unchanged.
+- `/analysis` request and response remain unchanged.
+- Strategy selection, confidence thresholds, setup confirmation, stops, and targets are unchanged.
+- New `/backtest` and `/calibrate` fields are additive.
+- No dashboard, broker execution, or live trading was added.
+
+### Changed
+
+- Application and OpenAPI version are now `1.7.0`.
+
+### Verification
+
+- 171 automated tests pass together.
+- The requested live four-symbol calibration produced three losses classified as `stop_too_tight`, with 1.276R average MFE and no same-candle ambiguity or immediate-stop losses.
+
 ## Version 1.6.0 — Instrument-Aware Level Precision and Zone Width — 2026-06-28
 
 ### Added

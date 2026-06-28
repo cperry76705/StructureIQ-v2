@@ -17,11 +17,13 @@ from core.backtesting import (
     ExecutionReadinessSnapshot,
     RiskRewardSummary,
     SetupLevelSummary,
+    TradeOutcomeDiagnosticsSummary,
     SkipDiagnostics,
     calculate_backtest_metrics,
     calculate_decision_diagnostics_summary,
     calculate_risk_reward_summary,
     calculate_setup_level_summary,
+    calculate_outcome_diagnostics_summary,
     calculate_skip_diagnostics,
     parse_price_level,
 )
@@ -188,6 +190,7 @@ class CalibrationResult:
     threshold_sensitivity: tuple[ThresholdSensitivityResult, ...]
     aggregate_risk_reward_summary: RiskRewardSummary
     aggregate_setup_level_summary: SetupLevelSummary
+    aggregate_outcome_diagnostics: TradeOutcomeDiagnosticsSummary
     setup_performance: tuple[SetupPerformance, ...]
     strategy_performance: tuple[StrategyPerformance, ...]
     recommendations: tuple[CalibrationRecommendation, ...]
@@ -261,6 +264,9 @@ class CalibrationEngine:
         threshold_sensitivity = calculate_threshold_sensitivity(all_trades)
         aggregate_risk_reward_summary = calculate_risk_reward_summary(all_trades)
         aggregate_setup_level_summary = calculate_setup_level_summary(all_trades)
+        aggregate_outcome_diagnostics = calculate_outcome_diagnostics_summary(
+            all_trades
+        )
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -273,6 +279,7 @@ class CalibrationEngine:
             threshold_sensitivity,
             aggregate_risk_reward_summary,
             aggregate_setup_level_summary,
+            aggregate_outcome_diagnostics,
         )
         summary = (
             f"Calibration completed {aggregate.total_runs} runs with "
@@ -287,6 +294,7 @@ class CalibrationEngine:
             threshold_sensitivity=threshold_sensitivity,
             aggregate_risk_reward_summary=aggregate_risk_reward_summary,
             aggregate_setup_level_summary=aggregate_setup_level_summary,
+            aggregate_outcome_diagnostics=aggregate_outcome_diagnostics,
             setup_performance=setup_performance,
             strategy_performance=strategy_performance,
             recommendations=recommendations,
@@ -456,6 +464,7 @@ def _recommendations(
     threshold_sensitivity: tuple[ThresholdSensitivityResult, ...],
     risk_reward_summary: RiskRewardSummary,
     setup_level_summary: SetupLevelSummary,
+    outcome_diagnostics: TradeOutcomeDiagnosticsSummary,
 ) -> tuple[CalibrationRecommendation, ...]:
     recommendations: list[CalibrationRecommendation] = []
     record_count = len(records)
@@ -502,6 +511,11 @@ def _recommendations(
             setup_level_summary,
         )
     )
+    outcome_recommendation = _outcome_diagnostic_recommendation(
+        outcome_diagnostics
+    )
+    if outcome_recommendation is not None:
+        recommendations.append(outcome_recommendation)
 
     if metrics.total_trades and metrics.win_rate < 35.0:
         recommendations.append(
@@ -854,6 +868,63 @@ def _risk_and_level_recommendations(
             )
         )
     return tuple(recommendations)
+
+
+def _outcome_diagnostic_recommendation(
+    summary: TradeOutcomeDiagnosticsSummary,
+) -> CalibrationRecommendation | None:
+    if not summary.by_loss_reason:
+        return None
+    reason = sorted(
+        summary.by_loss_reason,
+        key=lambda key: (-summary.by_loss_reason[key], key),
+    )[0]
+    count = summary.by_loss_reason[reason]
+    recommendations: dict[str, tuple[RecommendationCategory, str]] = {
+        "same_candle_ambiguous": (
+            "data_quality",
+            "Use finer-grained data to resolve intrabar stop/target ordering before changing rules.",
+        ),
+        "stopped_immediately": (
+            "setup_quality",
+            "Inspect entry timing and confirmation strength; do not widen stops automatically.",
+        ),
+        "no_follow_through": (
+            "setup_quality",
+            "Inspect confirmation quality and whether entries occur before directional follow-through.",
+        ),
+        "wrong_direction": (
+            "market_structure",
+            "Inspect structure direction and multi-timeframe alignment on losing entries.",
+        ),
+        "stop_too_tight": (
+            "risk_reward",
+            "Compare structural invalidation with MFE before considering any stop-placement change.",
+        ),
+        "target_too_far": (
+            "risk_reward",
+            "Review target distance against observed MFE without lowering the current R:R gate.",
+        ),
+        "weak_confirmation": (
+            "setup_quality",
+            "Inspect the confirmation conditions present at entry before changing setup rules.",
+        ),
+        "adverse_move_before_follow_through": (
+            "setup_quality",
+            "Inspect whether entries need stronger follow-through before execution.",
+        ),
+        "unclear": (
+            "data_quality",
+            "Inspect individual candle paths before changing strategy or risk rules.",
+        ),
+    }
+    category, action = recommendations[reason]
+    return CalibrationRecommendation(
+        category,
+        f"The dominant executed-trade loss reason was {reason.replace('_', ' ')} ({count} trades).",
+        "high" if count == summary.losses else "medium",
+        action,
+    )
 
 
 def calibration_limitations() -> tuple[str, ...]:

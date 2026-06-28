@@ -207,6 +207,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** level geometry remains proportional across instruments with radically different price scales, allowing calibration to measure genuine setup quality instead of formatting and fixed-width artifacts.
 
+## Version 1.7 — Trade Outcome Diagnostics
+
+- Record first stop/target touch and same-candle ambiguity.
+- Measure bars to outcome and MFE/MAE in R.
+- Identify initial `+0.5R` directional follow-through before stops.
+- Classify immediate stops, no follow-through, wrong direction, weak confirmation, adverse reversals, and possible stop/target placement issues.
+- Aggregate executed-trade behavior without changing simulation or strategy rules.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can inspect why qualified trades win or lose before considering any strategy, threshold, confirmation, stop, or target changes.
+
 ## Beyond Version 1.0
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

@@ -102,6 +102,16 @@ Below-minimum valid geometry is classified as `stop_too_wide` when stop distance
 
 Version 1.6 preserves symbol-appropriate precision in these snapshots and derives the upstream estimated R from numeric geometry. Backtest execution rules, stop/target outcome ordering, and the `1.5R` gate are unchanged.
 
+### Trade Outcome Diagnostics
+
+Version 1.7 attaches `outcome_diagnostics` to every executed trade. It records stop, target, both-in-one-candle, or neither as the first touch; bars to the outcome; maximum favorable excursion (MFE); maximum adverse excursion (MAE); and whether a completed candle moved at least `+0.5R` before a stop.
+
+MFE and MAE use the original entry-to-stop distance as `1R` and include the outcome candle. Directional correctness before a stop uses only prior completed candles because OHLC data cannot establish intrabar ordering.
+
+Loss classifications include immediate stop, no follow-through, wrong direction, adverse movement before follow-through, potentially tight stop, weak confirmation, and same-candle ambiguity. The conservative same-candle loss rule is preserved exactly.
+
+`BacktestResult.outcome_diagnostics_summary` aggregates executed trades, wins, losses, average bars, average MFE/MAE, loss reasons, same-candle ambiguity, immediate stops, and no-follow-through counts.
+
 ### Outcome Rules
 
 - Target before stop produces a win and the estimated or level-derived reward multiple.

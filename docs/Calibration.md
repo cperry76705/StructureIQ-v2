@@ -113,6 +113,18 @@ Recommendations map dominant evidence to the owning component:
 
 Version 1.6 replaces the former fixed 25-point zone floor and zero-decimal level formatting with instrument-aware metadata, ATR/percentage zone scaling, and symbol precision. Calibration summaries therefore measure the corrected numeric geometry while retaining every v1.5 execution and confirmation rule.
 
+## Aggregate Trade Outcome Diagnostics
+
+Version 1.7 combines executed-trade diagnostics into `aggregate_outcome_diagnostics`. It reports wins and losses, average bars to resolution, average MFE and MAE in R, counts by loss reason, same-candle ambiguity, immediate stops, and no-follow-through losses.
+
+Recommendations remain observational:
+
+- Immediate stops prioritize entry timing and confirmation review.
+- No follow-through prioritizes confirmation quality.
+- Wrong direction prioritizes market-structure and multi-timeframe review.
+- Same-candle ambiguity prioritizes finer-grained data rather than rule changes.
+- High MFE before eventual stop identifies cases worth inspecting for structural stop placement, without automatically widening stops.
+
 ## Setup and Strategy Performance
 
 Closed and skipped records are grouped by `setup_type` and `strategy_type`. Each group reports record count, closed trade count, skipped count, outcomes, win rate, average R, total R, and profit factor.

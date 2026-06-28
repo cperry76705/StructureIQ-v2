@@ -3,6 +3,7 @@
 import re
 from collections import Counter
 from dataclasses import dataclass, field
+from enum import Enum
 from statistics import median
 from typing import Callable, Literal, Protocol
 
@@ -50,6 +51,19 @@ ActionabilityStatus = Literal[
     "no_trade",
     "skipped",
 ]
+FirstTouch = Literal["stop", "target", "both_same_candle", "neither"]
+
+
+class LossReason(str, Enum):
+    STOPPED_IMMEDIATELY = "stopped_immediately"
+    ADVERSE_MOVE_BEFORE_FOLLOW_THROUGH = "adverse_move_before_follow_through"
+    SAME_CANDLE_AMBIGUOUS = "same_candle_ambiguous"
+    NO_FOLLOW_THROUGH = "no_follow_through"
+    WRONG_DIRECTION = "wrong_direction"
+    STOP_TOO_TIGHT = "stop_too_tight"
+    TARGET_TOO_FAR = "target_too_far"
+    WEAK_CONFIRMATION = "weak_confirmation"
+    UNCLEAR = "unclear"
 
 
 class BacktestRequest(BaseModel):
@@ -105,6 +119,22 @@ class ExecutionReadinessSnapshot:
 
 
 @dataclass(frozen=True)
+class TradeOutcomeDiagnostics:
+    outcome: TradeOutcome
+    realized_r: float | None
+    entry_price: float
+    stop_loss: float
+    target: float
+    first_touch: FirstTouch
+    bars_to_outcome: int | None
+    max_favorable_excursion_r: float
+    max_adverse_excursion_r: float
+    direction_was_correct_initially: bool
+    loss_reason: LossReason | None
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class BacktestTrade:
     timestamp: int
     symbol: str
@@ -126,6 +156,7 @@ class BacktestTrade:
     execution_readiness: ExecutionReadinessSnapshot | None = None
     risk_reward_diagnostics: RiskRewardDiagnostics | None = None
     setup_level_diagnostics: SetupLevelDiagnostics | None = None
+    outcome_diagnostics: TradeOutcomeDiagnostics | None = None
 
 
 @dataclass(frozen=True)
@@ -194,6 +225,21 @@ class SetupLevelSummary:
 
 
 @dataclass(frozen=True)
+class TradeOutcomeDiagnosticsSummary:
+    executed_trades: int
+    wins: int
+    losses: int
+    average_bars_to_outcome: float
+    average_mfe_r: float
+    average_mae_r: float
+    by_loss_reason: dict[str, int]
+    same_candle_ambiguity_count: int
+    stopped_immediately_count: int
+    no_follow_through_count: int
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class BacktestResult:
     request: BacktestRequest
     trades: tuple[BacktestTrade, ...]
@@ -211,6 +257,9 @@ class BacktestResult:
     )
     setup_level_summary: SetupLevelSummary = field(
         default_factory=lambda: _empty_setup_level_summary()
+    )
+    outcome_diagnostics_summary: TradeOutcomeDiagnosticsSummary = field(
+        default_factory=lambda: _empty_outcome_diagnostics_summary()
     )
 
 
@@ -281,6 +330,7 @@ class BacktestingEngine:
         )
         risk_reward_summary = calculate_risk_reward_summary(trades)
         setup_level_summary = calculate_setup_level_summary(trades)
+        outcome_diagnostics_summary = calculate_outcome_diagnostics_summary(trades)
         limitations = backtest_limitations()
         summary = (
             f"Backtest evaluated {len(trades)} analysis windows and produced "
@@ -298,6 +348,7 @@ class BacktestingEngine:
             decision_diagnostics_summary=decision_diagnostics_summary,
             risk_reward_summary=risk_reward_summary,
             setup_level_summary=setup_level_summary,
+            outcome_diagnostics_summary=outcome_diagnostics_summary,
         )
 
 
@@ -438,6 +489,20 @@ def build_backtest_trade(
         future_candles=future_candles,
         estimated_risk_reward=plan.estimated_risk_reward,
     )
+    confirmation_was_weak = any(
+        "confirmation" in condition.condition.lower() and not condition.is_met
+        for condition in getattr(analysis.setup_plan, "entry_conditions", ())
+    )
+    outcome_diagnostics = diagnose_trade_outcome(
+        action=action,
+        entry=entry,
+        stop_loss=stop,
+        target=target,
+        future_candles=future_candles,
+        outcome=outcome,
+        realized_r=realized_r,
+        confirmation_was_weak=confirmation_was_weak,
+    )
     return BacktestTrade(
         timestamp=timestamp,
         symbol=symbol,
@@ -456,6 +521,7 @@ def build_backtest_trade(
         execution_readiness=execution_readiness,
         risk_reward_diagnostics=risk_reward_diagnostics,
         setup_level_diagnostics=setup_level_diagnostics,
+        outcome_diagnostics=outcome_diagnostics,
     )
 
 
@@ -739,6 +805,59 @@ def calculate_setup_level_summary(trades: list[BacktestTrade]) -> SetupLevelSumm
     )
 
 
+def calculate_outcome_diagnostics_summary(
+    trades: list[BacktestTrade],
+) -> TradeOutcomeDiagnosticsSummary:
+    diagnostics = [
+        trade.outcome_diagnostics
+        for trade in trades
+        if trade.outcome_diagnostics is not None
+    ]
+    losses = [item for item in diagnostics if item.outcome is TradeOutcome.LOSS]
+    bars = [item.bars_to_outcome for item in diagnostics if item.bars_to_outcome is not None]
+    reasons = Counter(
+        item.loss_reason.value
+        for item in losses
+        if item.loss_reason is not None
+    )
+    return TradeOutcomeDiagnosticsSummary(
+        executed_trades=len(diagnostics),
+        wins=sum(item.outcome is TradeOutcome.WIN for item in diagnostics),
+        losses=len(losses),
+        average_bars_to_outcome=(
+            round(sum(bars) / len(bars), 3) if bars else 0.0
+        ),
+        average_mfe_r=(
+            round(
+                sum(item.max_favorable_excursion_r for item in diagnostics)
+                / len(diagnostics),
+                3,
+            )
+            if diagnostics
+            else 0.0
+        ),
+        average_mae_r=(
+            round(
+                sum(item.max_adverse_excursion_r for item in diagnostics)
+                / len(diagnostics),
+                3,
+            )
+            if diagnostics
+            else 0.0
+        ),
+        by_loss_reason=dict(sorted(reasons.items())),
+        same_candle_ambiguity_count=reasons["same_candle_ambiguous"],
+        stopped_immediately_count=reasons["stopped_immediately"],
+        no_follow_through_count=reasons["no_follow_through"],
+        human_readable_summary=(
+            f"{len(diagnostics)} executed trades produced "
+            f"{sum(item.outcome is TradeOutcome.WIN for item in diagnostics)} wins "
+            f"and {len(losses)} losses, with average MFE "
+            f"{(sum(item.max_favorable_excursion_r for item in diagnostics) / len(diagnostics)) if diagnostics else 0.0:.2f}R."
+        ),
+    )
+
+
 def _empty_skip_diagnostics() -> SkipDiagnostics:
     return SkipDiagnostics(0, {}, {}, None, "No analysis records were skipped.")
 
@@ -760,6 +879,22 @@ def _empty_risk_reward_summary() -> RiskRewardSummary:
 
 def _empty_setup_level_summary() -> SetupLevelSummary:
     return SetupLevelSummary(0, 0, 0, 0, 0, 0, 0, 0, {}, None, "No setup-level diagnostics were available.")
+
+
+def _empty_outcome_diagnostics_summary() -> TradeOutcomeDiagnosticsSummary:
+    return TradeOutcomeDiagnosticsSummary(
+        0,
+        0,
+        0,
+        0.0,
+        0.0,
+        0.0,
+        {},
+        0,
+        0,
+        0,
+        "No executed-trade diagnostics were available.",
+    )
 
 
 def _skipped_trade(
@@ -856,6 +991,104 @@ def simulate_trade_outcome(
                 "Target was reached before the stop loss.",
             )
     return TradeOutcome.OPEN, None, "Neither stop nor target was reached in the available data."
+
+
+def diagnose_trade_outcome(
+    *,
+    action: str,
+    entry: float,
+    stop_loss: float,
+    target: float,
+    future_candles: list[Candle],
+    outcome: TradeOutcome,
+    realized_r: float | None,
+    confirmation_was_weak: bool = False,
+) -> TradeOutcomeDiagnostics:
+    """Measure the unchanged simulation path in risk multiples."""
+
+    risk = abs(entry - stop_loss)
+    max_favorable = 0.0
+    max_adverse = 0.0
+    favorable_before_touch = 0.0
+    first_touch: FirstTouch = "neither"
+    bars_to_outcome: int | None = None
+
+    for index, candle in enumerate(future_candles, start=1):
+        prior_favorable = max_favorable
+        if action == "buy":
+            favorable = max(0.0, (candle.high - entry) / risk) if risk else 0.0
+            adverse = max(0.0, (entry - candle.low) / risk) if risk else 0.0
+            stop_hit = candle.low <= stop_loss
+            target_hit = candle.high >= target
+        else:
+            favorable = max(0.0, (entry - candle.low) / risk) if risk else 0.0
+            adverse = max(0.0, (candle.high - entry) / risk) if risk else 0.0
+            stop_hit = candle.high >= stop_loss
+            target_hit = candle.low <= target
+        max_favorable = max(max_favorable, favorable)
+        max_adverse = max(max_adverse, adverse)
+        if stop_hit or target_hit:
+            favorable_before_touch = prior_favorable
+            bars_to_outcome = index
+            first_touch = (
+                "both_same_candle"
+                if stop_hit and target_hit
+                else "stop"
+                if stop_hit
+                else "target"
+            )
+            break
+
+    direction_correct = (
+        max_favorable >= 0.5
+        if first_touch in {"target", "neither"}
+        else favorable_before_touch >= 0.5
+    )
+    loss_reason: LossReason | None = None
+    if first_touch == "both_same_candle":
+        loss_reason = LossReason.SAME_CANDLE_AMBIGUOUS
+    elif outcome is TradeOutcome.LOSS:
+        if bars_to_outcome is not None and bars_to_outcome <= 1:
+            loss_reason = LossReason.STOPPED_IMMEDIATELY
+        elif confirmation_was_weak:
+            loss_reason = LossReason.WEAK_CONFIRMATION
+        elif not direction_correct:
+            loss_reason = (
+                LossReason.WRONG_DIRECTION
+                if max_favorable < 0.1 and max_adverse >= 1.0
+                else LossReason.NO_FOLLOW_THROUGH
+            )
+        elif max_favorable >= 1.0:
+            loss_reason = LossReason.STOP_TOO_TIGHT
+        else:
+            loss_reason = LossReason.ADVERSE_MOVE_BEFORE_FOLLOW_THROUGH
+    elif outcome is TradeOutcome.OPEN:
+        loss_reason = (
+            LossReason.NO_FOLLOW_THROUGH
+            if max_favorable < 0.5
+            else LossReason.TARGET_TOO_FAR
+        )
+
+    summary = (
+        f"{outcome.value.title()} after "
+        f"{bars_to_outcome if bars_to_outcome is not None else 'the available'} bars; "
+        f"first touch was {first_touch.replace('_', ' ')}, MFE was "
+        f"{max_favorable:.2f}R, and MAE was {max_adverse:.2f}R."
+    )
+    return TradeOutcomeDiagnostics(
+        outcome=outcome,
+        realized_r=realized_r,
+        entry_price=entry,
+        stop_loss=stop_loss,
+        target=target,
+        first_touch=first_touch,
+        bars_to_outcome=bars_to_outcome,
+        max_favorable_excursion_r=round(max_favorable, 3),
+        max_adverse_excursion_r=round(max_adverse, 3),
+        direction_was_correct_initially=direction_correct,
+        loss_reason=loss_reason,
+        human_readable_summary=summary,
+    )
 
 
 def calculate_backtest_metrics(trades: list[BacktestTrade]) -> BacktestMetrics:

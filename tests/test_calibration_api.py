@@ -45,6 +45,7 @@ def test_calibrate_endpoint_works() -> None:
     ] == [50.0, 55.0, 60.0, 65.0, 70.0]
     assert response.json()["aggregate_risk_reward_summary"]["total_records"] == 2
     assert response.json()["aggregate_setup_level_summary"]["total_records"] == 2
+    assert "aggregate_outcome_diagnostics" in response.json()
     assert response.json()["recommendations"]
 
 

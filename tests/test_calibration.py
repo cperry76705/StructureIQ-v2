@@ -7,6 +7,8 @@ from core.backtesting import (
     BacktestRequest,
     BacktestResult,
     BacktestTrade,
+    LossReason,
+    TradeOutcomeDiagnostics,
     calculate_backtest_metrics,
 )
 from core.calibration import CalibrationEngine, CalibrationRequest
@@ -24,6 +26,7 @@ def _trade(
     skip_reason_code: str | None = None,
     blocking_engine: str | None = None,
     decision_diagnostics: DecisionDiagnostics | None = None,
+    outcome_diagnostics: TradeOutcomeDiagnostics | None = None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=1,
@@ -44,6 +47,7 @@ def _trade(
         if outcome is TradeOutcome.SKIPPED
         else "actionable",
         decision_diagnostics=decision_diagnostics,
+        outcome_diagnostics=outcome_diagnostics,
     )
 
 
@@ -213,6 +217,41 @@ def test_calibration_aggregates_blocked_decision_gates_across_runs() -> None:
         "directional confidence" in recommendation.message.lower()
         for recommendation in result.recommendations
     )
+
+
+def test_calibration_aggregates_executed_trade_loss_reasons() -> None:
+    diagnostics = TradeOutcomeDiagnostics(
+        outcome=TradeOutcome.LOSS,
+        realized_r=-1.0,
+        entry_price=100.0,
+        stop_loss=98.0,
+        target=104.0,
+        first_touch="stop",
+        bars_to_outcome=1,
+        max_favorable_excursion_r=0.1,
+        max_adverse_excursion_r=1.0,
+        direction_was_correct_initially=False,
+        loss_reason=LossReason.STOPPED_IMMEDIATELY,
+        human_readable_summary="Stopped immediately.",
+    )
+    runner = _Runner(
+        lambda request: [
+            _trade(
+                TradeOutcome.LOSS,
+                -1.0,
+                outcome_diagnostics=diagnostics,
+            )
+        ]
+    )
+
+    result = _engine(runner).run(
+        _request(symbols=["BTC-USD", "ETH-USD"])
+    )
+
+    aggregate = result.aggregate_outcome_diagnostics
+    assert aggregate.executed_trades == 2
+    assert aggregate.losses == 2
+    assert aggregate.by_loss_reason == {"stopped_immediately": 2}
 
 
 def test_skipped_heavy_results_produce_conservative_recommendation() -> None:

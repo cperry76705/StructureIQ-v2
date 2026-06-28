@@ -457,6 +457,8 @@ In v1.3, only directional confidence, structure alignment, and multi-timeframe a
 
 Version 1.5 adds per-record `risk_reward_diagnostics` and `setup_level_diagnostics`, plus result-level `risk_reward_summary` and `setup_level_summary`. These are observational additions and do not change skipped or simulated outcomes.
 
+Version 1.7 adds `outcome_diagnostics` to executed backtest records and `outcome_diagnostics_summary` to the result. Skipped records expose `null` because no trade path exists. First-touch and excursion fields are derived from the same candles used by the unchanged simulator.
+
 ```json
 {
   "skip_diagnostics": {
@@ -601,6 +603,19 @@ Response shape:
     "by_level_quality": {"complete": 176, "invalid": 4, "missing": 6, "partial": 18},
     "most_common_level_quality": "complete",
     "human_readable_summary": "200 setup snapshots include 176 complete, 18 partial, 6 missing, and 4 invalid level sets."
+  },
+  "aggregate_outcome_diagnostics": {
+    "executed_trades": 3,
+    "wins": 0,
+    "losses": 3,
+    "average_bars_to_outcome": 4.667,
+    "average_mfe_r": 1.276,
+    "average_mae_r": 1.7,
+    "by_loss_reason": {"stop_too_tight": 3},
+    "same_candle_ambiguity_count": 0,
+    "stopped_immediately_count": 0,
+    "no_follow_through_count": 0,
+    "human_readable_summary": "3 executed trades produced 0 wins and 3 losses, with average MFE 1.28R."
   },
   "setup_performance": [],
   "strategy_performance": [],
