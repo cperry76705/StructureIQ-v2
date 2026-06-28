@@ -231,6 +231,17 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can measure whether favorable excursion can be protected before changing production stops, targets, or trade-management behavior.
 
+## Version 1.9 — Setup Expansion and Candidate Coverage Diagnostics
+
+- Compare every plausible setup candidate beside the unchanged selected setup.
+- Diagnose level, geometry, R:R, direction, location, and confirmation blockers.
+- Count selected, executable, and missed executable candidates by family.
+- Recommend one family for focused expansion based on calibration evidence.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can distinguish absent opportunities from setup-family coverage and first-match selection gaps without changing production behavior.
+
 ## Beyond Version 1.0
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

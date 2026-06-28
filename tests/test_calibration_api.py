@@ -47,6 +47,7 @@ def test_calibrate_endpoint_works() -> None:
     assert response.json()["aggregate_setup_level_summary"]["total_records"] == 2
     assert "aggregate_outcome_diagnostics" in response.json()
     assert len(response.json()["aggregate_trade_management_sensitivity"]) == 7
+    assert response.json()["aggregate_setup_coverage_summary"]["total_records"] == 2
     assert response.json()["recommendations"]
 
 
@@ -89,3 +90,4 @@ def test_backtest_endpoint_still_works_after_calibration() -> None:
 
     assert response.status_code == 200
     assert response.json()["request"]["symbol"] == "EUR-USD"
+    assert response.json()["setup_coverage_summary"]["total_records"] == 1

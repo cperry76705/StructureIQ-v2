@@ -132,6 +132,9 @@ def test_bullish_bos_retest_setup() -> None:
     assert result.setup_level_diagnostics.level_quality == "complete"
     assert result.setup_level_diagnostics.entry_zone_source == "support_zone"
     assert result.setup_level_diagnostics.latest_swing_low == 90.0
+    selected = next(item for item in result.setup_candidate_diagnostics if item.was_selected)
+    assert selected.candidate_setup_type == SetupType.BULLISH_BOS_RETEST.value
+    assert result.setup_type is SetupType.BULLISH_BOS_RETEST
 
 
 def test_missing_risk_levels_cannot_confirm_setup() -> None:

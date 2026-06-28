@@ -155,6 +155,7 @@ def _build_analysis(
         target=target,
         compression_detected=compression_detected,
         compression_breakout_direction=breakout_direction,
+        symbol=request.symbol,
     )
     setup = setup_plan.setup_type.value
     strategy = strategy_engine.analyze(

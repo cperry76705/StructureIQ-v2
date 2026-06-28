@@ -179,3 +179,9 @@ EUR-USD and GBP-USD preserve five decimals; BTC-USD and ETH-USD preserve two. Ri
 Compression is approximated from contraction in recent candle ranges relative to a prior baseline. A compression candidate remains developing until price closes beyond the preceding compression range.
 
 The current BOS-retest implementation uses the relevant support or resistance zone as a proxy for the broken level because the Market Structure Engine does not yet expose a dedicated persisted BOS level. This assumption is explicit and should be replaced when structural-level provenance is expanded.
+
+## v1.9 Candidate Coverage Diagnostics
+
+The production first-match selector is unchanged. A separate observational pass enumerates plausible BOS retest, pullback, range, liquidity-sweep, and compression candidates supported by current context. Each candidate records selection, status, direction, level availability, geometry, calculated R:R, minimum-R result, quality, and its primary blocker.
+
+A non-selected candidate is counted as missed executable only when it independently passes the current direction, confirmation, level, geometry, and `1.5R` gates. Diagnostics cannot promote a setup or force a trade. BOS location failures are labeled `missing_retest_level`; bullish and bearish zone failures remain distinguishable.

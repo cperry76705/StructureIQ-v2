@@ -8,7 +8,7 @@ from core.decision_engine import DecisionAction, DecisionResult
 from core.market_data import Candle
 from core.market_structure import MarketStructureResult
 from core.multi_timeframe import MultiTimeframeResult, TimeframeAlignment
-from core.risk import diagnose_risk_reward
+from core.risk import build_numeric_risk_levels, diagnose_risk_reward, format_risk_levels
 
 
 MINIMUM_ACCEPTABLE_RISK_REWARD = 1.5
@@ -73,6 +73,25 @@ class SetupLevelDiagnostics:
 
 
 @dataclass(frozen=True)
+class SetupCandidateDiagnostics:
+    """Non-authoritative evaluation of one setup candidate."""
+
+    candidate_setup_type: str
+    direction: SetupDirection
+    was_selected: bool
+    candidate_status: str
+    has_entry: bool
+    has_stop: bool
+    has_target: bool
+    has_valid_geometry: bool
+    estimated_r: float | None
+    meets_minimum_r: bool
+    blocking_reason: str | None
+    quality_score: float
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class SetupResult:
     setup_type: SetupType
     setup_status: SetupStatus
@@ -90,6 +109,7 @@ class SetupResult:
     setup_level_diagnostics: SetupLevelDiagnostics = field(
         default_factory=lambda: _empty_setup_level_diagnostics()
     )
+    setup_candidate_diagnostics: tuple[SetupCandidateDiagnostics, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -123,8 +143,20 @@ class SetupEngine:
         target: str | None,
         compression_detected: bool = False,
         compression_breakout_direction: CompressionDirection | None = None,
+        symbol: str = "",
     ) -> SetupResult:
         decision_direction = _decision_direction(decision, multi_timeframe)
+        tolerance = max(abs(current_price) * 0.005, 1e-9)
+        near_support = _near_zone(current_price, support_zone, tolerance)
+        near_resistance = _near_zone(current_price, resistance_zone, tolerance)
+        diagnostic_candidates = _diagnostic_candidate_pool(
+            decision_direction=decision_direction,
+            structure=market_structure,
+            near_support=near_support,
+            near_resistance=near_resistance,
+            compression_detected=compression_detected,
+            compression_breakout_direction=compression_breakout_direction,
+        )
         if decision.action is DecisionAction.AVOID:
             return _no_setup(
                 "No valid setup is considered because the Decision Engine returned avoid.",
@@ -140,11 +172,19 @@ class SetupEngine:
                     stop_loss=stop_loss,
                     target=target,
                 ),
+                setup_candidate_diagnostics=_evaluate_candidate_pool(
+                    candidates=diagnostic_candidates,
+                    selected=None,
+                    decision=decision,
+                    structure=market_structure,
+                    multi_timeframe=multi_timeframe,
+                    current_timeframe_confirmed=current_timeframe_confirmed,
+                    current_price=current_price,
+                    support_zone=support_zone,
+                    resistance_zone=resistance_zone,
+                    symbol=symbol,
+                ),
             )
-
-        tolerance = max(abs(current_price) * 0.005, 1e-9)
-        near_support = _near_zone(current_price, support_zone, tolerance)
-        near_resistance = _near_zone(current_price, resistance_zone, tolerance)
         candidate = _select_candidate(
             decision_direction=decision_direction,
             structure=market_structure,
@@ -170,6 +210,18 @@ class SetupEngine:
                     entry_zone=entry_zone,
                     stop_loss=stop_loss,
                     target=target,
+                ),
+                setup_candidate_diagnostics=_evaluate_candidate_pool(
+                    candidates=diagnostic_candidates,
+                    selected=None,
+                    decision=decision,
+                    structure=market_structure,
+                    multi_timeframe=multi_timeframe,
+                    current_timeframe_confirmed=current_timeframe_confirmed,
+                    current_price=current_price,
+                    support_zone=support_zone,
+                    resistance_zone=resistance_zone,
+                    symbol=symbol,
                 ),
             )
 
@@ -230,6 +282,18 @@ class SetupEngine:
                 stop_loss=stop_loss,
                 target=target,
             ),
+            setup_candidate_diagnostics=_evaluate_candidate_pool(
+                candidates=diagnostic_candidates,
+                selected=candidate.setup_type,
+                decision=decision,
+                structure=market_structure,
+                multi_timeframe=multi_timeframe,
+                current_timeframe_confirmed=current_timeframe_confirmed,
+                current_price=current_price,
+                support_zone=support_zone,
+                resistance_zone=resistance_zone,
+                symbol=symbol,
+            ),
         )
 
 
@@ -281,6 +345,176 @@ def _decision_direction(
     if multi_timeframe.directional_bias in {"bullish", "bearish"}:
         return multi_timeframe.directional_bias
     return "neutral"
+
+
+def _diagnostic_candidate_pool(
+    *,
+    decision_direction: SetupDirection,
+    structure: MarketStructureResult,
+    near_support: bool,
+    near_resistance: bool,
+    compression_detected: bool,
+    compression_breakout_direction: CompressionDirection | None,
+) -> tuple[_SetupCandidate, ...]:
+    """Enumerate plausible candidates without participating in selection."""
+
+    events = structure.structure_events
+    candidates: list[_SetupCandidate] = []
+    if "liquidity_sweep_low" in events:
+        candidates.append(_SetupCandidate(
+            SetupType.LIQUIDITY_SWEEP_REVERSAL_LONG, "bullish",
+            "Liquidity below a confirmed low is swept and reclaimed.", True,
+            "Price remains near the reclaimed support context.", near_support,
+            ("A confirmed liquidity sweep low supports a long reversal candidate.",),
+        ))
+    if "liquidity_sweep_high" in events:
+        candidates.append(_SetupCandidate(
+            SetupType.LIQUIDITY_SWEEP_REVERSAL_SHORT, "bearish",
+            "Liquidity above a confirmed high is swept and rejected.", True,
+            "Price remains near the rejected resistance context.", near_resistance,
+            ("A confirmed liquidity sweep high supports a short reversal candidate.",),
+        ))
+    if structure.trend == "ranging":
+        candidates.extend((
+            _SetupCandidate(SetupType.RANGE_REVERSAL_LONG, "bullish",
+                "A validated range remains intact.", True,
+                "Price tests the range support zone.", near_support,
+                ("Ranging structure permits a support reversal candidate.",)),
+            _SetupCandidate(SetupType.RANGE_REVERSAL_SHORT, "bearish",
+                "A validated range remains intact.", True,
+                "Price tests the range resistance zone.", near_resistance,
+                ("Ranging structure permits a resistance reversal candidate.",)),
+        ))
+    if "bullish_bos" in events:
+        candidates.append(_SetupCandidate(
+            SetupType.BULLISH_BOS_RETEST, "bullish",
+            "A bullish break of structure is confirmed.", True,
+            "Price retests broken structure as support.", near_support,
+            ("Bullish BOS creates a potential retest candidate.",),
+        ))
+    if "bearish_bos" in events:
+        candidates.append(_SetupCandidate(
+            SetupType.BEARISH_BOS_RETEST, "bearish",
+            "A bearish break of structure is confirmed.", True,
+            "Price retests broken structure as resistance.", near_resistance,
+            ("Bearish BOS creates a potential retest candidate.",),
+        ))
+    if structure.trend == "bullish" and structure.phase == "pullback":
+        candidates.append(_SetupCandidate(
+            SetupType.BULLISH_PULLBACK_CONTINUATION, "bullish",
+            "Bullish structure is in a pullback phase.", True,
+            "Price pulls back into relevant support.", near_support,
+            ("Bullish trend and pullback structure support continuation.",),
+        ))
+    if structure.trend == "bearish" and structure.phase == "pullback":
+        candidates.append(_SetupCandidate(
+            SetupType.BEARISH_PULLBACK_CONTINUATION, "bearish",
+            "Bearish structure is in a pullback phase.", True,
+            "Price pulls back into relevant resistance.", near_resistance,
+            ("Bearish trend and pullback structure support continuation.",),
+        ))
+    if compression_detected:
+        directions: tuple[SetupDirection, ...]
+        if compression_breakout_direction is not None:
+            directions = (compression_breakout_direction,)
+        elif decision_direction in {"bullish", "bearish"}:
+            directions = (decision_direction,)
+        else:
+            directions = ("bullish", "bearish")
+        for direction in directions:
+            candidates.append(_SetupCandidate(
+                SetupType.COMPRESSION_BREAKOUT_LONG if direction == "bullish"
+                else SetupType.COMPRESSION_BREAKOUT_SHORT,
+                direction,
+                "Price range is compressed relative to its recent baseline.", True,
+                f"Price closes beyond the compression in the {direction} direction.",
+                compression_breakout_direction == direction,
+                ("Recent candle ranges show measurable compression.",),
+                breakout_confirmed=compression_breakout_direction == direction,
+            ))
+    # Preserve deterministic ordering and avoid duplicates from overlapping context.
+    unique: dict[SetupType, _SetupCandidate] = {}
+    for item in candidates:
+        unique.setdefault(item.setup_type, item)
+    return tuple(unique.values())
+
+
+def _evaluate_candidate_pool(
+    *,
+    candidates: tuple[_SetupCandidate, ...],
+    selected: SetupType | None,
+    decision: DecisionResult,
+    structure: MarketStructureResult,
+    multi_timeframe: MultiTimeframeResult,
+    current_timeframe_confirmed: bool,
+    current_price: float,
+    support_zone: tuple[float, float],
+    resistance_zone: tuple[float, float],
+    symbol: str,
+) -> tuple[SetupCandidateDiagnostics, ...]:
+    results: list[SetupCandidateDiagnostics] = []
+    for candidate in candidates:
+        numeric = build_numeric_risk_levels(candidate.direction, support_zone, resistance_zone)
+        entry, stop, target = format_risk_levels(numeric, symbol)
+        risk = diagnose_risk_reward(
+            direction=candidate.direction,
+            entry_zone=entry,
+            stop_loss=stop,
+            target=target,
+            minimum_required_r=MINIMUM_ACCEPTABLE_RISK_REWARD,
+        )
+        conditions = _build_conditions(
+            candidate=candidate,
+            decision=decision,
+            structure=structure,
+            multi_timeframe=multi_timeframe,
+            current_timeframe_confirmed=current_timeframe_confirmed,
+            estimated_risk_reward=numeric.estimated_r,
+            current_price=current_price,
+            risk_levels_available=True,
+        )
+        invalidations = _build_invalidations(candidate.direction, structure)
+        status = _classify_status(decision, candidate, conditions, invalidations, current_price)
+        blocker: str | None = None
+        if not risk.has_entry:
+            blocker = "entry_missing"
+        elif not risk.has_stop:
+            blocker = "stop_missing"
+        elif not risk.has_target:
+            blocker = "target_missing"
+        elif risk.failure_reason is not None and risk.failure_reason.value in {"invalid_direction", "invalid_price_geometry"}:
+            blocker = "invalid_geometry"
+        elif not risk.passed:
+            blocker = "risk_reward_below_minimum"
+        elif decision.action.value != ("buy" if candidate.direction == "bullish" else "sell"):
+            blocker = "direction_mismatch"
+        elif not candidate.level_met:
+            blocker = "missing_retest_level" if "bos_retest" in candidate.setup_type.value else (
+                "price_not_at_support" if candidate.direction == "bullish" else "price_not_at_resistance"
+            )
+        elif not current_timeframe_confirmed:
+            blocker = "confirmation_missing"
+        elif status is not SetupStatus.CONFIRMED:
+            blocker = "setup_not_confirmed"
+        results.append(SetupCandidateDiagnostics(
+            candidate_setup_type=candidate.setup_type.value,
+            direction=candidate.direction,
+            was_selected=candidate.setup_type is selected,
+            candidate_status=status.value,
+            has_entry=risk.has_entry,
+            has_stop=risk.has_stop,
+            has_target=risk.has_target,
+            has_valid_geometry=risk.failure_reason is None or risk.failure_reason.value not in {"invalid_direction", "invalid_price_geometry"},
+            estimated_r=risk.estimated_r,
+            meets_minimum_r=risk.passed,
+            blocking_reason=blocker,
+            quality_score=_quality_score(conditions),
+            human_readable_summary=(
+                f"{candidate.setup_type.value.replace('_', ' ').title()} is "
+                + ("executable under current setup gates." if blocker is None else f"blocked by {blocker.replace('_', ' ')}.")
+            ),
+        ))
+    return tuple(results)
 
 
 def _select_candidate(
@@ -687,6 +921,7 @@ def _no_setup(
     *,
     warning: str,
     setup_level_diagnostics: SetupLevelDiagnostics | None = None,
+    setup_candidate_diagnostics: tuple[SetupCandidateDiagnostics, ...] = (),
 ) -> SetupResult:
     return SetupResult(
         setup_type=SetupType.NO_VALID_SETUP,
@@ -705,4 +940,5 @@ def _no_setup(
         setup_level_diagnostics=(
             setup_level_diagnostics or _empty_setup_level_diagnostics()
         ),
+        setup_candidate_diagnostics=setup_candidate_diagnostics,
     )

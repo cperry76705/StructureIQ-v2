@@ -2,7 +2,7 @@
 
 import re
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from statistics import median
 from typing import Callable, Literal, Protocol
@@ -17,6 +17,7 @@ from core.market_data import Candle, MarketDataProvider
 from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
 from core.setup_engine import (
     MINIMUM_ACCEPTABLE_RISK_REWARD,
+    SetupCandidateDiagnostics,
     SetupLevelDiagnostics,
 )
 from models.schemas import AnalysisRequest, AnalysisResponse
@@ -168,6 +169,7 @@ class BacktestTrade:
     risk_reward_diagnostics: RiskRewardDiagnostics | None = None
     setup_level_diagnostics: SetupLevelDiagnostics | None = None
     outcome_diagnostics: TradeOutcomeDiagnostics | None = None
+    setup_candidate_diagnostics: tuple[SetupCandidateDiagnostics, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -266,6 +268,31 @@ class TradeManagementSensitivityResult:
 
 
 @dataclass(frozen=True)
+class SetupTypeCoverage:
+    setup_type: str
+    candidates_seen: int
+    selected_count: int
+    executable_count: int
+    missed_executable_count: int
+    average_quality_score: float
+    average_estimated_r: float
+    most_common_blocking_reason: str | None
+
+
+@dataclass(frozen=True)
+class SetupCoverageSummary:
+    total_records: int
+    selected_setup_counts: dict[str, int]
+    candidate_setup_counts: dict[str, int]
+    executable_candidate_counts: dict[str, int]
+    selected_executable_count: int
+    missed_executable_candidate_count: int
+    by_setup_type: tuple[SetupTypeCoverage, ...]
+    most_common_blocking_reason: str | None
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class BacktestResult:
     request: BacktestRequest
     trades: tuple[BacktestTrade, ...]
@@ -288,6 +315,9 @@ class BacktestResult:
         default_factory=lambda: _empty_outcome_diagnostics_summary()
     )
     trade_management_sensitivity: tuple[TradeManagementSensitivityResult, ...] = ()
+    setup_coverage_summary: SetupCoverageSummary = field(
+        default_factory=lambda: _empty_setup_coverage_summary()
+    )
 
 
 class _AnalysisRunner(Protocol):
@@ -361,6 +391,7 @@ class BacktestingEngine:
         trade_management_sensitivity = calculate_trade_management_sensitivity(
             trades
         )
+        setup_coverage_summary = calculate_setup_coverage_summary(trades)
         limitations = backtest_limitations()
         summary = (
             f"Backtest evaluated {len(trades)} analysis windows and produced "
@@ -380,6 +411,7 @@ class BacktestingEngine:
             setup_level_summary=setup_level_summary,
             outcome_diagnostics_summary=outcome_diagnostics_summary,
             trade_management_sensitivity=trade_management_sensitivity,
+            setup_coverage_summary=setup_coverage_summary,
         )
 
 
@@ -402,6 +434,12 @@ def build_backtest_trade(
     execution_readiness = _build_execution_readiness_snapshot(analysis)
     setup_level_diagnostics = getattr(
         analysis.setup_plan, "setup_level_diagnostics", None
+    )
+    setup_candidate_diagnostics = _apply_strategy_context(
+        tuple(
+        getattr(analysis.setup_plan, "setup_candidate_diagnostics", ())
+        ),
+        analysis.strategy,
     )
     risk_reward_diagnostics = diagnose_risk_reward(
         direction=_enum_value(getattr(analysis.setup_plan, "direction", None))
@@ -429,6 +467,7 @@ def build_backtest_trade(
             execution_readiness=execution_readiness,
             risk_reward_diagnostics=risk_reward_diagnostics,
             setup_level_diagnostics=setup_level_diagnostics,
+            setup_candidate_diagnostics=setup_candidate_diagnostics,
         )
 
     entry = parse_price_level(plan.entry_zone, midpoint=True)
@@ -457,6 +496,7 @@ def build_backtest_trade(
             execution_readiness=execution_readiness,
             risk_reward_diagnostics=risk_reward_diagnostics,
             setup_level_diagnostics=setup_level_diagnostics,
+            setup_candidate_diagnostics=setup_candidate_diagnostics,
         )
 
     if plan.estimated_risk_reward is None:
@@ -484,6 +524,7 @@ def build_backtest_trade(
             execution_readiness=execution_readiness,
             risk_reward_diagnostics=risk_reward_diagnostics,
             setup_level_diagnostics=setup_level_diagnostics,
+            setup_candidate_diagnostics=setup_candidate_diagnostics,
         )
     if plan.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
         return BacktestTrade(
@@ -510,6 +551,7 @@ def build_backtest_trade(
             execution_readiness=execution_readiness,
             risk_reward_diagnostics=risk_reward_diagnostics,
             setup_level_diagnostics=setup_level_diagnostics,
+            setup_candidate_diagnostics=setup_candidate_diagnostics,
         )
 
     outcome, realized_r, reason = simulate_trade_outcome(
@@ -553,6 +595,7 @@ def build_backtest_trade(
         risk_reward_diagnostics=risk_reward_diagnostics,
         setup_level_diagnostics=setup_level_diagnostics,
         outcome_diagnostics=outcome_diagnostics,
+        setup_candidate_diagnostics=setup_candidate_diagnostics,
     )
 
 
@@ -639,6 +682,55 @@ def diagnose_non_actionable_analysis(
         "backtesting_engine",
         "The analysis was non-actionable but no known blocking gate was identified.",
     )
+
+
+def _apply_strategy_context(
+    diagnostics: tuple[SetupCandidateDiagnostics, ...],
+    strategy: object,
+) -> tuple[SetupCandidateDiagnostics, ...]:
+    """Apply existing strategy-candidate evidence to otherwise executable setups."""
+
+    family_by_setup = {
+        "bullish_bos_retest": "breakout_continuation",
+        "bearish_bos_retest": "breakout_continuation",
+        "bullish_pullback_continuation": "pullback_continuation",
+        "bearish_pullback_continuation": "pullback_continuation",
+        "range_reversal_long": "range_reversal",
+        "range_reversal_short": "range_reversal",
+        "liquidity_sweep_reversal_long": "liquidity_sweep_reversal",
+        "liquidity_sweep_reversal_short": "liquidity_sweep_reversal",
+        "compression_breakout_long": "compression_breakout",
+        "compression_breakout_short": "compression_breakout",
+    }
+    strategy_candidates = {
+        _enum_value(getattr(item, "strategy_type", None)): item
+        for item in getattr(strategy, "candidates", ())
+    }
+    adjusted: list[SetupCandidateDiagnostics] = []
+    for item in diagnostics:
+        family = family_by_setup.get(item.candidate_setup_type)
+        candidate = strategy_candidates.get(family or "")
+        blocked = False
+        if item.blocking_reason is None and candidate is not None:
+            status = _enum_value(getattr(candidate, "status", None))
+            direction = _enum_value(getattr(candidate, "direction", None))
+            blocked = (
+                status in {"rejected", "not_applicable"}
+                or float(getattr(candidate, "score", 0.0)) < 50.0
+                or direction not in {item.direction, "neutral"}
+            )
+        adjusted.append(
+            replace(
+                item,
+                blocking_reason="strategy_not_aligned",
+                human_readable_summary=(
+                    f"{item.candidate_setup_type.replace('_', ' ').title()} is "
+                    "blocked by strategy alignment."
+                ),
+            )
+            if blocked else item
+        )
+    return tuple(adjusted)
 
 
 def _build_execution_readiness_snapshot(
@@ -947,6 +1039,77 @@ def calculate_trade_management_sensitivity(
     return tuple(results)
 
 
+def calculate_setup_coverage_summary(
+    trades: list[BacktestTrade],
+) -> SetupCoverageSummary:
+    """Aggregate candidate availability without changing setup selection."""
+
+    selected_counts = Counter(trade.setup_type for trade in trades)
+    candidates = [item for trade in trades for item in trade.setup_candidate_diagnostics]
+    candidate_counts = Counter(item.candidate_setup_type for item in candidates)
+    executable = [item for item in candidates if _candidate_is_executable(item)]
+    executable_counts = Counter(item.candidate_setup_type for item in executable)
+    blockers = Counter(
+        item.blocking_reason or "none" for item in candidates if not _candidate_is_executable(item)
+    )
+    common = sorted(blockers, key=lambda key: (-blockers[key], key))[0] if blockers else None
+    records: list[SetupTypeCoverage] = []
+    for setup_type in sorted(candidate_counts):
+        items = [item for item in candidates if item.candidate_setup_type == setup_type]
+        selected = [item for item in items if item.was_selected]
+        runnable = [item for item in items if _candidate_is_executable(item)]
+        missed = [item for item in runnable if not item.was_selected]
+        estimates = [item.estimated_r for item in items if item.estimated_r is not None]
+        setup_blockers = Counter(
+            item.blocking_reason or "none" for item in items if not _candidate_is_executable(item)
+        )
+        setup_common = (
+            sorted(setup_blockers, key=lambda key: (-setup_blockers[key], key))[0]
+            if setup_blockers else None
+        )
+        records.append(SetupTypeCoverage(
+            setup_type=setup_type,
+            candidates_seen=len(items),
+            selected_count=len(selected),
+            executable_count=len(runnable),
+            missed_executable_count=len(missed),
+            average_quality_score=round(sum(item.quality_score for item in items) / len(items), 2),
+            average_estimated_r=round(sum(estimates) / len(estimates), 3) if estimates else 0.0,
+            most_common_blocking_reason=setup_common,
+        ))
+    missed_count = sum(not item.was_selected for item in executable)
+    selected_executable = sum(item.was_selected for item in executable)
+    executable_families = sorted(executable_counts)
+    if len(executable_families) == 1:
+        family_note = f" Only {executable_families[0].replace('_', ' ')} produced executable candidates."
+    else:
+        family_note = ""
+    return SetupCoverageSummary(
+        total_records=len(trades),
+        selected_setup_counts=dict(sorted(selected_counts.items())),
+        candidate_setup_counts=dict(sorted(candidate_counts.items())),
+        executable_candidate_counts=dict(sorted(executable_counts.items())),
+        selected_executable_count=selected_executable,
+        missed_executable_candidate_count=missed_count,
+        by_setup_type=tuple(records),
+        most_common_blocking_reason=common,
+        human_readable_summary=(
+            f"{len(trades)} records exposed {len(candidates)} setup candidates; "
+            f"{len(executable)} passed current setup gates and {missed_count} executable "
+            f"candidates were not selected.{family_note}"
+        ),
+    )
+
+
+def _candidate_is_executable(item: SetupCandidateDiagnostics) -> bool:
+    return (
+        item.candidate_status == "confirmed"
+        and item.has_entry and item.has_stop and item.has_target
+        and item.has_valid_geometry and item.meets_minimum_r
+        and item.blocking_reason is None
+    )
+
+
 def _managed_realized_r(
     diagnostics: TradeOutcomeDiagnostics,
     rule: TradeManagementRule,
@@ -1027,6 +1190,13 @@ def _empty_outcome_diagnostics_summary() -> TradeOutcomeDiagnosticsSummary:
     )
 
 
+def _empty_setup_coverage_summary() -> SetupCoverageSummary:
+    return SetupCoverageSummary(
+        0, {}, {}, {}, 0, 0, (), None,
+        "No setup candidate diagnostics were available.",
+    )
+
+
 def _skipped_trade(
     *,
     timestamp: int,
@@ -1044,6 +1214,7 @@ def _skipped_trade(
     execution_readiness: ExecutionReadinessSnapshot | None,
     risk_reward_diagnostics: RiskRewardDiagnostics | None,
     setup_level_diagnostics: SetupLevelDiagnostics | None,
+    setup_candidate_diagnostics: tuple[SetupCandidateDiagnostics, ...] = (),
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=timestamp,
@@ -1066,6 +1237,7 @@ def _skipped_trade(
         execution_readiness=execution_readiness,
         risk_reward_diagnostics=risk_reward_diagnostics,
         setup_level_diagnostics=setup_level_diagnostics,
+        setup_candidate_diagnostics=setup_candidate_diagnostics,
     )
 
 

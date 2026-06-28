@@ -175,3 +175,9 @@ Given the same provider candles, engine versions, request, and configuration, ca
 - Multiple comparisons can make isolated weak groups appear more meaningful than they are.
 - There are no confidence intervals, significance tests, walk-forward splits, or out-of-sample validation yet.
 - Calibration observes historical behavior and does not prove profitability.
+
+## v1.9 Setup Coverage
+
+`aggregate_setup_coverage_summary` combines candidate snapshots from all records. It reports selected, candidate, executable, and missed-executable counts plus per-family appearances, selections, executable counts, average quality, average calculated R, and dominant blockers.
+
+If only one family produces executable candidates, the summary names it. Recommendations prioritize missed executable candidates, then candidate quality and frequency. They identify one family for inspection but do not change selection, thresholds, confirmation, or execution.

@@ -16,6 +16,7 @@ from core.backtesting import (
     DecisionDiagnosticsSummary,
     ExecutionReadinessSnapshot,
     RiskRewardSummary,
+    SetupCoverageSummary,
     SetupLevelSummary,
     TradeOutcomeDiagnosticsSummary,
     TradeManagementSensitivityResult,
@@ -23,6 +24,7 @@ from core.backtesting import (
     calculate_backtest_metrics,
     calculate_decision_diagnostics_summary,
     calculate_risk_reward_summary,
+    calculate_setup_coverage_summary,
     calculate_setup_level_summary,
     calculate_outcome_diagnostics_summary,
     calculate_trade_management_sensitivity,
@@ -196,6 +198,7 @@ class CalibrationResult:
     aggregate_trade_management_sensitivity: tuple[
         TradeManagementSensitivityResult, ...
     ]
+    aggregate_setup_coverage_summary: SetupCoverageSummary
     setup_performance: tuple[SetupPerformance, ...]
     strategy_performance: tuple[StrategyPerformance, ...]
     recommendations: tuple[CalibrationRecommendation, ...]
@@ -275,6 +278,7 @@ class CalibrationEngine:
         aggregate_trade_management_sensitivity = (
             calculate_trade_management_sensitivity(all_trades)
         )
+        aggregate_setup_coverage_summary = calculate_setup_coverage_summary(all_trades)
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -289,6 +293,7 @@ class CalibrationEngine:
             aggregate_setup_level_summary,
             aggregate_outcome_diagnostics,
             aggregate_trade_management_sensitivity,
+            aggregate_setup_coverage_summary,
         )
         summary = (
             f"Calibration completed {aggregate.total_runs} runs with "
@@ -307,6 +312,7 @@ class CalibrationEngine:
             aggregate_trade_management_sensitivity=(
                 aggregate_trade_management_sensitivity
             ),
+            aggregate_setup_coverage_summary=aggregate_setup_coverage_summary,
             setup_performance=setup_performance,
             strategy_performance=strategy_performance,
             recommendations=recommendations,
@@ -478,6 +484,7 @@ def _recommendations(
     setup_level_summary: SetupLevelSummary,
     outcome_diagnostics: TradeOutcomeDiagnosticsSummary,
     management_sensitivity: tuple[TradeManagementSensitivityResult, ...],
+    setup_coverage: SetupCoverageSummary,
 ) -> tuple[CalibrationRecommendation, ...]:
     recommendations: list[CalibrationRecommendation] = []
     record_count = len(records)
@@ -534,6 +541,9 @@ def _recommendations(
     )
     if management_recommendation is not None:
         recommendations.append(management_recommendation)
+    coverage_recommendation = _setup_coverage_recommendation(setup_coverage)
+    if coverage_recommendation is not None:
+        recommendations.append(coverage_recommendation)
 
     if metrics.total_trades and metrics.win_rate < 35.0:
         recommendations.append(
@@ -696,6 +706,47 @@ def _skip_diagnostic_recommendation(
         ),
         severity=severity,
         suggested_action=action,
+    )
+
+
+def _setup_coverage_recommendation(
+    coverage: SetupCoverageSummary,
+) -> CalibrationRecommendation | None:
+    if not coverage.by_setup_type:
+        return None
+    ranked = sorted(
+        coverage.by_setup_type,
+        key=lambda item: (
+            -item.missed_executable_count,
+            -item.average_quality_score,
+            -item.candidates_seen,
+            item.setup_type,
+        ),
+    )
+    candidate = ranked[0]
+    executable_families = [
+        name for name, count in coverage.executable_candidate_counts.items() if count
+    ]
+    only_family = (
+        f" Only {executable_families[0].replace('_', ' ')} currently produces "
+        "executable candidates."
+        if len(executable_families) == 1
+        else ""
+    )
+    blocker = candidate.most_common_blocking_reason or "insufficient candidate quality"
+    return CalibrationRecommendation(
+        "setup_quality",
+        (
+            f"Setup coverage found {coverage.missed_executable_candidate_count} "
+            f"non-selected executable candidates.{only_family}"
+        ),
+        "medium" if coverage.missed_executable_candidate_count else "low",
+        (
+            f"Inspect {candidate.setup_type.replace('_', ' ')} first; it appeared "
+            f"{candidate.candidates_seen} times and its dominant blocker was "
+            f"{blocker.replace('_', ' ')}. Preserve selection and execution gates "
+            "until this coverage evidence is reviewed."
+        ),
     )
 
 

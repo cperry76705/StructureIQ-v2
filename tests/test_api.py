@@ -117,8 +117,9 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "supporting_evidence",
         "warning_notes",
         "human_readable_summary",
-        "setup_level_diagnostics",
-    }
+            "setup_level_diagnostics",
+            "setup_candidate_diagnostics",
+        }
     assert set(payload["setup_plan"]["setup_level_diagnostics"]) == {
         "setup_type",
         "setup_status",

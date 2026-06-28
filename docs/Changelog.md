@@ -2,6 +2,24 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.9.0 — Setup Expansion and Candidate Coverage Diagnostics — 2026-06-28
+
+### Added
+
+- Additive candidate diagnostics covering selection, status, direction, levels, geometry, R:R, quality, and the primary blocker.
+- Per-backtest `setup_coverage_summary` and calibration `aggregate_setup_coverage_summary`, including per-family and missed-executable counts.
+- Evidence-based setup-family recommendations without automatic selection or expansion.
+
+### Compatibility
+
+- First-match setup selection, confidence and confirmation thresholds, strategy routing, execution gates, and outcome simulation are unchanged.
+- `/analysis` only gains an additive nested diagnostic collection.
+- No dashboard, broker execution, live trading, or automatic setup expansion was added.
+
+### Verification
+
+- 180 automated tests pass together.
+
 ## Version 1.8.0 — Stop Management and Profit Protection Study — 2026-06-28
 
 ### Added

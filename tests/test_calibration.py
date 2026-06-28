@@ -15,6 +15,7 @@ from core.calibration import CalibrationEngine, CalibrationRequest
 from core.decision_engine import DecisionDiagnostics, GateResult
 from core.journal import TradeOutcome
 from core.market_data import Candle
+from core.setup_engine import SetupCandidateDiagnostics
 
 
 def _trade(
@@ -129,6 +130,31 @@ def test_calibration_runs_multiple_symbol_timeframe_combinations() -> None:
     assert len(result.runs) == 8
     assert len(runner.requests) == 8
     assert any(run.normalized_symbol == "EURUSD=X" for run in result.runs)
+
+
+def test_calibration_aggregates_setup_candidate_coverage() -> None:
+    candidate = SetupCandidateDiagnostics(
+        candidate_setup_type="bullish_pullback_continuation",
+        direction="bullish",
+        was_selected=False,
+        candidate_status="confirmed",
+        has_entry=True,
+        has_stop=True,
+        has_target=True,
+        has_valid_geometry=True,
+        estimated_r=2.0,
+        meets_minimum_r=True,
+        blocking_reason=None,
+        quality_score=88.0,
+        human_readable_summary="Synthetic executable candidate.",
+    )
+    trade = _trade(TradeOutcome.SKIPPED, None)
+    trade = BacktestTrade(**{**trade.__dict__, "setup_candidate_diagnostics": (candidate,)})
+    result = _engine(_Runner(lambda request: [trade])).run(_request())
+
+    coverage = result.aggregate_setup_coverage_summary
+    assert coverage.candidate_setup_counts == {"bullish_pullback_continuation": 1}
+    assert coverage.missed_executable_candidate_count == 1
 
 
 def test_aggregate_metrics_calculate_totals() -> None:

@@ -148,6 +148,8 @@ Version 1.1 aggregates skip diagnostics across calibration runs so maintainers c
 
 Known forex symbols are normalized only when the Yahoo provider is queried. Backtest and calibration requests and results preserve the user-facing symbol.
 
+Version 1.9 adds candidate snapshots to each backtest record and `setup_coverage_summary` to each result. Coverage includes skipped records and groups candidate availability, selection, executable quality, missed executable opportunities, average R, and blockers by setup family. These fields never participate in execution.
+
 ## Limitations
 
 - This is a simplified deterministic backtest, not a production execution simulator.

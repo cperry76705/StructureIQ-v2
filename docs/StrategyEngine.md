@@ -117,7 +117,7 @@ Trend continuation remains a broader competing playbook when directional structu
 ## Known Limitations
 
 - Candidate weights and thresholds are deterministic heuristics and are not yet calibrated through backtesting.
-- The engine compares one selected setup against broader playbooks; it does not receive multiple Setup Engine candidates.
+- Production ranking compares one selected setup against broader playbooks. Version 1.9 exposes additional Setup Engine candidates only to diagnostics; they do not enter strategy selection.
 - Indicator fit currently reflects the existing RSI confirmation only.
 - Risk fit uses the Setup Engine's approximate risk/reward.
 - Market-regime history and performance statistics belong to later journal/backtesting work.
