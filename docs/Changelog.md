@@ -2,6 +2,34 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 0.6 — Analysis/Explanation Engine — 2026-06-27
+
+### Added
+
+- Dedicated trader-facing explanation logic in `core/explanation_engine.py`.
+- Typed `TraderAnalysis`, `TradePlan`, `ExplanationSection`, `WaitForCondition`, `KeyRisk`, and `MarketNarrative` models.
+- Plain-English headlines, market narratives, recommendations, evidence explanations, key risks, and next actions.
+- Checklist projection of unmet required setup conditions and structural invalidation rules.
+- Confidence interpretation for weak, moderate, strong, and high-conviction evidence ranges.
+- Additive `trader_analysis` data on successful `POST /analysis` responses.
+- Fallback language and nullable plan fields when optional setup data is unavailable.
+- Focused tests for actionable buy and sell plans, wait and avoid outcomes, checklists, invalidation, confidence bands, fallback behavior, and API compatibility.
+
+### Changed
+
+- `/analysis` now exposes both detailed internal engine output and a separate trader-facing analysis layer.
+- Explanation logic consumes Decision and Setup results without recomputing or overriding either result.
+
+### Verification
+
+- 71 automated tests pass.
+- The complete v0.1 through v0.6 suite passes together.
+
+### Scope
+
+- The engine uses deterministic templates; natural-language generation and personalization are not included.
+- Strategy comparison, journaling, dashboard work, broker execution, and live trading remain out of scope.
+
 ## Version 0.5 — Setup Engine — 2026-06-27
 
 ### Added

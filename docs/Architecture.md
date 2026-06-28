@@ -114,6 +114,8 @@ The Analysis/Explanation Engine converts internal engine output into trader-faci
 
 It explains the Decision Engine result, presents the recommended qualified setup, describes entry and invalidation conditions, summarizes risk, explains wait or avoid outcomes, and builds a checklist-style trade plan. It must preserve uncertainty and cite only supplied engine evidence.
 
+The v0.6 implementation is the trader-facing boundary for `/analysis`. It maps existing Decision and Setup results into typed narratives, recommendations, risks, confidence language, next actions, and trade plans. It does not contain decision thresholds or setup qualification rules.
+
 ### 8. Strategy Engine
 
 The Strategy Engine selects broader playbooks and compares possible approaches based on current market conditions. It comes after Setup Engine qualification, not before it.
@@ -152,4 +154,4 @@ Backtesting must disclose data quality, fees, slippage, execution assumptions, a
 
 ## Current Platform State
 
-Versions 0.1 through 0.5 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, weighted Decision Engine, and Setup Engine. The current `/analysis` response is still engine-oriented. Versions 0.6 onward introduce trader-facing explanation, broader strategy playbooks, and journal/backtesting workflows.
+Versions 0.1 through 0.6 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, weighted Decision Engine, Setup Engine, and trader-facing Analysis/Explanation Engine. Versions 0.7 onward add broader strategy playbooks and journal/backtesting workflows.

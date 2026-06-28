@@ -146,6 +146,52 @@ Status: `200 OK`
       "One or more required entry conditions remain unmet."
     ],
     "human_readable_summary": "A bullish pullback continuation setup is waiting for required confirmation before entry."
+  },
+  "trader_analysis": {
+    "headline": "EUR/USD is bullish, but the entry is not confirmed yet.",
+    "summary": "The higher timeframe remains bullish while the current timeframe is pulling back. The Decision Engine remains wait at 68.0/100 confidence. The bullish pullback continuation setup is waiting for confirmation.",
+    "recommendation": "Wait for the missing setup conditions before considering entry.",
+    "market_narrative": {
+      "bias": "bullish",
+      "phase": "pullback",
+      "context": "The 1h context remains bullish, while 5m execution structure is bullish in a pullback phase."
+    },
+    "why": [
+      "The 1h context remains bullish, while 5m execution structure is bullish in a pullback phase.",
+      "Weighted evidence produced wait with 68.0/100 confidence.",
+      "A bullish pullback continuation setup is waiting for required confirmation before entry."
+    ],
+    "trade_plan": {
+      "status": "waiting",
+      "setup_type": "bullish_pullback_continuation",
+      "direction": "bullish",
+      "entry_zone": "1.13520-1.13545",
+      "stop_loss": "1.13380",
+      "target": "1.13950",
+      "estimated_risk_reward": 1.8,
+      "wait_for": [
+        {
+          "condition": "Bullish confirmation candle forms at the setup level.",
+          "importance": "required",
+          "source": "setup_engine"
+        }
+      ],
+      "invalidation": [
+        "Bullish setup invalidates if price closes below the latest confirmed swing low. The trigger level is 1.13380."
+      ],
+      "notes": [
+        "One or more required entry conditions remain unmet."
+      ]
+    },
+    "key_risks": [
+      {
+        "risk": "Execution timeframe has not confirmed continuation.",
+        "severity": "medium",
+        "reason": "This evidence reduced the Decision Engine's confidence."
+      }
+    ],
+    "confidence_interpretation": "Moderate but incomplete edge. More confirmation is required.",
+    "next_best_action": "Wait for this required condition: Bullish confirmation candle forms at the setup level."
   }
 }
 ```
@@ -159,6 +205,7 @@ The current response contract includes:
 - `multi_timeframe`: an additive v0.3 object containing the two structure views, alignment, unified bias, and explanation.
 - `decision`: an additive v0.4 object containing the weighted recommendation and complete evidence ledger.
 - `setup_plan`: an additive v0.5 object containing setup qualification, entry conditions, invalidation, and risk context.
+- `trader_analysis`: an additive v0.6 object containing the trader-facing narrative and checklist plan.
 
 ### Multi-Timeframe Object
 
@@ -208,7 +255,21 @@ The current response contract includes:
 | `warning_notes` | Missing conditions, conflicts, and risk warnings. |
 | `human_readable_summary` | Factual setup qualification summary. |
 
-The response remains backward-compatible at the field level: every pre-v0.5 field remains present with the same name and type. `multi_timeframe`, `decision`, and `setup_plan` are additive objects. The legacy top-level action and confidence remain derived from the Decision Engine, while the legacy top-level setup mirrors `setup_plan.setup_type`.
+### Trader Analysis Object
+
+| Field | Description |
+| --- | --- |
+| `headline` | Short trader-facing statement of the current opportunity or lack of edge. |
+| `summary` | Plain-English synthesis of context, decision, and setup status. |
+| `recommendation` | Explanation of whether the current plan is actionable, waiting, developing, avoid, or no trade. |
+| `market_narrative` | Directional bias, current phase, and timeframe context. |
+| `why` | Traceable plain-English reasons sourced from internal engine results. |
+| `trade_plan` | Setup levels, status, unmet required conditions, invalidation, and notes. |
+| `key_risks` | Risk, severity, and reason derived from negative evidence and warnings. |
+| `confidence_interpretation` | Trader-friendly interpretation of Decision Engine confidence. |
+| `next_best_action` | The next condition or review step implied by the current plan. |
+
+The response remains backward-compatible at the field level: every pre-v0.6 field remains present with the same name and type. `multi_timeframe`, `decision`, `setup_plan`, and `trader_analysis` are additive objects. The legacy top-level action and confidence remain derived from the Decision Engine, while the legacy top-level setup mirrors `setup_plan.setup_type`.
 
 Illustrative entry, stop, and target values are analytical outputs. They are not live orders, financial advice, or guarantees.
 
@@ -227,49 +288,9 @@ Example:
 
 ## Contract Evolution
 
-### Current Engine-Oriented Response
+The `/analysis` response now exposes both architectural layers:
 
-The current `/analysis` response is engine-oriented. Its top-level compatibility fields, `multi_timeframe`, and `decision` expose raw analytical state, scores, evidence, and implementation-facing summaries. This is useful for development, testing, integrations, journaling, and future backtesting, but it is not yet the final trader-facing product contract.
+- `multi_timeframe`, `decision`, and `setup_plan` preserve detailed internal engine output.
+- `trader_analysis` translates those results into a readable narrative and checklist plan.
 
-The existing response must remain available while downstream engines mature. Setup or presentation logic must not be embedded ad hoc into the current fields.
-
-### Future Trader-Facing Analysis Block
-
-A future version will add a typed trader-facing block after the Setup, Strategy, and Analysis/Explanation Engines are implemented. The working direction is an additive object such as:
-
-```json
-{
-  "trader_analysis": {
-    "market_summary": "Higher-timeframe structure remains bullish while the current timeframe is completing a pullback.",
-    "recommended_setup": "bullish_bos_retest",
-    "setup_status": "developing",
-    "entry_conditions": [
-      {
-        "condition": "Current candle closes above the retest confirmation level",
-        "status": "pending"
-      }
-    ],
-    "invalidation": "Bullish thesis weakens below the latest confirmed swing low.",
-    "risk_notes": [
-      "Risk/reward must be recalculated after confirmation."
-    ],
-    "wait_avoid_reasoning": [
-      "Wait while the entry trigger remains unconfirmed."
-    ],
-    "trade_plan_checklist": [
-      {
-        "item": "Directional decision remains bullish",
-        "status": "satisfied"
-      },
-      {
-        "item": "BOS retest confirms on the current timeframe",
-        "status": "pending"
-      }
-    ]
-  }
-}
-```
-
-This example documents product direction, not a current API guarantee. Final field names and schemas will be versioned or introduced additively after the responsible engines exist.
-
-The trader-facing block will explain internal results; it will not recalculate action, confidence, setup qualification, or strategy ranking. Evidence and checklist states must remain traceable to typed engine output.
+The trader-facing block does not recalculate action, confidence, setup qualification, or future strategy ranking. Evidence and checklist states remain traceable to typed engine output. Future versions may extend the plan additively as the Strategy and Journal/Backtesting Engines are implemented.

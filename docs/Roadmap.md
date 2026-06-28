@@ -79,9 +79,9 @@ Every version must preserve automated tests, stable contracts, explainability, a
 - Checklist-style trade plan.
 - Trader-facing analysis API contract.
 
-**Status:** planned.
+**Status:** implemented.
 
-**Exit criteria:** trader-facing output is concise, traceable to internal results, and incapable of inventing or changing decisions and setup qualifications.
+**Outcome:** `/analysis` now includes a typed trader-facing narrative, recommendation, confidence interpretation, key risks, next action, and checklist plan that remain traceable to internal outputs and cannot alter decisions or setup qualifications.
 
 ## Version 0.7 — Strategy Engine
 

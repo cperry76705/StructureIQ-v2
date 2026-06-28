@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.config import DEFAULT_LOOKBACK, MAX_LOOKBACK, MIN_LOOKBACK, SUPPORTED_TIMEFRAMES
 from core.decision_engine import DecisionResult
+from core.explanation_engine import TraderAnalysis
 from core.multi_timeframe import MultiTimeframeResult
 from core.setup_engine import SetupResult
 
@@ -48,6 +49,7 @@ class AnalysisResponse(BaseModel):
     multi_timeframe: MultiTimeframeResult
     decision: DecisionResult
     setup_plan: SetupResult
+    trader_analysis: TraderAnalysis
 
 
 class HealthResponse(BaseModel):

@@ -57,6 +57,7 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "multi_timeframe",
         "decision",
         "setup_plan",
+        "trader_analysis",
     }
     assert set(payload["multi_timeframe"]) == {
         "higher_timeframe",
@@ -106,6 +107,29 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "human_readable_summary",
     }
     assert payload["setup"] == payload["setup_plan"]["setup_type"]
+    assert set(payload["trader_analysis"]) == {
+        "headline",
+        "summary",
+        "recommendation",
+        "market_narrative",
+        "why",
+        "trade_plan",
+        "key_risks",
+        "confidence_interpretation",
+        "next_best_action",
+    }
+    assert set(payload["trader_analysis"]["trade_plan"]) == {
+        "status",
+        "setup_type",
+        "direction",
+        "entry_zone",
+        "stop_loss",
+        "target",
+        "estimated_risk_reward",
+        "wait_for",
+        "invalidation",
+        "notes",
+    }
 
 
 def test_analysis_returns_informative_503_when_provider_fails() -> None:

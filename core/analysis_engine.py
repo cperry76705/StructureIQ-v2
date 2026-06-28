@@ -1,6 +1,7 @@
 """Orchestrate the focused analysis modules into one API result."""
 
 from core.decision_engine import DecisionAction, DecisionEngine
+from core.explanation_engine import ExplanationEngine
 from core.indicators import calculate_rsi
 from core.market_data import Candle, MarketDataProvider
 from core.market_structure import MarketStructureEngine
@@ -49,6 +50,7 @@ class AnalysisEngine:
         multi_timeframe_engine: MultiTimeframeEngine | None = None,
         decision_engine: DecisionEngine | None = None,
         setup_engine: SetupEngine | None = None,
+        explanation_engine: ExplanationEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -57,6 +59,7 @@ class AnalysisEngine:
         )
         self._decision_engine = decision_engine or DecisionEngine()
         self._setup_engine = setup_engine or SetupEngine()
+        self._explanation_engine = explanation_engine or ExplanationEngine()
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         entry_candles = self._market_data.get_candles(
@@ -74,6 +77,7 @@ class AnalysisEngine:
             self._multi_timeframe_engine,
             self._decision_engine,
             self._setup_engine,
+            self._explanation_engine,
         )
 
 
@@ -85,6 +89,7 @@ def _build_analysis(
     multi_timeframe_engine: MultiTimeframeEngine,
     decision_engine: DecisionEngine,
     setup_engine: SetupEngine,
+    explanation_engine: ExplanationEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -151,6 +156,13 @@ def _build_analysis(
         compression_breakout_direction=breakout_direction,
     )
     setup = setup_plan.setup_type.value
+    trader_analysis = explanation_engine.analyze(
+        symbol=request.symbol,
+        market_structure=entry_structure,
+        multi_timeframe=multi_timeframe,
+        decision=decision,
+        setup_plan=setup_plan,
+    )
 
     reasons = [
         decision.human_readable_summary,
@@ -176,4 +188,5 @@ def _build_analysis(
         multi_timeframe=multi_timeframe,
         decision=decision,
         setup_plan=setup_plan,
+        trader_analysis=trader_analysis,
     )
