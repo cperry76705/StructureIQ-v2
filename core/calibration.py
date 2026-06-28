@@ -15,9 +15,13 @@ from core.backtesting import (
     BacktestingEngine,
     DecisionDiagnosticsSummary,
     ExecutionReadinessSnapshot,
+    RiskRewardSummary,
+    SetupLevelSummary,
     SkipDiagnostics,
     calculate_backtest_metrics,
     calculate_decision_diagnostics_summary,
+    calculate_risk_reward_summary,
+    calculate_setup_level_summary,
     calculate_skip_diagnostics,
     parse_price_level,
 )
@@ -182,6 +186,8 @@ class CalibrationResult:
     aggregate_skip_diagnostics: SkipDiagnostics
     aggregate_decision_diagnostics: DecisionDiagnosticsSummary
     threshold_sensitivity: tuple[ThresholdSensitivityResult, ...]
+    aggregate_risk_reward_summary: RiskRewardSummary
+    aggregate_setup_level_summary: SetupLevelSummary
     setup_performance: tuple[SetupPerformance, ...]
     strategy_performance: tuple[StrategyPerformance, ...]
     recommendations: tuple[CalibrationRecommendation, ...]
@@ -253,6 +259,8 @@ class CalibrationEngine:
             all_trades
         )
         threshold_sensitivity = calculate_threshold_sensitivity(all_trades)
+        aggregate_risk_reward_summary = calculate_risk_reward_summary(all_trades)
+        aggregate_setup_level_summary = calculate_setup_level_summary(all_trades)
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -263,6 +271,8 @@ class CalibrationEngine:
             aggregate_skip_diagnostics,
             aggregate_decision_diagnostics,
             threshold_sensitivity,
+            aggregate_risk_reward_summary,
+            aggregate_setup_level_summary,
         )
         summary = (
             f"Calibration completed {aggregate.total_runs} runs with "
@@ -275,6 +285,8 @@ class CalibrationEngine:
             aggregate_skip_diagnostics=aggregate_skip_diagnostics,
             aggregate_decision_diagnostics=aggregate_decision_diagnostics,
             threshold_sensitivity=threshold_sensitivity,
+            aggregate_risk_reward_summary=aggregate_risk_reward_summary,
+            aggregate_setup_level_summary=aggregate_setup_level_summary,
             setup_performance=setup_performance,
             strategy_performance=strategy_performance,
             recommendations=recommendations,
@@ -442,6 +454,8 @@ def _recommendations(
     skip_diagnostics: SkipDiagnostics,
     decision_diagnostics: DecisionDiagnosticsSummary,
     threshold_sensitivity: tuple[ThresholdSensitivityResult, ...],
+    risk_reward_summary: RiskRewardSummary,
+    setup_level_summary: SetupLevelSummary,
 ) -> tuple[CalibrationRecommendation, ...]:
     recommendations: list[CalibrationRecommendation] = []
     record_count = len(records)
@@ -481,6 +495,13 @@ def _recommendations(
     )
     if sensitivity_recommendation is not None:
         recommendations.append(sensitivity_recommendation)
+
+    recommendations.extend(
+        _risk_and_level_recommendations(
+            risk_reward_summary,
+            setup_level_summary,
+        )
+    )
 
     if metrics.total_trades and metrics.win_rate < 35.0:
         recommendations.append(
@@ -770,6 +791,69 @@ def _threshold_sensitivity_recommendation(
         "low",
         "Keep the production threshold unchanged and inspect downstream execution blockers.",
     )
+
+
+def _risk_and_level_recommendations(
+    risk: RiskRewardSummary,
+    levels: SetupLevelSummary,
+) -> tuple[CalibrationRecommendation, ...]:
+    recommendations: list[CalibrationRecommendation] = []
+    if levels.total_records:
+        incomplete = levels.partial_level_records + levels.missing_level_records
+        if incomplete >= 3 and incomplete / levels.total_records >= 0.2:
+            recommendations.append(
+                CalibrationRecommendation(
+                    "setup_quality",
+                    f"{incomplete} setup records have partial or missing generated levels.",
+                    "high",
+                    "Review setup-level generation and its support/resistance inputs before changing confirmation rules.",
+                )
+            )
+        if levels.invalid_level_records >= 3:
+            recommendations.append(
+                CalibrationRecommendation(
+                    "market_structure",
+                    f"{levels.invalid_level_records} setup records have invalid level geometry.",
+                    "high",
+                    "Review support/resistance selection and directional level ordering.",
+                )
+            )
+
+    target_close = risk.by_failure_reason.get("target_too_close", 0)
+    stop_wide = risk.by_failure_reason.get("stop_too_wide", 0)
+    if target_close >= 3:
+        recommendations.append(
+            CalibrationRecommendation(
+                "risk_reward",
+                f"Target distance is too close in {target_close} records.",
+                "high" if target_close >= stop_wide else "medium",
+                "Review target selection against the next valid resistance or support objective.",
+            )
+        )
+    if stop_wide >= 3:
+        recommendations.append(
+            CalibrationRecommendation(
+                "risk_reward",
+                f"Stop distance is too wide in {stop_wide} records.",
+                "high" if stop_wide > target_close else "medium",
+                "Review structural stop placement and invalidation distance without tightening stops arbitrarily.",
+            )
+        )
+    near = risk.records_near_threshold_1_2_to_1_5
+    if (
+        near >= 3
+        and risk.complete_level_records
+        and near / risk.complete_level_records >= 0.2
+    ):
+        recommendations.append(
+            CalibrationRecommendation(
+                "risk_reward",
+                f"{near} complete records cluster between 1.2R and 1.5R.",
+                "medium",
+                "Run a controlled 1.2R–1.5R outcome sensitivity study before considering any minimum-R change.",
+            )
+        )
+    return tuple(recommendations)
 
 
 def calibration_limitations() -> tuple[str, ...]:

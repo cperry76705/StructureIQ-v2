@@ -3,6 +3,7 @@
 import re
 from collections import Counter
 from dataclasses import dataclass, field
+from statistics import median
 from typing import Callable, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -12,7 +13,11 @@ from core.analysis_engine import AnalysisEngine
 from core.decision_engine import DecisionDiagnostics
 from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
-from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
+from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
+from core.setup_engine import (
+    MINIMUM_ACCEPTABLE_RISK_REWARD,
+    SetupLevelDiagnostics,
+)
 from models.schemas import AnalysisRequest, AnalysisResponse
 
 
@@ -119,6 +124,8 @@ class BacktestTrade:
     actionability_status: ActionabilityStatus = "actionable"
     decision_diagnostics: DecisionDiagnostics | None = None
     execution_readiness: ExecutionReadinessSnapshot | None = None
+    risk_reward_diagnostics: RiskRewardDiagnostics | None = None
+    setup_level_diagnostics: SetupLevelDiagnostics | None = None
 
 
 @dataclass(frozen=True)
@@ -154,6 +161,39 @@ class DecisionDiagnosticsSummary:
 
 
 @dataclass(frozen=True)
+class RiskRewardSummary:
+    total_records: int
+    complete_level_records: int
+    missing_entry_count: int
+    missing_stop_count: int
+    missing_target_count: int
+    invalid_geometry_count: int
+    below_minimum_r_count: int
+    average_estimated_r: float
+    median_estimated_r: float
+    records_near_threshold_1_2_to_1_5: int
+    records_above_1_5: int
+    by_failure_reason: dict[str, int]
+    most_common_failure_reason: str | None
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
+class SetupLevelSummary:
+    total_records: int
+    complete_level_records: int
+    partial_level_records: int
+    missing_level_records: int
+    invalid_level_records: int
+    missing_entry_count: int
+    missing_stop_count: int
+    missing_target_count: int
+    by_level_quality: dict[str, int]
+    most_common_level_quality: str | None
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class BacktestResult:
     request: BacktestRequest
     trades: tuple[BacktestTrade, ...]
@@ -165,6 +205,12 @@ class BacktestResult:
     )
     decision_diagnostics_summary: DecisionDiagnosticsSummary = field(
         default_factory=lambda: _empty_decision_diagnostics_summary()
+    )
+    risk_reward_summary: RiskRewardSummary = field(
+        default_factory=lambda: _empty_risk_reward_summary()
+    )
+    setup_level_summary: SetupLevelSummary = field(
+        default_factory=lambda: _empty_setup_level_summary()
     )
 
 
@@ -233,6 +279,8 @@ class BacktestingEngine:
         decision_diagnostics_summary = calculate_decision_diagnostics_summary(
             trades
         )
+        risk_reward_summary = calculate_risk_reward_summary(trades)
+        setup_level_summary = calculate_setup_level_summary(trades)
         limitations = backtest_limitations()
         summary = (
             f"Backtest evaluated {len(trades)} analysis windows and produced "
@@ -248,6 +296,8 @@ class BacktestingEngine:
             limitations=limitations,
             skip_diagnostics=skip_diagnostics,
             decision_diagnostics_summary=decision_diagnostics_summary,
+            risk_reward_summary=risk_reward_summary,
+            setup_level_summary=setup_level_summary,
         )
 
 
@@ -268,6 +318,17 @@ def build_backtest_trade(
         analysis.decision, "decision_diagnostics", None
     )
     execution_readiness = _build_execution_readiness_snapshot(analysis)
+    setup_level_diagnostics = getattr(
+        analysis.setup_plan, "setup_level_diagnostics", None
+    )
+    risk_reward_diagnostics = diagnose_risk_reward(
+        direction=_enum_value(getattr(analysis.setup_plan, "direction", None))
+        or action,
+        entry_zone=getattr(plan, "entry_zone", None),
+        stop_loss=getattr(plan, "stop_loss", None),
+        target=getattr(plan, "target", None),
+        minimum_required_r=MINIMUM_ACCEPTABLE_RISK_REWARD,
+    )
     if plan.status != "actionable" or action not in {"buy", "sell"}:
         code, engine, detail = diagnose_non_actionable_analysis(analysis)
         return _skipped_trade(
@@ -284,6 +345,8 @@ def build_backtest_trade(
             actionability_status=_actionability_status(plan.status),
             decision_diagnostics=decision_diagnostics,
             execution_readiness=execution_readiness,
+            risk_reward_diagnostics=risk_reward_diagnostics,
+            setup_level_diagnostics=setup_level_diagnostics,
         )
 
     entry = parse_price_level(plan.entry_zone, midpoint=True)
@@ -310,6 +373,8 @@ def build_backtest_trade(
             actionability_status=_actionability_status(plan.status),
             decision_diagnostics=decision_diagnostics,
             execution_readiness=execution_readiness,
+            risk_reward_diagnostics=risk_reward_diagnostics,
+            setup_level_diagnostics=setup_level_diagnostics,
         )
 
     if plan.estimated_risk_reward is None:
@@ -335,6 +400,8 @@ def build_backtest_trade(
             actionability_status=_actionability_status(plan.status),
             decision_diagnostics=decision_diagnostics,
             execution_readiness=execution_readiness,
+            risk_reward_diagnostics=risk_reward_diagnostics,
+            setup_level_diagnostics=setup_level_diagnostics,
         )
     if plan.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
         return BacktestTrade(
@@ -359,6 +426,8 @@ def build_backtest_trade(
             actionability_status=_actionability_status(plan.status),
             decision_diagnostics=decision_diagnostics,
             execution_readiness=execution_readiness,
+            risk_reward_diagnostics=risk_reward_diagnostics,
+            setup_level_diagnostics=setup_level_diagnostics,
         )
 
     outcome, realized_r, reason = simulate_trade_outcome(
@@ -385,6 +454,8 @@ def build_backtest_trade(
         actionability_status="actionable",
         decision_diagnostics=decision_diagnostics,
         execution_readiness=execution_readiness,
+        risk_reward_diagnostics=risk_reward_diagnostics,
+        setup_level_diagnostics=setup_level_diagnostics,
     )
 
 
@@ -580,6 +651,94 @@ def calculate_decision_diagnostics_summary(
     )
 
 
+def calculate_risk_reward_summary(trades: list[BacktestTrade]) -> RiskRewardSummary:
+    diagnostics = [
+        trade.risk_reward_diagnostics
+        for trade in trades
+        if trade.risk_reward_diagnostics is not None
+    ]
+    complete = [item for item in diagnostics if item.has_entry and item.has_stop and item.has_target]
+    estimates = [item.estimated_r for item in diagnostics if item.estimated_r is not None]
+    failures = Counter(
+        item.failure_reason.value
+        for item in diagnostics
+        if item.failure_reason is not None
+    )
+    common = (
+        sorted(failures, key=lambda key: (-failures[key], key))[0]
+        if failures
+        else None
+    )
+    below = sum(
+        value < MINIMUM_ACCEPTABLE_RISK_REWARD for value in estimates
+    )
+    near = sum(1.2 <= value < 1.5 for value in estimates)
+    above = sum(value >= 1.5 for value in estimates)
+    average = round(sum(estimates) / len(estimates), 3) if estimates else 0.0
+    median_value = round(float(median(estimates)), 3) if estimates else 0.0
+    summary = (
+        f"{len(diagnostics)} records produced {len(complete)} complete level sets; "
+        f"{above} met 1.5R and {below} were below the minimum."
+    )
+    return RiskRewardSummary(
+        total_records=len(diagnostics),
+        complete_level_records=len(complete),
+        missing_entry_count=sum(not item.has_entry for item in diagnostics),
+        missing_stop_count=sum(not item.has_stop for item in diagnostics),
+        missing_target_count=sum(not item.has_target for item in diagnostics),
+        invalid_geometry_count=sum(
+            item.failure_reason is not None
+            and item.failure_reason.value == "invalid_price_geometry"
+            for item in diagnostics
+        ),
+        below_minimum_r_count=below,
+        average_estimated_r=average,
+        median_estimated_r=median_value,
+        records_near_threshold_1_2_to_1_5=near,
+        records_above_1_5=above,
+        by_failure_reason=dict(sorted(failures.items())),
+        most_common_failure_reason=common,
+        human_readable_summary=summary,
+    )
+
+
+def calculate_setup_level_summary(trades: list[BacktestTrade]) -> SetupLevelSummary:
+    diagnostics = [
+        trade.setup_level_diagnostics
+        for trade in trades
+        if trade.setup_level_diagnostics is not None
+    ]
+    qualities = Counter(item.level_quality for item in diagnostics)
+    common = (
+        sorted(qualities, key=lambda key: (-qualities[key], key))[0]
+        if qualities
+        else None
+    )
+    risk = [
+        trade.risk_reward_diagnostics
+        for trade in trades
+        if trade.setup_level_diagnostics is not None
+        and trade.risk_reward_diagnostics is not None
+    ]
+    return SetupLevelSummary(
+        total_records=len(diagnostics),
+        complete_level_records=qualities["complete"],
+        partial_level_records=qualities["partial"],
+        missing_level_records=qualities["missing"],
+        invalid_level_records=qualities["invalid"],
+        missing_entry_count=sum(not item.has_entry for item in risk),
+        missing_stop_count=sum(not item.has_stop for item in risk),
+        missing_target_count=sum(not item.has_target for item in risk),
+        by_level_quality=dict(sorted(qualities.items())),
+        most_common_level_quality=common,
+        human_readable_summary=(
+            f"{len(diagnostics)} setup snapshots include {qualities['complete']} complete, "
+            f"{qualities['partial']} partial, {qualities['missing']} missing, and "
+            f"{qualities['invalid']} invalid level sets."
+        ),
+    )
+
+
 def _empty_skip_diagnostics() -> SkipDiagnostics:
     return SkipDiagnostics(0, {}, {}, None, "No analysis records were skipped.")
 
@@ -593,6 +752,14 @@ def _empty_decision_diagnostics_summary() -> DecisionDiagnosticsSummary:
         None,
         "No Decision Engine diagnostic snapshots were available.",
     )
+
+
+def _empty_risk_reward_summary() -> RiskRewardSummary:
+    return RiskRewardSummary(0, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0, 0, {}, None, "No risk/reward diagnostics were available.")
+
+
+def _empty_setup_level_summary() -> SetupLevelSummary:
+    return SetupLevelSummary(0, 0, 0, 0, 0, 0, 0, 0, {}, None, "No setup-level diagnostics were available.")
 
 
 def _skipped_trade(
@@ -610,6 +777,8 @@ def _skipped_trade(
     actionability_status: ActionabilityStatus,
     decision_diagnostics: DecisionDiagnostics | None,
     execution_readiness: ExecutionReadinessSnapshot | None,
+    risk_reward_diagnostics: RiskRewardDiagnostics | None,
+    setup_level_diagnostics: SetupLevelDiagnostics | None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=timestamp,
@@ -630,6 +799,8 @@ def _skipped_trade(
         actionability_status=actionability_status,
         decision_diagnostics=decision_diagnostics,
         execution_readiness=execution_readiness,
+        risk_reward_diagnostics=risk_reward_diagnostics,
+        setup_level_diagnostics=setup_level_diagnostics,
     )
 
 

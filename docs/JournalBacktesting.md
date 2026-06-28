@@ -90,6 +90,16 @@ Version 1.3 limits Decision Engine blockers to directional confidence, structure
 
 Backtesting remains the final conservative validation layer. Even if an inconsistent upstream payload labels a plan actionable, the backtester skips it unless entry, stop, and target parse successfully and estimated risk/reward is present and at least `1.5R`.
 
+### Risk/Reward and Setup-Level Diagnostics
+
+Version 1.5 attaches `risk_reward_diagnostics` and `setup_level_diagnostics` to every backtest record, including skipped records.
+
+Risk diagnostics parse the entry-zone midpoint and validate bullish geometry (`stop < entry < target`) or bearish geometry (`target < entry < stop`). They report risk distance, reward distance, calculated R, the unchanged `1.5R` minimum, pass state, and a specific failure reason.
+
+Below-minimum valid geometry is classified as `stop_too_wide` when stop distance exceeds reward distance; otherwise it is `target_too_close` because the objective lacks enough extension. Missing entry, stop, and target remain distinct, and invalid directional ordering is never treated as a low-R setup.
+
+`BacktestResult.risk_reward_summary` aggregates completeness, missing fields, invalid geometry, below-minimum counts, average and median R, the `1.2R–1.5R` near-threshold band, records at or above `1.5R`, and failure reasons. `setup_level_summary` aggregates complete, partial, missing, and invalid setup-level snapshots.
+
 ### Outcome Rules
 
 - Target before stop produces a win and the estimated or level-derived reward multiple.

@@ -1,6 +1,6 @@
 """Rule-based setup qualification for StructureIQ v0.5."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Literal
 
@@ -8,6 +8,7 @@ from core.decision_engine import DecisionAction, DecisionResult
 from core.market_data import Candle
 from core.market_structure import MarketStructureResult
 from core.multi_timeframe import MultiTimeframeResult, TimeframeAlignment
+from core.risk import diagnose_risk_reward
 
 
 MINIMUM_ACCEPTABLE_RISK_REWARD = 1.5
@@ -17,6 +18,7 @@ SetupDirection = Literal["bullish", "bearish", "neutral"]
 ConditionImportance = Literal["required", "recommended", "optional"]
 InvalidationSeverity = Literal["soft", "hard"]
 CompressionDirection = Literal["bullish", "bearish"]
+LevelQuality = Literal["complete", "partial", "missing", "invalid"]
 
 
 class SetupType(str, Enum):
@@ -56,6 +58,21 @@ class InvalidationRule:
 
 
 @dataclass(frozen=True)
+class SetupLevelDiagnostics:
+    setup_type: str
+    setup_status: str
+    entry_zone_source: str
+    stop_loss_source: str
+    target_source: str
+    latest_swing_high: float | None
+    latest_swing_low: float | None
+    nearest_support: float | None
+    nearest_resistance: float | None
+    level_quality: LevelQuality
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class SetupResult:
     setup_type: SetupType
     setup_status: SetupStatus
@@ -70,6 +87,9 @@ class SetupResult:
     supporting_evidence: tuple[str, ...]
     warning_notes: tuple[str, ...]
     human_readable_summary: str
+    setup_level_diagnostics: SetupLevelDiagnostics = field(
+        default_factory=lambda: _empty_setup_level_diagnostics()
+    )
 
 
 @dataclass(frozen=True)
@@ -104,16 +124,27 @@ class SetupEngine:
         compression_detected: bool = False,
         compression_breakout_direction: CompressionDirection | None = None,
     ) -> SetupResult:
+        decision_direction = _decision_direction(decision, multi_timeframe)
         if decision.action is DecisionAction.AVOID:
             return _no_setup(
                 "No valid setup is considered because the Decision Engine returned avoid.",
                 warning="Decision confidence is insufficient for setup qualification.",
+                setup_level_diagnostics=_build_setup_level_diagnostics(
+                    setup_type=SetupType.NO_VALID_SETUP,
+                    setup_status=SetupStatus.NO_SETUP,
+                    direction=decision_direction,
+                    structure=market_structure,
+                    support_zone=support_zone,
+                    resistance_zone=resistance_zone,
+                    entry_zone=entry_zone,
+                    stop_loss=stop_loss,
+                    target=target,
+                ),
             )
 
         tolerance = max(abs(current_price) * 0.005, 1e-9)
         near_support = _near_zone(current_price, support_zone, tolerance)
         near_resistance = _near_zone(current_price, resistance_zone, tolerance)
-        decision_direction = _decision_direction(decision, multi_timeframe)
         candidate = _select_candidate(
             decision_direction=decision_direction,
             structure=market_structure,
@@ -129,6 +160,17 @@ class SetupEngine:
             return _no_setup(
                 "No valid setup matches the current decision, structure, and price location.",
                 warning="Wait for price to reach a structural level or confirm a defined pattern.",
+                setup_level_diagnostics=_build_setup_level_diagnostics(
+                    setup_type=SetupType.NO_VALID_SETUP,
+                    setup_status=SetupStatus.NO_SETUP,
+                    direction=decision_direction,
+                    structure=market_structure,
+                    support_zone=support_zone,
+                    resistance_zone=resistance_zone,
+                    entry_zone=entry_zone,
+                    stop_loss=stop_loss,
+                    target=target,
+                ),
             )
 
         conditions = _build_conditions(
@@ -177,6 +219,17 @@ class SetupEngine:
             supporting_evidence=candidate.evidence,
             warning_notes=tuple(warnings),
             human_readable_summary=_build_summary(candidate, status),
+            setup_level_diagnostics=_build_setup_level_diagnostics(
+                setup_type=candidate.setup_type,
+                setup_status=status,
+                direction=candidate.direction,
+                structure=market_structure,
+                support_zone=support_zone,
+                resistance_zone=resistance_zone,
+                entry_zone=entry_zone,
+                stop_loss=stop_loss,
+                target=target,
+            ),
         )
 
 
@@ -543,7 +596,98 @@ def _build_summary(candidate: _SetupCandidate, status: SetupStatus) -> str:
     return f"A {name} setup is waiting for required confirmation before entry."
 
 
-def _no_setup(message: str, *, warning: str) -> SetupResult:
+def _build_setup_level_diagnostics(
+    *,
+    setup_type: SetupType,
+    setup_status: SetupStatus,
+    direction: SetupDirection,
+    structure: MarketStructureResult,
+    support_zone: tuple[float, float],
+    resistance_zone: tuple[float, float],
+    entry_zone: str | None,
+    stop_loss: str | None,
+    target: str | None,
+) -> SetupLevelDiagnostics:
+    available = sum(bool(level and level.strip()) for level in (entry_zone, stop_loss, target))
+    risk_diagnostics = diagnose_risk_reward(
+        direction=direction,
+        entry_zone=entry_zone,
+        stop_loss=stop_loss,
+        target=target,
+        minimum_required_r=MINIMUM_ACCEPTABLE_RISK_REWARD,
+    )
+    if available == 0:
+        quality: LevelQuality = "missing"
+    elif available < 3:
+        quality = "partial"
+    elif risk_diagnostics.failure_reason and risk_diagnostics.failure_reason.value in {
+        "invalid_direction",
+        "invalid_price_geometry",
+    }:
+        quality = "invalid"
+    else:
+        quality = "complete"
+
+    if direction == "bullish":
+        sources = ("support_zone", "support_zone_extension", "resistance_zone")
+    elif direction == "bearish":
+        sources = ("resistance_zone", "resistance_zone_extension", "support_zone")
+    else:
+        sources = ("unresolved_direction",) * 3
+    sources = tuple(
+        source if level and level.strip() else "unavailable"
+        for source, level in zip(sources, (entry_zone, stop_loss, target))
+    )
+    return SetupLevelDiagnostics(
+        setup_type=setup_type.value,
+        setup_status=setup_status.value,
+        entry_zone_source=sources[0],
+        stop_loss_source=sources[1],
+        target_source=sources[2],
+        latest_swing_high=(
+            structure.latest_swing_high.price
+            if structure.latest_swing_high is not None
+            else None
+        ),
+        latest_swing_low=(
+            structure.latest_swing_low.price
+            if structure.latest_swing_low is not None
+            else None
+        ),
+        nearest_support=round(sum(support_zone) / 2.0, 6),
+        nearest_resistance=round(sum(resistance_zone) / 2.0, 6),
+        level_quality=quality,
+        human_readable_summary=(
+            f"{setup_type.value.replace('_', ' ').title()} levels are {quality}; "
+            f"entry comes from {sources[0].replace('_', ' ')}, stop from "
+            f"{sources[1].replace('_', ' ')}, and target from "
+            f"{sources[2].replace('_', ' ')}."
+        ),
+    )
+
+
+def _empty_setup_level_diagnostics() -> SetupLevelDiagnostics:
+    return SetupLevelDiagnostics(
+        setup_type=SetupType.NO_VALID_SETUP.value,
+        setup_status=SetupStatus.NO_SETUP.value,
+        entry_zone_source="unavailable",
+        stop_loss_source="unavailable",
+        target_source="unavailable",
+        latest_swing_high=None,
+        latest_swing_low=None,
+        nearest_support=None,
+        nearest_resistance=None,
+        level_quality="missing",
+        human_readable_summary="Setup level diagnostics were not supplied.",
+    )
+
+
+def _no_setup(
+    message: str,
+    *,
+    warning: str,
+    setup_level_diagnostics: SetupLevelDiagnostics | None = None,
+) -> SetupResult:
     return SetupResult(
         setup_type=SetupType.NO_VALID_SETUP,
         setup_status=SetupStatus.NO_SETUP,
@@ -558,4 +702,7 @@ def _no_setup(message: str, *, warning: str) -> SetupResult:
         supporting_evidence=(),
         warning_notes=(warning,),
         human_readable_summary=message,
+        setup_level_diagnostics=(
+            setup_level_diagnostics or _empty_setup_level_diagnostics()
+        ),
     )

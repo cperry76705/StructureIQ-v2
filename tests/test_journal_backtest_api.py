@@ -111,4 +111,8 @@ def test_post_backtest_works() -> None:
     assert response.json()["trades"][0]["skip_reason_code"]
     assert response.json()["trades"][0]["blocking_engine"]
     assert response.json()["trades"][0]["decision_diagnostics"]
+    assert response.json()["trades"][0]["risk_reward_diagnostics"]
+    assert response.json()["trades"][0]["setup_level_diagnostics"]
     assert response.json()["decision_diagnostics_summary"]["by_blocked_gate"]
+    assert response.json()["risk_reward_summary"]["total_records"] == 1
+    assert response.json()["setup_level_summary"]["total_records"] == 1

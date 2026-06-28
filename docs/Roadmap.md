@@ -183,6 +183,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** calibration can show whether confidence is the binding constraint or merely the first visible gate. Lower-threshold records remain non-candidates when their original execution plans lack setup confirmation, levels, risk quality, or strategy alignment.
 
+## Version 1.5 — Risk/Reward and Setup Level Diagnostics
+
+- Validate bullish and bearish entry/stop/target geometry for every analysis window.
+- Classify missing fields, invalid geometry, wide stops, close targets, and below-minimum R.
+- Retain setup-level sources, swings, and nearest structural zones.
+- Aggregate average, median, near-threshold, and passing R distributions.
+- Recommend level calculation, support/resistance, stop, target, threshold-study, or confirmation-rule review.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can identify why execution readiness fails and choose the correct controlled experiment without reducing the `1.5R` minimum or relaxing setup confirmation.
+
 ## Beyond Version 1.0
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

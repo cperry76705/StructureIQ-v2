@@ -117,7 +117,7 @@ The response preserves established top-level fields and adds typed internal bloc
 
 ## Roadmap and Release Information
 
-Version `1.4.0` adds a read-only Decision Threshold Sensitivity Study across confidence levels 50–70. It separates directional eligibility from observed execution readiness without changing production decisions or thresholds. Future work focuses on out-of-sample validation of any candidate policy, data-quality controls, persistence options, observability, and client experiences—not autonomous execution.
+Version `1.5.0` adds setup-level provenance and detailed risk/reward geometry diagnostics. Backtests and calibration now distinguish missing levels, invalid directional geometry, wide stops, close targets, and near-threshold R:R clusters without changing execution rules. Future work focuses on controlled level-generation experiments, out-of-sample validation, data quality, and client experiences—not autonomous execution.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

@@ -129,6 +129,9 @@ def test_bullish_bos_retest_setup() -> None:
 
     assert result.setup_type is SetupType.BULLISH_BOS_RETEST
     assert result.setup_status is SetupStatus.CONFIRMED
+    assert result.setup_level_diagnostics.level_quality == "complete"
+    assert result.setup_level_diagnostics.entry_zone_source == "support_zone"
+    assert result.setup_level_diagnostics.latest_swing_low == 90.0
 
 
 def test_missing_risk_levels_cannot_confirm_setup() -> None:
@@ -141,6 +144,8 @@ def test_missing_risk_levels_cannot_confirm_setup() -> None:
     )
 
     assert result.setup_status is SetupStatus.WAITING_FOR_CONFIRMATION
+    assert result.setup_level_diagnostics.level_quality == "partial"
+    assert result.setup_level_diagnostics.target_source == "unavailable"
     level_condition = next(
         condition for condition in result.entry_conditions
         if condition.condition == "Entry, stop loss, and target levels are available."

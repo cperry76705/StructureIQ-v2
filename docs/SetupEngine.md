@@ -158,6 +158,18 @@ A setup is confirmed only when the Decision Engine action permits its direction,
 
 Version 1.3 makes this engine the primary owner of execution-plan readiness. A directional buy or sell from the Decision Engine is necessary but not sufficient for setup confirmation.
 
+## v1.5 Setup-Level Diagnostics
+
+Every engine-generated setup now includes `setup_level_diagnostics`. It records the source of entry, stop, and target; latest confirmed swing levels; nearest support and resistance; and whether the level set is complete, partial, missing, or invalid.
+
+Current source labels reflect the deterministic level builder:
+
+- Bullish entry uses the support zone, stop uses a support-zone extension, and target uses resistance.
+- Bearish entry uses the resistance zone, stop uses a resistance-zone extension, and target uses support.
+- Missing fields are labeled `unavailable`; unresolved directional context is explicit.
+
+Level quality describes availability and geometry, not setup profitability. A complete level set can still fail the `1.5R` requirement, while an invalid set has directionally inconsistent price ordering.
+
 Compression is approximated from contraction in recent candle ranges relative to a prior baseline. A compression candidate remains developing until price closes beyond the preceding compression range.
 
 The current BOS-retest implementation uses the relevant support or resistance zone as a proxy for the broken level because the Market Structure Engine does not yet expose a dedicated persisted BOS level. This assumption is explicit and should be replaced when structural-level provenance is expanded.

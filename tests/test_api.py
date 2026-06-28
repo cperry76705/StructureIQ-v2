@@ -117,6 +117,20 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "supporting_evidence",
         "warning_notes",
         "human_readable_summary",
+        "setup_level_diagnostics",
+    }
+    assert set(payload["setup_plan"]["setup_level_diagnostics"]) == {
+        "setup_type",
+        "setup_status",
+        "entry_zone_source",
+        "stop_loss_source",
+        "target_source",
+        "latest_swing_high",
+        "latest_swing_low",
+        "nearest_support",
+        "nearest_resistance",
+        "level_quality",
+        "human_readable_summary",
     }
     assert payload["setup"] == payload["setup_plan"]["setup_type"]
     assert set(payload["strategy"]) == {

@@ -96,6 +96,21 @@ A record is directionally eligible when its raw decision score reaches the studi
 
 Execution-ready is intentionally independent of the tested threshold; `estimated_trade_candidates` is the intersection that passes both tests. Because downstream snapshots retain their original state, this study is conservative and does not assume a waiting setup would automatically become confirmed after a hypothetical decision change.
 
+## Aggregate Risk/Reward and Level Diagnostics
+
+Version 1.5 combines every backtest record into `aggregate_risk_reward_summary` and `aggregate_setup_level_summary`. Diagnostics run for skipped records, so the distribution describes the full calibration sample rather than only executed trades.
+
+The risk summary includes missing entry, stop, and target counts; invalid geometry; below-minimum R; average and median calculated R; records between `1.2R` and `1.5R`; records at or above `1.5R`; counts by failure reason; and the most common failure.
+
+Recommendations map dominant evidence to the owning component:
+
+- Missing or partial levels: level generation and support/resistance inputs.
+- Invalid geometry: support/resistance selection and directional ordering.
+- `target_too_close`: target-selection review.
+- `stop_too_wide`: structural stop-placement review.
+- Material `1.2R–1.5R` clustering: a controlled minimum-R sensitivity study, not an automatic threshold reduction.
+- Complete risk plans that remain unconfirmed: setup-confirmation rule review.
+
 ## Setup and Strategy Performance
 
 Closed and skipped records are grouped by `setup_type` and `strategy_type`. Each group reports record count, closed trade count, skipped count, outcomes, win rate, average R, total R, and profit factor.

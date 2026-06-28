@@ -2,6 +2,33 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.5.0 — Risk/Reward and Setup Level Diagnostics — 2026-06-28
+
+### Added
+
+- Typed `RiskRewardDiagnostics`, failure reasons, and deterministic bullish/bearish geometry validation.
+- Typed `SetupLevelDiagnostics` with level provenance, structural context, and level quality.
+- Per-record risk/reward and setup-level diagnostics for skipped and simulated backtest records.
+- Backtest and calibration summaries for missing levels, invalid geometry, below-minimum R, average and median R, near-threshold clustering, passing R, and dominant failures.
+- Target-selection, stop-placement, support/resistance, level-generation, and controlled minimum-R study recommendations.
+- Focused geometry, distribution, API, setup provenance, and aggregation tests.
+
+### Compatibility
+
+- `/analysis` request and existing response fields remain unchanged.
+- Backtest execution behavior, setup confirmation, and the `1.5R` minimum remain unchanged.
+- New API fields are additive and diagnostics run on skipped records.
+- No dashboard, broker execution, live trading, or automatic tuning was added.
+
+### Changed
+
+- Application and OpenAPI version are now `1.5.0`.
+
+### Verification
+
+- 155 automated tests pass together.
+- Tests cover bullish and bearish passing geometry, each missing level, invalid geometry, close targets, wide stops, near-threshold distributions, API fields, and calibration aggregation.
+
 ## Version 1.4.0 — Decision Threshold Sensitivity Study — 2026-06-27
 
 ### Added

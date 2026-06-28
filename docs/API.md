@@ -168,7 +168,20 @@ Status: `200 OK`
     "warning_notes": [
       "One or more required entry conditions remain unmet."
     ],
-    "human_readable_summary": "A bullish pullback continuation setup is waiting for required confirmation before entry."
+    "human_readable_summary": "A bullish pullback continuation setup is waiting for required confirmation before entry.",
+    "setup_level_diagnostics": {
+      "setup_type": "bullish_pullback_continuation",
+      "setup_status": "waiting_for_confirmation",
+      "entry_zone_source": "support_zone",
+      "stop_loss_source": "support_zone_extension",
+      "target_source": "resistance_zone",
+      "latest_swing_high": 1.138,
+      "latest_swing_low": 1.1338,
+      "nearest_support": 1.1353,
+      "nearest_resistance": 1.1395,
+      "level_quality": "complete",
+      "human_readable_summary": "Bullish pullback continuation levels are complete."
+    }
   },
   "strategy": {
     "preferred_strategy": "pullback_continuation",
@@ -442,6 +455,8 @@ Each record also snapshots `decision_diagnostics` when supplied by the analysis 
 
 In v1.3, only directional confidence, structure alignment, and multi-timeframe alignment are required Decision Engine gates. `execution_readiness`, `risk_plan_available`, and `risk_plan_quality` are non-required decision observations. Setup and Backtesting enforce complete levels and the `1.5R` execution minimum.
 
+Version 1.5 adds per-record `risk_reward_diagnostics` and `setup_level_diagnostics`, plus result-level `risk_reward_summary` and `setup_level_summary`. These are observational additions and do not change skipped or simulated outcomes.
+
 ```json
 {
   "skip_diagnostics": {
@@ -558,6 +573,35 @@ Response shape:
       "human_readable_summary": "At 50 confidence, 120 records are directionally eligible, 8 have execution-ready snapshots, and 8 pass both."
     }
   ],
+  "aggregate_risk_reward_summary": {
+    "total_records": 200,
+    "complete_level_records": 176,
+    "missing_entry_count": 8,
+    "missing_stop_count": 10,
+    "missing_target_count": 6,
+    "invalid_geometry_count": 4,
+    "below_minimum_r_count": 112,
+    "average_estimated_r": 1.18,
+    "median_estimated_r": 1.21,
+    "records_near_threshold_1_2_to_1_5": 37,
+    "records_above_1_5": 60,
+    "by_failure_reason": {"target_too_close": 70, "stop_too_wide": 42},
+    "most_common_failure_reason": "target_too_close",
+    "human_readable_summary": "200 records produced 176 complete level sets; 60 met 1.5R and 112 were below the minimum."
+  },
+  "aggregate_setup_level_summary": {
+    "total_records": 200,
+    "complete_level_records": 176,
+    "partial_level_records": 18,
+    "missing_level_records": 6,
+    "invalid_level_records": 4,
+    "missing_entry_count": 8,
+    "missing_stop_count": 10,
+    "missing_target_count": 6,
+    "by_level_quality": {"complete": 176, "invalid": 4, "missing": 6, "partial": 18},
+    "most_common_level_quality": "complete",
+    "human_readable_summary": "200 setup snapshots include 176 complete, 18 partial, 6 missing, and 4 invalid level sets."
+  },
   "setup_performance": [],
   "strategy_performance": [],
   "recommendations": [
@@ -578,6 +622,8 @@ Response shape:
 Calibration combinations are capped at 100 per request. Recommendations use `decision_threshold`, `setup_quality`, `strategy_selection`, `risk_reward`, `market_structure`, or `data_quality` categories with low, medium, or high severity.
 
 `threshold_sensitivity` always evaluates `[50, 55, 60, 65, 70]` without changing production decisions. Counts use existing backtest snapshots; `estimated_trade_candidates` is directional eligibility intersected with observed execution readiness, not a simulated outcome or profitability estimate.
+
+Risk/reward summaries calculate R from parsed geometry rather than trusting a supplied ratio. The report preserves the current `1.5R` minimum and is intended to identify the next controlled level-generation or threshold experiment.
 
 Calibration is deterministic for the same data and engine versions. It observes historical behavior and suggests areas to inspect; it does not optimize or change application logic automatically.
 
