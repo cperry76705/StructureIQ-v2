@@ -124,10 +124,10 @@ Status: `200 OK`
       "final_confidence": 68.0,
       "intended_direction": "bullish",
       "confidence_band": "wait",
-      "blocked_by": ["confidence_threshold"],
+      "blocked_by": ["directional_confidence"],
       "gate_results": [
         {
-          "gate_name": "confidence_threshold",
+          "gate_name": "directional_confidence",
           "passed": false,
           "required": true,
           "actual_value": 68.0,
@@ -440,6 +440,8 @@ Skipped trade records add `skip_reason_code`, `skip_reason_detail`, `blocking_en
 
 Each record also snapshots `decision_diagnostics` when supplied by the analysis pipeline. The result-level `decision_diagnostics_summary` contains `by_confidence_band`, `by_blocked_gate`, `average_confidence`, `average_raw_score`, `most_common_blocked_gate`, and a readable summary.
 
+In v1.3, only directional confidence, structure alignment, and multi-timeframe alignment are required Decision Engine gates. `execution_readiness`, `risk_plan_available`, and `risk_plan_quality` are non-required decision observations. Setup and Backtesting enforce complete levels and the `1.5R` execution minimum.
+
 ```json
 {
   "skip_diagnostics": {
@@ -535,11 +537,11 @@ Response shape:
   },
   "aggregate_decision_diagnostics": {
     "by_confidence_band": {"avoid": 8, "wait": 32},
-    "by_blocked_gate": {"confidence_threshold": 40},
+    "by_blocked_gate": {"directional_confidence": 40},
     "average_confidence": 61.8,
     "average_raw_score": 61.77,
-    "most_common_blocked_gate": "confidence_threshold",
-    "human_readable_summary": "40 decision snapshots averaged 61.8/100; the most common blocked gate was confidence threshold (40 records)."
+    "most_common_blocked_gate": "directional_confidence",
+    "human_readable_summary": "40 decision snapshots averaged 61.8/100; the most common blocked gate was directional confidence (40 records)."
   },
   "setup_performance": [],
   "strategy_performance": [],

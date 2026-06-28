@@ -93,7 +93,7 @@ General validation rules:
 - Buy decisions can qualify only bullish setups; sell decisions can qualify only bearish setups.
 - Conflicting timeframe alignment prevents qualification unless a future setup definition explicitly and safely supports countertrend behavior.
 - A liquidity sweep is not treated as BOS.
-- Missing entry, invalidation, or risk information prevents full qualification.
+- Missing entry zone, stop loss, target, or risk/reward information prevents full qualification.
 - Setup rules use completed candles and confirmed structural levels.
 - Multiple candidates may be returned, but each must be evaluated independently before strategy comparison.
 
@@ -154,7 +154,9 @@ The v0.5 implementation lives in `core/setup_engine.py` and supports:
 
 Candidate selection prioritizes liquidity sweeps, range-location setups, directional BOS retests, directional pullbacks, and then compression candidates. Every candidate remains constrained by the Decision Engine direction.
 
-A setup is confirmed only when the Decision Engine action permits its direction, its pattern and price-location rules are present, the current timeframe confirms, structural invalidation holds, and estimated risk/reward is at least `1.5R`. A `wait` decision can produce only developing or waiting status. An `avoid` decision always produces `no_valid_setup`.
+A setup is confirmed only when the Decision Engine action permits its direction, its pattern and price-location rules are present, the current timeframe confirms, entry zone, stop loss, and target are all available, structural invalidation holds, and estimated risk/reward is at least `1.5R`. Missing levels or insufficient risk quality keep the setup `developing` or `waiting_for_confirmation`. A `wait` decision can produce only developing or waiting status. An `avoid` decision always produces `no_valid_setup`.
+
+Version 1.3 makes this engine the primary owner of execution-plan readiness. A directional buy or sell from the Decision Engine is necessary but not sufficient for setup confirmation.
 
 Compression is approximated from contraction in recent candle ranges relative to a prior baseline. A compression candidate remains developing until price closes beyond the preceding compression range.
 

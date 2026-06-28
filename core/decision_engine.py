@@ -180,7 +180,6 @@ class DecisionEngine:
             market_structure=market_structure,
             multi_timeframe=multi_timeframe,
             current_timeframe_confirmed=current_timeframe_confirmed,
-            risk_reward_ratio=risk_reward_ratio,
         )
         invalidation_notes = _build_invalidation_notes(
             direction, market_structure
@@ -434,11 +433,18 @@ def _score_risk(
     category: EvidenceCategory = "risk_reward_volatility"
     notes: list[str] = []
     if risk_reward_ratio is None:
-        reward_quality = 0.1
+        reward_quality = 0.45
         negative.append(
-            EvidenceItem(category, "Risk/reward could not be established.", -7.2)
+            EvidenceItem(
+                category,
+                "Risk/reward is not yet available from a finalized execution plan.",
+                -3.0,
+            )
         )
-        notes.append("Wait for valid entry, invalidation, and target levels before taking risk.")
+        notes.append(
+            "Execution remains unavailable until entry, invalidation, and target "
+            "levels define risk/reward."
+        )
     elif risk_reward_ratio >= 2.0:
         reward_quality = 1.0
         positive.append(
@@ -501,7 +507,6 @@ def _select_action(
     market_structure: MarketStructureResult,
     multi_timeframe: MultiTimeframeResult,
     current_timeframe_confirmed: bool,
-    risk_reward_ratio: float | None,
 ) -> DecisionAction:
     if confidence < 50.0:
         return DecisionAction.AVOID
@@ -528,8 +533,6 @@ def _select_action(
         and current_timeframe_confirmed
     )
     if not aligned and not mixed_confirmed:
-        return DecisionAction.WAIT
-    if risk_reward_ratio is None or risk_reward_ratio < 1.0:
         return DecisionAction.WAIT
     return DecisionAction.BUY if direction == "bullish" else DecisionAction.SELL
 
@@ -586,7 +589,7 @@ def _build_decision_diagnostics(
     )
     risk_available = risk_reward_ratio is not None
     risk_minimum_passed = (
-        risk_reward_ratio is not None and risk_reward_ratio >= 1.0
+        risk_reward_ratio is not None and risk_reward_ratio >= 1.5
     )
     positive_impact = round(sum(max(item.impact, 0.0) for item in positive), 1)
     negative_impact = round(abs(sum(min(item.impact, 0.0) for item in negative)), 1)
@@ -604,7 +607,7 @@ def _build_decision_diagnostics(
     )
     gate_results = (
         GateResult(
-            "confidence_threshold",
+            "directional_confidence",
             confidence_passed,
             True,
             final_confidence,
@@ -643,35 +646,37 @@ def _build_decision_diagnostics(
             else "Timeframes are not directionally aligned, or mixed context lacks confirmation.",
         ),
         GateResult(
-            "setup_confirmation",
-            True,
+            "execution_readiness",
             False,
-            "not_available_at_decision_time",
-            "evaluated downstream by Setup Engine",
+            False,
+            "not_evaluated_at_decision_time",
+            "evaluated by Setup Engine and Backtester",
             0.0,
             None,
         ),
         GateResult(
-            "risk_reward_available",
+            "risk_plan_available",
             risk_available,
-            True,
+            False,
             risk_reward_ratio,
-            "available",
-            0.0 if risk_available else -10.0,
-            None if risk_available else "Risk/reward could not be established.",
+            "available before execution",
+            0.0 if risk_available else -3.0,
+            None
+            if risk_available
+            else "Execution risk levels are not yet available; Setup Engine must resolve them.",
         ),
         GateResult(
-            "risk_reward_minimum",
+            "risk_plan_quality",
             risk_minimum_passed,
-            True,
+            False,
             risk_reward_ratio,
-            ">= 1.0",
+            ">= 1.5 for actionable setup",
             0.0
             if risk_minimum_passed
-            else round(min(0.0, (risk_reward_ratio or 0.0) - 1.0), 1),
+            else round(min(0.0, (risk_reward_ratio or 0.0) - 1.5), 1),
             None
             if risk_minimum_passed
-            else "Risk/reward is below the existing Decision Engine minimum.",
+            else "Execution risk/reward is missing or below the Setup Engine minimum.",
         ),
         GateResult(
             "conflicting_evidence",

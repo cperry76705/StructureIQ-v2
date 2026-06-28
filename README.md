@@ -117,7 +117,7 @@ The response preserves established top-level fields and adds typed internal bloc
 
 ## Roadmap and Release Information
 
-Version `1.2.0` extends the Stable MVP with Decision Engine sensitivity reporting: analysis, backtests, and calibration now expose which existing decision gates block directional action without loosening thresholds. Future work focuses on controlled sensitivity studies, data-quality controls, stronger out-of-sample validation, persistence options, observability, and client experiences—not autonomous execution.
+Version `1.3.0` separates directional confidence from execution readiness: risk/reward remains weighted evidence, while Setup and Backtesting own the final level and minimum-R:R gates. Diagnostics expose that ownership without making execution less conservative. Future work focuses on controlled sensitivity studies, data-quality controls, stronger out-of-sample validation, persistence options, observability, and client experiences—not autonomous execution.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

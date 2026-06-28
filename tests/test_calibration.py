@@ -177,10 +177,10 @@ def test_calibration_aggregates_blocked_decision_gates_across_runs() -> None:
         final_confidence=61.0,
         intended_direction="bullish",
         confidence_band="wait",
-        blocked_by=("confidence_threshold",),
+        blocked_by=("directional_confidence",),
         gate_results=(
             GateResult(
-                "confidence_threshold",
+                "directional_confidence",
                 False,
                 True,
                 61.0,
@@ -207,10 +207,10 @@ def test_calibration_aggregates_blocked_decision_gates_across_runs() -> None:
     )
 
     aggregate = result.aggregate_decision_diagnostics
-    assert aggregate.by_blocked_gate == {"confidence_threshold": 2}
-    assert aggregate.most_common_blocked_gate == "confidence_threshold"
+    assert aggregate.by_blocked_gate == {"directional_confidence": 2}
+    assert aggregate.most_common_blocked_gate == "directional_confidence"
     assert any(
-        "confidence threshold" in recommendation.message.lower()
+        "directional confidence" in recommendation.message.lower()
         for recommendation in result.recommendations
     )
 

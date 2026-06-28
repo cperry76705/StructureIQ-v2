@@ -2,6 +2,29 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.3.0 — Risk/Reward Calibration and Gate Refinement — 2026-06-27
+
+### Changed
+
+- Decision Engine risk/reward remains weighted evidence but missing or low ratios no longer independently veto directional buy/sell output.
+- Missing risk/reward applies a moderate confidence penalty and execution warning rather than dominating the decision score.
+- Decision diagnostics now separate required `directional_confidence`, structure, and timeframe gates from non-required execution and risk-plan observations.
+- Setup confirmation now explicitly requires entry zone, stop loss, target, and at least `1.5R`.
+- Backtesting independently rejects missing, malformed, or sub-`1.5R` execution plans.
+- Calibration recommendations distinguish directional confidence research from Setup/risk execution bottlenecks.
+- Application and OpenAPI version are now `1.3.0`.
+
+### Compatibility
+
+- `/analysis` request and existing response fields remain unchanged.
+- Risk/reward logic was retained and moved to the engine layer that owns execution readiness.
+- No dashboard, broker execution, live trading, or automatic threshold tuning was added.
+
+### Verification
+
+- 143 automated tests pass together.
+- Regression coverage confirms missing risk plans remain non-executable while no longer acting as automatic directional vetoes.
+
 ## Version 1.2.0 — Decision Engine Sensitivity Report — 2026-06-27
 
 ### Added

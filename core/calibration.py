@@ -538,6 +538,13 @@ def _decision_diagnostic_recommendation(
     recommendations: dict[
         str, tuple[RecommendationCategory, RecommendationSeverity, str]
     ] = {
+        "directional_confidence": (
+            "decision_threshold",
+            "high",
+            "Inspect the raw-score and confidence-band distribution, especially the "
+            "distance below 70, before testing any confidence threshold change.",
+        ),
+        # Compatibility for diagnostic snapshots recorded before v1.3.
         "confidence_threshold": (
             "decision_threshold",
             "high",
@@ -556,16 +563,16 @@ def _decision_diagnostic_recommendation(
             "Break alignment failures into mixed, conflicting, and unclear states and "
             "measure whether current-timeframe confirmation changes outcomes.",
         ),
-        "risk_reward_available": (
+        "risk_plan_available": (
             "risk_reward",
             "high",
             "Inspect support, resistance, entry, and invalidation derivation when "
             "risk/reward cannot be calculated.",
         ),
-        "risk_reward_minimum": (
+        "risk_plan_quality": (
             "risk_reward",
             "medium",
-            "Measure the risk/reward distribution around the existing 1.0 Decision "
+            "Measure the risk/reward distribution around the existing 1.5 Setup "
             "Engine minimum before running a sensitivity experiment.",
         ),
     }

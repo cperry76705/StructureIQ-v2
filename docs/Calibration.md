@@ -77,7 +77,9 @@ The breakdown answers two distinct questions:
 
 `CalibrationResult.aggregate_decision_diagnostics` combines Decision Engine snapshots from all backtest windows. It reports counts by confidence band and failed required gate, average final confidence, average raw score, the most common blocked gate, and a readable summary.
 
-Failed-gate counts can overlap because one decision may fail several required conditions. The report therefore distinguishes a low composite score from structural disagreement, timeframe conflict, unavailable risk/reward, or a sub-1.0 Decision Engine ratio. Setup confirmation is explicitly downstream and is not treated as a Decision Engine blocker.
+Failed-gate counts can overlap because one decision may fail several required conditions. In v1.3 the Decision Engine aggregation covers directional confidence, structure agreement, and timeframe agreement. Risk-plan availability and quality remain visible as non-required gate observations, while final failures appear in engine-level skip diagnostics under Setup or risk ownership.
+
+This separation makes bottleneck movement measurable: if directional evidence clears but execution data is incomplete, `by_blocking_engine` should shift from `decision_engine` toward `setup_engine` or `risk_engine`. Recommendations then distinguish confidence-distribution research from level derivation or execution-quality work.
 
 ## Setup and Strategy Performance
 

@@ -94,6 +94,9 @@ def _analyze(
     price: float,
     confirmed: bool = True,
     risk_reward: float | None = 2.0,
+    entry_zone: str | None = "94-96",
+    stop_loss: str | None = "90",
+    target: str | None = "105",
     compression: bool = False,
     breakout_direction: str | None = None,
 ):
@@ -106,9 +109,9 @@ def _analyze(
         resistance_zone=(104.0, 106.0),
         current_timeframe_confirmed=confirmed,
         estimated_risk_reward=risk_reward,
-        entry_zone="94-96",
-        stop_loss="90",
-        target="105",
+        entry_zone=entry_zone,
+        stop_loss=stop_loss,
+        target=target,
         compression_detected=compression,
         compression_breakout_direction=cast(
             CompressionDirection | None, breakout_direction
@@ -126,6 +129,23 @@ def test_bullish_bos_retest_setup() -> None:
 
     assert result.setup_type is SetupType.BULLISH_BOS_RETEST
     assert result.setup_status is SetupStatus.CONFIRMED
+
+
+def test_missing_risk_levels_cannot_confirm_setup() -> None:
+    result = _analyze(
+        DecisionAction.BUY,
+        _structure("bullish", "impulse", ["bullish_bos"]),
+        direction="bullish",
+        price=95.0,
+        target=None,
+    )
+
+    assert result.setup_status is SetupStatus.WAITING_FOR_CONFIRMATION
+    level_condition = next(
+        condition for condition in result.entry_conditions
+        if condition.condition == "Entry, stop loss, and target levels are available."
+    )
+    assert level_condition.is_met is False
 
 
 def test_bearish_bos_retest_setup() -> None:

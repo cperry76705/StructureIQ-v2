@@ -139,6 +139,10 @@ class SetupEngine:
             current_timeframe_confirmed=current_timeframe_confirmed,
             estimated_risk_reward=estimated_risk_reward,
             current_price=current_price,
+            risk_levels_available=all(
+                level is not None and level.strip()
+                for level in (entry_zone, stop_loss, target)
+            ),
         )
         invalidations = _build_invalidations(
             candidate.direction, market_structure
@@ -368,6 +372,7 @@ def _build_conditions(
     current_timeframe_confirmed: bool,
     estimated_risk_reward: float | None,
     current_price: float,
+    risk_levels_available: bool,
 ) -> list[EntryCondition]:
     directional_action = (
         decision.action is DecisionAction.BUY
@@ -391,6 +396,11 @@ def _build_conditions(
         EntryCondition(
             f"{candidate.direction.title()} confirmation candle forms at the setup level.",
             current_timeframe_confirmed,
+            "required",
+        ),
+        EntryCondition(
+            "Entry, stop loss, and target levels are available.",
+            risk_levels_available,
             "required",
         ),
         EntryCondition(

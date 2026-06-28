@@ -158,10 +158,10 @@ def test_confidence_below_fifty_returns_avoid() -> None:
     assert result.action is DecisionAction.AVOID
     diagnostics = result.decision_diagnostics
     assert diagnostics.confidence_band == "avoid"
-    assert "confidence_threshold" in diagnostics.blocked_by
+    assert "directional_confidence" in diagnostics.blocked_by
     confidence_gate = next(
         gate for gate in diagnostics.gate_results
-        if gate.gate_name == "confidence_threshold"
+        if gate.gate_name == "directional_confidence"
     )
     assert confidence_gate.passed is False
     assert confidence_gate.expected_value == ">= 70.0"
@@ -202,6 +202,37 @@ def test_diagnostics_do_not_change_directional_decision() -> None:
     assert result.decision_diagnostics.blocked_by == ()
     assert result.decision_diagnostics.final_confidence == result.confidence
     assert result.decision_diagnostics.confidence_band == "high_conviction"
+
+
+def test_missing_risk_reward_reduces_confidence_without_vetoing_direction() -> None:
+    with_risk = _decision(
+        _structure("bullish", "impulse", ["bullish_bos"]),
+        _multi_timeframe("bullish", TimeframeAlignment.ALIGNED_BULLISH, 95),
+        risk_reward=2.0,
+    )
+    without_risk = _decision(
+        _structure("bullish", "impulse", ["bullish_bos"]),
+        _multi_timeframe("bullish", TimeframeAlignment.ALIGNED_BULLISH, 95),
+        risk_reward=None,
+    )
+
+    assert without_risk.confidence < with_risk.confidence
+    assert without_risk.action in {DecisionAction.BUY, DecisionAction.WAIT}
+    assert without_risk.action is not DecisionAction.AVOID
+    assert "risk_plan_available" not in without_risk.decision_diagnostics.blocked_by
+    risk_gate = next(
+        gate for gate in without_risk.decision_diagnostics.gate_results
+        if gate.gate_name == "risk_plan_available"
+    )
+    assert risk_gate.passed is False
+    assert risk_gate.required is False
+    assert "risk_plan_quality" not in without_risk.decision_diagnostics.blocked_by
+    execution_gate = next(
+        gate for gate in without_risk.decision_diagnostics.gate_results
+        if gate.gate_name == "execution_readiness"
+    )
+    assert execution_gate.passed is False
+    assert execution_gate.required is False
 
 
 def test_score_breakdown_total_is_sum_of_weighted_categories() -> None:

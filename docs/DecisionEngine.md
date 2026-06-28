@@ -62,8 +62,8 @@ The ledger enables the Intelligence/Explanation Engine to explain a result witho
 
 ## Decision States
 
-- **Buy:** bullish evidence exceeds the configured threshold, confidence and data coverage are sufficient, a qualified strategy exists, and risk conditions are acceptable.
-- **Sell:** bearish evidence exceeds the configured threshold under equivalent requirements.
+- **Buy:** bullish evidence clears the directional confidence, structure, and timeframe gates. Execution may still be unavailable downstream.
+- **Sell:** bearish evidence clears the equivalent directional gates. Execution may still be unavailable downstream.
 - **Wait:** a plausible thesis exists, but confirmation, alignment, or trade quality is insufficient.
 - **Avoid:** confidence is below 50 or evidence is too weak to justify a trade thesis. The legacy top-level API maps this to `no_trade`.
 
@@ -99,11 +99,11 @@ Each category contributes no more than its configured weight:
 - At 85 or above: the explanation may describe high confidence, but the public action remains `buy` or `sell`.
 - Conflicting or unclear timeframe alignment cannot produce `buy` or `sell`.
 - Mixed alignment can act only when current structure matches the higher-timeframe thesis and current-timeframe confirmation is present.
-- Missing or sub-1:1 risk/reward blocks an actionable decision even when the aggregate score is otherwise sufficient.
+- Missing risk/reward reduces confidence and creates a risk warning, but final execution readiness is evaluated downstream by Setup and Backtesting.
 
 Every decision includes risk notes, structural invalidation notes, and a human-readable explanation. Confidence describes evidence quality and agreement; it is not a predicted win probability.
 
-## v1.2 Decision Diagnostics
+## v1.2 Decision Diagnostics, Refined in v1.3
 
 `DecisionResult.decision_diagnostics` exposes the existing action gates without changing their evaluation. It contains the unrounded category sum (`raw_score`), final rounded confidence, intended direction, confidence band, required gates that failed, every gate result, and a readable summary.
 
@@ -116,15 +116,21 @@ Confidence bands are observational labels:
 
 Required directional gates mirror the current action selector exactly:
 
-- `confidence_threshold`: final confidence is at least 70.
+- `directional_confidence`: final confidence is at least 70.
 - `structure_alignment`: execution structure matches the intended direction.
 - `multi_timeframe_alignment`: timeframes align, or mixed context has directional structure and current-timeframe confirmation.
-- `risk_reward_available`: a ratio can be calculated.
-- `risk_reward_minimum`: the ratio meets the existing 1.0 Decision Engine minimum.
 
-Supporting diagnostics—`conflicting_evidence`, `liquidity_confirmation`, and `indicator_confirmation`—describe evidence but are not standalone action gates. `setup_confirmation` is marked non-required and unavailable at decision time because the Setup Engine runs afterward. This distinction prevents diagnostics from inventing dependencies or misrepresenting downstream output as a cause of the decision.
+Supporting diagnostics—`conflicting_evidence`, `liquidity_confirmation`, and `indicator_confirmation`—describe evidence but are not standalone action gates. `execution_readiness`, `risk_plan_available`, and `risk_plan_quality` are also non-required at decision time because the Setup Engine and Backtester run afterward. This distinction prevents diagnostics from inventing dependencies or misrepresenting downstream output as a cause of the directional decision.
 
 Each `GateResult` records its name, pass state, whether it is required, observed and expected values, diagnostic impact, and blocking reason. For `wait` and `avoid`, `blocked_by` contains only failed required gates.
+
+## v1.3 Risk/Reward Ownership
+
+The Decision Engine answers whether evidence supports a bullish direction, bearish direction, waiting, or avoidance. Risk/reward remains in its 10% evidence category: favorable ratios strengthen confidence, poor ratios weaken it, and missing ratios now apply a moderate penalty with an explicit execution warning.
+
+Missing or low risk/reward no longer acts as an independent directional veto. This does not make a trade executable. The Setup Engine must still produce entry, stop, target, confirmation, and at least `1.5R`; the Backtester independently validates those fields before simulation.
+
+This boundary allows a strong directional thesis to return buy or sell while its setup remains developing or waiting. Trader-facing output and backtesting continue to withhold action until execution readiness is complete.
 
 ## Output Boundary
 

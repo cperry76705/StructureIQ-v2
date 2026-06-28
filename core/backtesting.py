@@ -294,6 +294,53 @@ def build_backtest_trade(
             decision_diagnostics=decision_diagnostics,
         )
 
+    if plan.estimated_risk_reward is None:
+        return BacktestTrade(
+            timestamp=timestamp,
+            symbol=symbol,
+            action=action,
+            setup_type=setup_type,
+            strategy_type=strategy_type,
+            entry=entry,
+            stop_loss=stop,
+            target=target,
+            estimated_risk_reward=None,
+            outcome=TradeOutcome.SKIPPED,
+            realized_r=None,
+            reason="Trade skipped because risk/reward was unavailable.",
+            skip_reason_code="risk_reward_missing",
+            skip_reason_detail=(
+                "Entry, stop, and target were parseable, but the actionable plan "
+                "did not provide estimated risk/reward."
+            ),
+            blocking_engine="risk_engine",
+            actionability_status=_actionability_status(plan.status),
+            decision_diagnostics=decision_diagnostics,
+        )
+    if plan.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
+        return BacktestTrade(
+            timestamp=timestamp,
+            symbol=symbol,
+            action=action,
+            setup_type=setup_type,
+            strategy_type=strategy_type,
+            entry=entry,
+            stop_loss=stop,
+            target=target,
+            estimated_risk_reward=plan.estimated_risk_reward,
+            outcome=TradeOutcome.SKIPPED,
+            realized_r=None,
+            reason="Trade skipped because risk/reward was below the execution minimum.",
+            skip_reason_code="risk_reward_too_low",
+            skip_reason_detail=(
+                f"Estimated risk/reward {plan.estimated_risk_reward:.2f}R is below "
+                f"the {MINIMUM_ACCEPTABLE_RISK_REWARD:.2f}R execution gate."
+            ),
+            blocking_engine="risk_engine",
+            actionability_status=_actionability_status(plan.status),
+            decision_diagnostics=decision_diagnostics,
+        )
+
     outcome, realized_r, reason = simulate_trade_outcome(
         action=action,
         entry=entry,
@@ -343,13 +390,6 @@ def diagnose_non_actionable_analysis(
             "setup_engine",
             f"Setup Engine returned {setup_status.replace('_', ' ')}.",
         )
-    if setup_status in {"developing", "waiting_for_confirmation"}:
-        return (
-            "setup_not_confirmed",
-            "setup_engine",
-            f"Setup status is {setup_status.replace('_', ' ')}.",
-        )
-
     setup_levels = (
         getattr(setup, "entry_zone", getattr(plan, "entry_zone", None)),
         getattr(setup, "stop_loss", getattr(plan, "stop_loss", None)),
@@ -377,6 +417,12 @@ def diagnose_non_actionable_analysis(
             "risk_engine",
             f"Estimated risk/reward {risk_reward:.2f}R is below the "
             f"{MINIMUM_ACCEPTABLE_RISK_REWARD:.2f}R setup gate.",
+        )
+    if setup_status in {"developing", "waiting_for_confirmation"}:
+        return (
+            "setup_not_confirmed",
+            "setup_engine",
+            f"Setup status is {setup_status.replace('_', ' ')}.",
         )
 
     preferred_strategy = _enum_value(getattr(strategy, "preferred_strategy", None))

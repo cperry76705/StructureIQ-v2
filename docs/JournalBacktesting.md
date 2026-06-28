@@ -86,6 +86,10 @@ Version 1.2 snapshots `decision_diagnostics` on each backtest record when availa
 
 One record may fail more than one required Decision Engine gate, so blocked-gate counts answer a different question from the single primary skip reason. This report measures decision sensitivity while `skip_diagnostics` identifies the first engine-level actionability blocker. Neither changes whether the record is simulated.
 
+Version 1.3 limits Decision Engine blockers to directional confidence, structure, and timeframe agreement. Missing levels are attributed to `setup_engine`; missing or sub-`1.5R` execution plans are attributed to `risk_engine` once directional evidence is ready.
+
+Backtesting remains the final conservative validation layer. Even if an inconsistent upstream payload labels a plan actionable, the backtester skips it unless entry, stop, and target parse successfully and estimated risk/reward is present and at least `1.5R`.
+
 ### Outcome Rules
 
 - Target before stop produces a win and the estimated or level-derived reward multiple.

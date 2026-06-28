@@ -159,6 +159,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can distinguish a low confidence score from structure disagreement, timeframe misalignment, or risk/reward gating across historical windows. The report identifies the next controlled measurement to run while preserving every v1.1 decision and threshold.
 
+## Version 1.3 — Risk/Reward Calibration and Decision Gate Refinement
+
+- Separate directional confidence from execution readiness.
+- Retain risk/reward as weighted decision evidence without using missing data as an early directional veto.
+- Require complete entry, stop, target, and `1.5R` quality for setup confirmation.
+- Revalidate levels and risk/reward before backtest simulation.
+- Attribute calibration bottlenecks to the engine that owns the unresolved condition.
+
+**Status:** implemented.
+
+**Outcome:** strong directional evidence can progress without a premature risk-plan veto, while incomplete or low-quality execution plans remain non-actionable. Calibration can now distinguish Decision Engine conservatism from Setup and risk-plan incompleteness.
+
 ## Beyond Version 1.0
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

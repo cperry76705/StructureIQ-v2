@@ -86,14 +86,25 @@ def test_developing_setup_is_attributed_to_setup_confirmation() -> None:
 
 
 def test_missing_entry_stop_or_target_is_reported() -> None:
-    trade = _trade(_analysis(plan_status="actionable", target=None))
+    trade = _trade(
+        _analysis(
+            plan_status="waiting",
+            setup_status=SetupStatus.WAITING_FOR_CONFIRMATION,
+            target=None,
+        )
+    )
 
     assert trade.skip_reason_code == "setup_missing_levels"
     assert trade.blocking_engine == "setup_engine"
 
 
 def test_missing_risk_reward_is_reported() -> None:
-    trade = _trade(_analysis(risk_reward=None))
+    trade = _trade(
+        _analysis(
+            setup_status=SetupStatus.WAITING_FOR_CONFIRMATION,
+            risk_reward=None,
+        )
+    )
 
     assert trade.skip_reason_code == "risk_reward_missing"
     assert trade.blocking_engine == "risk_engine"
@@ -161,10 +172,10 @@ def test_backtest_aggregates_blocked_decision_gates() -> None:
         final_confidence=62.4,
         intended_direction="bullish",
         confidence_band="wait",
-        blocked_by=("confidence_threshold",),
+        blocked_by=("directional_confidence",),
         gate_results=(
             GateResult(
-                "confidence_threshold",
+                "directional_confidence",
                 False,
                 True,
                 62.4,
@@ -186,7 +197,35 @@ def test_backtest_aggregates_blocked_decision_gates() -> None:
     summary = calculate_decision_diagnostics_summary(trades)
 
     assert summary.by_confidence_band == {"wait": 2}
-    assert summary.by_blocked_gate == {"confidence_threshold": 2}
+    assert summary.by_blocked_gate == {"directional_confidence": 2}
     assert summary.average_confidence == 62.4
     assert summary.average_raw_score == 62.4
-    assert summary.most_common_blocked_gate == "confidence_threshold"
+    assert summary.most_common_blocked_gate == "directional_confidence"
+
+
+def test_actionable_plan_without_risk_reward_is_still_skipped_by_risk_engine() -> None:
+    trade = _trade(
+        _analysis(
+            plan_status="actionable",
+            setup_status=SetupStatus.CONFIRMED,
+            risk_reward=None,
+        )
+    )
+
+    assert trade.outcome is TradeOutcome.SKIPPED
+    assert trade.skip_reason_code == "risk_reward_missing"
+    assert trade.blocking_engine == "risk_engine"
+
+
+def test_actionable_plan_below_execution_minimum_is_skipped() -> None:
+    trade = _trade(
+        _analysis(
+            plan_status="actionable",
+            setup_status=SetupStatus.CONFIRMED,
+            risk_reward=1.4,
+        )
+    )
+
+    assert trade.outcome is TradeOutcome.SKIPPED
+    assert trade.skip_reason_code == "risk_reward_too_low"
+    assert trade.blocking_engine == "risk_engine"
