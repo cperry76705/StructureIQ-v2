@@ -1,4 +1,8 @@
-"""Select a basic setup and proposed action from structure context."""
+"""Legacy setup router retained for compatibility.
+
+The primary analysis path uses :mod:`core.setup_engine` for typed setup
+qualification and no longer uses this helper to plan setups.
+"""
 
 
 def route_strategy(

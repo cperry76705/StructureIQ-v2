@@ -56,7 +56,7 @@ Status: `200 OK`
   "higher_timeframe_bias": "bullish",
   "current_structure": "pullback",
   "action": "wait",
-  "setup": "bullish_pullback_to_support",
+  "setup": "bullish_pullback_continuation",
   "confidence": 6.5,
   "entry_zone": "illustrative level or range",
   "stop_loss": "illustrative invalidation level",
@@ -115,6 +115,37 @@ Status: `200 OK`
       "Bullish thesis weakens if price closes below the latest confirmed swing low."
     ],
     "human_readable_summary": "StructureIQ recommends waiting because the evidence has not cleared every direction and risk gate; confidence is 68.0/100."
+  },
+  "setup_plan": {
+    "setup_type": "bullish_pullback_continuation",
+    "setup_status": "waiting_for_confirmation",
+    "direction": "bullish",
+    "setup_quality_score": 72.0,
+    "entry_zone": "1.13520-1.13545",
+    "stop_loss": "1.13380",
+    "target": "1.13950",
+    "estimated_risk_reward": 1.8,
+    "entry_conditions": [
+      {
+        "condition": "Bullish confirmation candle forms at the setup level.",
+        "is_met": false,
+        "importance": "required"
+      }
+    ],
+    "invalidation_rules": [
+      {
+        "rule": "Bullish setup invalidates if price closes below the latest confirmed swing low.",
+        "trigger_level": "1.13380",
+        "severity": "hard"
+      }
+    ],
+    "supporting_evidence": [
+      "Bullish trend and pullback structure support continuation."
+    ],
+    "warning_notes": [
+      "One or more required entry conditions remain unmet."
+    ],
+    "human_readable_summary": "A bullish pullback continuation setup is waiting for required confirmation before entry."
   }
 }
 ```
@@ -127,6 +158,7 @@ The current response contract includes:
 - Text fields describing structure, setup, illustrative levels, and reasoning.
 - `multi_timeframe`: an additive v0.3 object containing the two structure views, alignment, unified bias, and explanation.
 - `decision`: an additive v0.4 object containing the weighted recommendation and complete evidence ledger.
+- `setup_plan`: an additive v0.5 object containing setup qualification, entry conditions, invalidation, and risk context.
 
 ### Multi-Timeframe Object
 
@@ -158,7 +190,25 @@ The current response contract includes:
 | `invalidation_notes` | Structural levels or conditions that weaken the thesis. |
 | `human_readable_summary` | Concise explanation of the action and confidence. |
 
-The response remains backward-compatible at the field level: every pre-v0.4 field remains present with the same name and type. `multi_timeframe` and `decision` are additive objects. The legacy top-level action is derived from the decision action, with `avoid` mapped to `no_trade`; legacy confidence is decision confidence divided by ten.
+### Setup Plan Object
+
+| Field | Description |
+| --- | --- |
+| `setup_type` | Named setup type or `no_valid_setup`. |
+| `setup_status` | `confirmed`, `developing`, `waiting_for_confirmation`, `invalid`, or `no_setup`. |
+| `direction` | `bullish`, `bearish`, or `neutral`. |
+| `setup_quality_score` | Setup-condition completeness from `0–100`; distinct from Decision Engine confidence. |
+| `entry_zone` | Relevant entry context when available. |
+| `stop_loss` | Illustrative structural risk level when available. |
+| `target` | Illustrative objective when available. |
+| `estimated_risk_reward` | Estimated reward-to-risk ratio, or `null` when it cannot be measured. |
+| `entry_conditions` | Checklist items with condition, completion state, and importance. |
+| `invalidation_rules` | Soft or hard invalidation rules and optional trigger levels. |
+| `supporting_evidence` | Internal observations supporting the setup candidate. |
+| `warning_notes` | Missing conditions, conflicts, and risk warnings. |
+| `human_readable_summary` | Factual setup qualification summary. |
+
+The response remains backward-compatible at the field level: every pre-v0.5 field remains present with the same name and type. `multi_timeframe`, `decision`, and `setup_plan` are additive objects. The legacy top-level action and confidence remain derived from the Decision Engine, while the legacy top-level setup mirrors `setup_plan.setup_type`.
 
 Illustrative entry, stop, and target values are analytical outputs. They are not live orders, financial advice, or guarantees.
 

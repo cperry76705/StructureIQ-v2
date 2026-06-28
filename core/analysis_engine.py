@@ -6,7 +6,11 @@ from core.market_data import Candle, MarketDataProvider
 from core.market_structure import MarketStructureEngine
 from core.multi_timeframe import MultiTimeframeEngine
 from core.risk import build_risk_levels
-from core.strategy_router import route_strategy
+from core.setup_engine import (
+    SetupEngine,
+    approximate_compression,
+    compression_breakout_direction,
+)
 from core.structure import find_swings
 from core.support_resistance import detect_zones
 from models.schemas import AnalysisRequest, AnalysisResponse
@@ -44,6 +48,7 @@ class AnalysisEngine:
         structure_engine: MarketStructureEngine | None = None,
         multi_timeframe_engine: MultiTimeframeEngine | None = None,
         decision_engine: DecisionEngine | None = None,
+        setup_engine: SetupEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -51,6 +56,7 @@ class AnalysisEngine:
             multi_timeframe_engine or MultiTimeframeEngine()
         )
         self._decision_engine = decision_engine or DecisionEngine()
+        self._setup_engine = setup_engine or SetupEngine()
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         entry_candles = self._market_data.get_candles(
@@ -67,6 +73,7 @@ class AnalysisEngine:
             self._structure_engine,
             self._multi_timeframe_engine,
             self._decision_engine,
+            self._setup_engine,
         )
 
 
@@ -77,6 +84,7 @@ def _build_analysis(
     structure_engine: MarketStructureEngine,
     multi_timeframe_engine: MultiTimeframeEngine,
     decision_engine: DecisionEngine,
+    setup_engine: SetupEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -102,14 +110,6 @@ def _build_analysis(
     rsi = calculate_rsi(entry_candles)
     rsi_supportive = 40 <= rsi <= 65 if bias == "bullish" else 35 <= rsi <= 60
 
-    _, setup = route_strategy(
-        bias,
-        structure,
-        near_level,
-        confirmed,
-        alignment=multi_timeframe.alignment.value,
-        current_trend=entry_structure.trend,
-    )
     risk_reward_ratio = _risk_reward_ratio(
         bias, price, support, resistance
     )
@@ -129,6 +129,28 @@ def _build_analysis(
     )
     confidence = round(decision.confidence / 10.0, 1)
     entry_zone, stop_loss, target = build_risk_levels(bias, support, resistance)
+    compression_detected = approximate_compression(entry_candles[:-1])
+    breakout_direction = (
+        compression_breakout_direction(entry_candles)
+        if compression_detected
+        else None
+    )
+    setup_plan = setup_engine.analyze(
+        decision=decision,
+        market_structure=entry_structure,
+        multi_timeframe=multi_timeframe,
+        current_price=price,
+        support_zone=support,
+        resistance_zone=resistance,
+        current_timeframe_confirmed=confirmed,
+        estimated_risk_reward=risk_reward_ratio,
+        entry_zone=entry_zone,
+        stop_loss=stop_loss,
+        target=target,
+        compression_detected=compression_detected,
+        compression_breakout_direction=breakout_direction,
+    )
+    setup = setup_plan.setup_type.value
 
     reasons = [
         decision.human_readable_summary,
@@ -153,4 +175,5 @@ def _build_analysis(
         reasons=reasons,
         multi_timeframe=multi_timeframe,
         decision=decision,
+        setup_plan=setup_plan,
     )

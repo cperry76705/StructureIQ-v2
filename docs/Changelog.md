@@ -2,6 +2,34 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 0.5 — Setup Engine — 2026-06-27
+
+### Added
+
+- Dedicated setup qualification in `core/setup_engine.py`.
+- Typed `SetupResult`, `SetupType`, `SetupStatus`, `EntryCondition`, and `InvalidationRule` models.
+- Bullish and bearish BOS retest and pullback-continuation candidates.
+- Long and short range-reversal, liquidity-sweep reversal, and compression-breakout candidates.
+- Checklist-style entry conditions, structural invalidation, quality scoring, warning notes, and estimated risk/reward.
+- Additive `setup_plan` data on successful `POST /analysis` responses.
+- Focused tests for all required setup families, avoid and wait constraints, range location, checklist output, invalidation, risk/reward, and API compatibility.
+
+### Changed
+
+- The Setup Engine is now the primary source of the legacy top-level `setup` value and the nested setup plan.
+- `core/strategy_router.py` remains available for compatibility but is no longer used by the main analysis path.
+- Compression is approximated from candle-range contraction without adding a new indicator.
+
+### Verification
+
+- 60 automated tests pass.
+- The complete v0.1 through v0.5 suite passes together.
+
+### Scope
+
+- BOS retests currently use the relevant support or resistance zone as a proxy for the persisted broken level.
+- No trader-facing explanation engine, dashboard, broker execution, live trading, or new indicator work was added.
+
 ## Blueprint Adjustment — Trader-Facing Decision Support — 2026-06-27
 
 ### Changed

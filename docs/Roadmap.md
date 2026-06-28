@@ -65,9 +65,9 @@ Every version must preserve automated tests, stable contracts, explainability, a
 - Compression breakout.
 - Setup qualification, missing conditions, entry checklist, and invalidation.
 
-**Status:** planned.
+**Status:** implemented.
 
-**Exit criteria:** each setup has deterministic prerequisites, confirmation, entry conditions, invalidation, and rejection reasons. A decision can exist without a qualified setup.
+**Outcome:** each supported setup has deterministic candidate selection, checklist conditions, confirmation status, risk threshold, invalidation, warning notes, and explicit no-setup behavior. A decision can exist without a confirmed setup.
 
 ## Version 0.6 — Analysis/Explanation Engine
 

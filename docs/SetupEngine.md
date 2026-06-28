@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Setup Engine identifies the specific trade setup represented by current market conditions and determines whether that setup is qualified, developing, invalid, or absent.
+The Setup Engine identifies the specific trade setup represented by current market conditions and determines whether it is confirmed, developing, waiting for confirmation, invalid, or absent.
 
 It bridges directional decision and trader-facing planning. The Decision Engine may establish a bullish or bearish thesis, but only the Setup Engine determines whether a defined opportunity exists and which conditions remain before entry.
 
@@ -11,7 +11,7 @@ It bridges directional decision and trader-facing planning. The Decision Engine 
 The Setup Engine is responsible for:
 
 - Evaluating named setup definitions against internal engine output.
-- Distinguishing qualified, developing, invalidated, and absent setups.
+- Distinguishing confirmed, developing, waiting, invalid, and absent setups.
 - Recording satisfied, missing, and failed conditions.
 - Identifying relevant entry triggers and structural levels.
 - Defining setup-specific invalidation.
@@ -37,20 +37,15 @@ Missing inputs must remain explicitly unavailable. They may reduce qualification
 
 ## Outputs
 
-A setup result should contain:
+A `SetupResult` contains:
 
-- Setup type and direction.
-- Qualification state: `qualified`, `developing`, `invalidated`, or `absent`.
-- Setup quality or confidence distinct from Decision Engine confidence.
-- Satisfied conditions.
-- Missing entry conditions.
-- Failed conditions and rejection reasons.
-- Entry trigger and relevant zone.
-- Invalidation level and rule.
-- Potential target context and minimum risk/reward requirement.
-- Supporting and conflicting evidence references.
-- Rule version and timeframe metadata.
-- A concise factual summary for downstream explanation.
+- `setup_type` and bullish, bearish, or neutral direction.
+- `setup_status`: `confirmed`, `developing`, `waiting_for_confirmation`, `invalid`, or `no_setup`.
+- `setup_quality_score` from `0–100`, distinct from Decision Engine confidence.
+- Entry zone, stop loss, target, and estimated risk/reward when measurable.
+- Checklist-style `EntryCondition` items with required, recommended, or optional importance.
+- `InvalidationRule` items with optional trigger level and soft or hard severity.
+- Supporting evidence, warning notes, and a factual summary.
 
 ## Setup Types
 
@@ -145,3 +140,22 @@ The Setup Engine does not rescore or override the decision. It may determine tha
 The Analysis/Explanation Engine consumes Setup Engine output and converts it into trader-facing language and a checklist-style plan.
 
 It may explain the setup, group conditions into a readable sequence, and highlight missing requirements. It may not invent a setup, mark a pending condition complete, change invalidation, or turn an unqualified setup into a recommendation.
+
+## v0.5 Implementation
+
+The v0.5 implementation lives in `core/setup_engine.py` and supports:
+
+- Bullish and bearish BOS retests.
+- Bullish and bearish pullback continuation.
+- Long and short range reversals.
+- Long and short liquidity-sweep reversals.
+- Long and short compression breakouts.
+- Explicit `no_valid_setup` output.
+
+Candidate selection prioritizes liquidity sweeps, range-location setups, directional BOS retests, directional pullbacks, and then compression candidates. Every candidate remains constrained by the Decision Engine direction.
+
+A setup is confirmed only when the Decision Engine action permits its direction, its pattern and price-location rules are present, the current timeframe confirms, structural invalidation holds, and estimated risk/reward is at least `1.5R`. A `wait` decision can produce only developing or waiting status. An `avoid` decision always produces `no_valid_setup`.
+
+Compression is approximated from contraction in recent candle ranges relative to a prior baseline. A compression candidate remains developing until price closes beyond the preceding compression range.
+
+The current BOS-retest implementation uses the relevant support or resistance zone as a proxy for the broken level because the Market Structure Engine does not yet expose a dedicated persisted BOS level. This assumption is explicit and should be replaced when structural-level provenance is expanded.

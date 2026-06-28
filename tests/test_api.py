@@ -53,7 +53,11 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "reasons",
     }
     assert legacy_fields < set(payload)
-    assert set(payload) - legacy_fields == {"multi_timeframe", "decision"}
+    assert set(payload) - legacy_fields == {
+        "multi_timeframe",
+        "decision",
+        "setup_plan",
+    }
     assert set(payload["multi_timeframe"]) == {
         "higher_timeframe",
         "current_timeframe",
@@ -86,6 +90,22 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
     )
     assert payload["action"] == expected_legacy_action
     assert payload["confidence"] == round(decision["confidence"] / 10, 1)
+    assert set(payload["setup_plan"]) == {
+        "setup_type",
+        "setup_status",
+        "direction",
+        "setup_quality_score",
+        "entry_zone",
+        "stop_loss",
+        "target",
+        "estimated_risk_reward",
+        "entry_conditions",
+        "invalidation_rules",
+        "supporting_evidence",
+        "warning_notes",
+        "human_readable_summary",
+    }
+    assert payload["setup"] == payload["setup_plan"]["setup_type"]
 
 
 def test_analysis_returns_informative_503_when_provider_fails() -> None:

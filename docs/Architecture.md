@@ -104,7 +104,9 @@ The Setup Engine identifies the specific trade setup type and validates whether 
 - Liquidity sweep reversal.
 - Compression breakout.
 
-It returns qualification state, satisfied and missing conditions, entry conditions, invalidation rules, and relevant levels. A directional decision does not imply that a setup is ready; the Setup Engine may reject or defer every candidate.
+It returns a typed setup plan containing setup type and status, direction, quality score, entry and risk levels, checklist conditions, invalidation rules, evidence, warnings, and explanation. A directional decision does not imply that a setup is ready; the Setup Engine may reject or defer every candidate.
+
+The v0.5 engine is the primary setup-planning path for `/analysis`. The earlier strategy router remains compatibility code and does not own current setup qualification.
 
 ### 7. Analysis/Explanation Engine
 
@@ -150,4 +152,4 @@ Backtesting must disclose data quality, fees, slippage, execution assumptions, a
 
 ## Current Platform State
 
-Versions 0.1 through 0.4 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, and weighted Decision Engine. The current `/analysis` response is still engine-oriented. Versions 0.5 onward introduce setup qualification, trader-facing explanation, broader strategy playbooks, and journal/backtesting workflows.
+Versions 0.1 through 0.5 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, weighted Decision Engine, and Setup Engine. The current `/analysis` response is still engine-oriented. Versions 0.6 onward introduce trader-facing explanation, broader strategy playbooks, and journal/backtesting workflows.
