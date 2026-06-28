@@ -18,12 +18,14 @@ from core.backtesting import (
     RiskRewardSummary,
     SetupLevelSummary,
     TradeOutcomeDiagnosticsSummary,
+    TradeManagementSensitivityResult,
     SkipDiagnostics,
     calculate_backtest_metrics,
     calculate_decision_diagnostics_summary,
     calculate_risk_reward_summary,
     calculate_setup_level_summary,
     calculate_outcome_diagnostics_summary,
+    calculate_trade_management_sensitivity,
     calculate_skip_diagnostics,
     parse_price_level,
 )
@@ -191,6 +193,9 @@ class CalibrationResult:
     aggregate_risk_reward_summary: RiskRewardSummary
     aggregate_setup_level_summary: SetupLevelSummary
     aggregate_outcome_diagnostics: TradeOutcomeDiagnosticsSummary
+    aggregate_trade_management_sensitivity: tuple[
+        TradeManagementSensitivityResult, ...
+    ]
     setup_performance: tuple[SetupPerformance, ...]
     strategy_performance: tuple[StrategyPerformance, ...]
     recommendations: tuple[CalibrationRecommendation, ...]
@@ -267,6 +272,9 @@ class CalibrationEngine:
         aggregate_outcome_diagnostics = calculate_outcome_diagnostics_summary(
             all_trades
         )
+        aggregate_trade_management_sensitivity = (
+            calculate_trade_management_sensitivity(all_trades)
+        )
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -280,6 +288,7 @@ class CalibrationEngine:
             aggregate_risk_reward_summary,
             aggregate_setup_level_summary,
             aggregate_outcome_diagnostics,
+            aggregate_trade_management_sensitivity,
         )
         summary = (
             f"Calibration completed {aggregate.total_runs} runs with "
@@ -295,6 +304,9 @@ class CalibrationEngine:
             aggregate_risk_reward_summary=aggregate_risk_reward_summary,
             aggregate_setup_level_summary=aggregate_setup_level_summary,
             aggregate_outcome_diagnostics=aggregate_outcome_diagnostics,
+            aggregate_trade_management_sensitivity=(
+                aggregate_trade_management_sensitivity
+            ),
             setup_performance=setup_performance,
             strategy_performance=strategy_performance,
             recommendations=recommendations,
@@ -465,6 +477,7 @@ def _recommendations(
     risk_reward_summary: RiskRewardSummary,
     setup_level_summary: SetupLevelSummary,
     outcome_diagnostics: TradeOutcomeDiagnosticsSummary,
+    management_sensitivity: tuple[TradeManagementSensitivityResult, ...],
 ) -> tuple[CalibrationRecommendation, ...]:
     recommendations: list[CalibrationRecommendation] = []
     record_count = len(records)
@@ -516,6 +529,11 @@ def _recommendations(
     )
     if outcome_recommendation is not None:
         recommendations.append(outcome_recommendation)
+    management_recommendation = _trade_management_recommendation(
+        management_sensitivity
+    )
+    if management_recommendation is not None:
+        recommendations.append(management_recommendation)
 
     if metrics.total_trades and metrics.win_rate < 35.0:
         recommendations.append(
@@ -924,6 +942,37 @@ def _outcome_diagnostic_recommendation(
         f"The dominant executed-trade loss reason was {reason.replace('_', ' ')} ({count} trades).",
         "high" if count == summary.losses else "medium",
         action,
+    )
+
+
+def _trade_management_recommendation(
+    sensitivity: tuple[TradeManagementSensitivityResult, ...],
+) -> CalibrationRecommendation | None:
+    if not sensitivity:
+        return None
+    baseline = next(
+        (item for item in sensitivity if item.rule.value == "none"),
+        None,
+    )
+    alternatives = [
+        item for item in sensitivity
+        if item.rule.value != "none" and item.improved_vs_baseline
+    ]
+    if baseline is None or not alternatives:
+        return None
+    strongest = max(alternatives, key=lambda item: (item.total_r, -item.max_drawdown_r))
+    return CalibrationRecommendation(
+        "risk_reward",
+        (
+            f"The strongest management sensitivity rule is "
+            f"{strongest.rule.value.replace('_', ' ')}, improving simulated total R "
+            f"from {baseline.total_r:.2f}R to {strongest.total_r:.2f}R."
+        ),
+        "medium",
+        (
+            "Validate this approximation on a larger out-of-sample trade set; do not "
+            "change production stop or target behavior automatically."
+        ),
     )
 
 

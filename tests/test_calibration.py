@@ -252,6 +252,7 @@ def test_calibration_aggregates_executed_trade_loss_reasons() -> None:
     assert aggregate.executed_trades == 2
     assert aggregate.losses == 2
     assert aggregate.by_loss_reason == {"stopped_immediately": 2}
+    assert len(result.aggregate_trade_management_sensitivity) == 7
 
 
 def test_skipped_heavy_results_produce_conservative_recommendation() -> None:

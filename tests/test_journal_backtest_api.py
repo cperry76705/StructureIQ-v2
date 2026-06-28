@@ -117,3 +117,4 @@ def test_post_backtest_works() -> None:
     assert response.json()["risk_reward_summary"]["total_records"] == 1
     assert response.json()["setup_level_summary"]["total_records"] == 1
     assert "outcome_diagnostics_summary" in response.json()
+    assert len(response.json()["trade_management_sensitivity"]) == 7

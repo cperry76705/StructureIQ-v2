@@ -66,6 +66,16 @@ class LossReason(str, Enum):
     UNCLEAR = "unclear"
 
 
+class TradeManagementRule(str, Enum):
+    NONE = "none"
+    MOVE_STOP_TO_BREAKEVEN_AT_1R = "move_stop_to_breakeven_at_1r"
+    MOVE_STOP_TO_BREAKEVEN_AT_1_5R = "move_stop_to_breakeven_at_1_5r"
+    TAKE_PARTIAL_AT_1R = "take_partial_at_1r"
+    TAKE_PARTIAL_AT_1_5R = "take_partial_at_1_5r"
+    TRAIL_AFTER_1R = "trail_after_1r"
+    TRAIL_AFTER_1_5R = "trail_after_1_5r"
+
+
 class BacktestRequest(BaseModel):
     model_config = ConfigDict(
         json_schema_extra={
@@ -132,6 +142,7 @@ class TradeOutcomeDiagnostics:
     direction_was_correct_initially: bool
     loss_reason: LossReason | None
     human_readable_summary: str
+    max_favorable_excursion_before_outcome_r: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -240,6 +251,21 @@ class TradeOutcomeDiagnosticsSummary:
 
 
 @dataclass(frozen=True)
+class TradeManagementSensitivityResult:
+    rule: TradeManagementRule
+    simulated_trades: int
+    wins: int
+    losses: int
+    breakeven: int
+    average_r: float
+    total_r: float
+    profit_factor: float | None
+    max_drawdown_r: float
+    improved_vs_baseline: bool
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class BacktestResult:
     request: BacktestRequest
     trades: tuple[BacktestTrade, ...]
@@ -261,6 +287,7 @@ class BacktestResult:
     outcome_diagnostics_summary: TradeOutcomeDiagnosticsSummary = field(
         default_factory=lambda: _empty_outcome_diagnostics_summary()
     )
+    trade_management_sensitivity: tuple[TradeManagementSensitivityResult, ...] = ()
 
 
 class _AnalysisRunner(Protocol):
@@ -331,6 +358,9 @@ class BacktestingEngine:
         risk_reward_summary = calculate_risk_reward_summary(trades)
         setup_level_summary = calculate_setup_level_summary(trades)
         outcome_diagnostics_summary = calculate_outcome_diagnostics_summary(trades)
+        trade_management_sensitivity = calculate_trade_management_sensitivity(
+            trades
+        )
         limitations = backtest_limitations()
         summary = (
             f"Backtest evaluated {len(trades)} analysis windows and produced "
@@ -349,6 +379,7 @@ class BacktestingEngine:
             risk_reward_summary=risk_reward_summary,
             setup_level_summary=setup_level_summary,
             outcome_diagnostics_summary=outcome_diagnostics_summary,
+            trade_management_sensitivity=trade_management_sensitivity,
         )
 
 
@@ -858,6 +889,105 @@ def calculate_outcome_diagnostics_summary(
     )
 
 
+def calculate_trade_management_sensitivity(
+    trades: list[BacktestTrade],
+) -> tuple[TradeManagementSensitivityResult, ...]:
+    """Apply management counterfactuals without mutating production outcomes."""
+
+    diagnostics = [
+        trade.outcome_diagnostics
+        for trade in trades
+        if trade.outcome_diagnostics is not None
+        and trade.outcome_diagnostics.outcome
+        in {TradeOutcome.WIN, TradeOutcome.LOSS, TradeOutcome.BREAKEVEN}
+        and trade.outcome_diagnostics.realized_r is not None
+    ]
+    baseline_total = round(
+        sum(item.realized_r or 0.0 for item in diagnostics),
+        3,
+    )
+    results: list[TradeManagementSensitivityResult] = []
+    for rule in TradeManagementRule:
+        realized = [_managed_realized_r(item, rule) for item in diagnostics]
+        wins = sum(value > 0 for value in realized)
+        losses = sum(value < 0 for value in realized)
+        breakeven = sum(value == 0 for value in realized)
+        total = round(sum(realized), 3)
+        gross_wins = sum(value for value in realized if value > 0)
+        gross_losses = abs(sum(value for value in realized if value < 0))
+        peak = 0.0
+        cumulative = 0.0
+        max_drawdown = 0.0
+        for value in realized:
+            cumulative += value
+            peak = max(peak, cumulative)
+            max_drawdown = max(max_drawdown, peak - cumulative)
+        results.append(
+            TradeManagementSensitivityResult(
+                rule=rule,
+                simulated_trades=len(realized),
+                wins=wins,
+                losses=losses,
+                breakeven=breakeven,
+                average_r=(round(total / len(realized), 3) if realized else 0.0),
+                total_r=total,
+                profit_factor=(
+                    round(gross_wins / gross_losses, 3)
+                    if gross_losses
+                    else None
+                ),
+                max_drawdown_r=round(max_drawdown, 3),
+                improved_vs_baseline=(rule is not TradeManagementRule.NONE and total > baseline_total),
+                human_readable_summary=(
+                    f"{rule.value.replace('_', ' ').title()} produces {total:.2f}R "
+                    f"across {len(realized)} closed trades versus {baseline_total:.2f}R baseline."
+                ),
+            )
+        )
+    return tuple(results)
+
+
+def _managed_realized_r(
+    diagnostics: TradeOutcomeDiagnostics,
+    rule: TradeManagementRule,
+) -> float:
+    baseline = diagnostics.realized_r or 0.0
+    if rule is TradeManagementRule.NONE:
+        return baseline
+    if diagnostics.first_touch == "both_same_candle":
+        return baseline
+
+    threshold = 1.5 if rule in {
+        TradeManagementRule.MOVE_STOP_TO_BREAKEVEN_AT_1_5R,
+        TradeManagementRule.TAKE_PARTIAL_AT_1_5R,
+        TradeManagementRule.TRAIL_AFTER_1_5R,
+    } else 1.0
+    reached_before_loss = (
+        diagnostics.max_favorable_excursion_before_outcome_r >= threshold
+    )
+    reached = (
+        diagnostics.max_favorable_excursion_r >= threshold
+        if diagnostics.outcome is TradeOutcome.WIN
+        else reached_before_loss
+    )
+    if not reached:
+        return baseline
+
+    if rule in {
+        TradeManagementRule.MOVE_STOP_TO_BREAKEVEN_AT_1R,
+        TradeManagementRule.MOVE_STOP_TO_BREAKEVEN_AT_1_5R,
+    }:
+        return max(baseline, 0.0)
+    if rule in {
+        TradeManagementRule.TAKE_PARTIAL_AT_1R,
+        TradeManagementRule.TAKE_PARTIAL_AT_1_5R,
+    }:
+        locked = 0.75 if threshold == 1.5 else 0.5
+        return round(locked + 0.5 * baseline, 3)
+    protective_floor = 0.5 if threshold == 1.5 else 0.25
+    return max(baseline, protective_floor)
+
+
 def _empty_skip_diagnostics() -> SkipDiagnostics:
     return SkipDiagnostics(0, {}, {}, None, "No analysis records were skipped.")
 
@@ -1088,6 +1218,10 @@ def diagnose_trade_outcome(
         direction_was_correct_initially=direction_correct,
         loss_reason=loss_reason,
         human_readable_summary=summary,
+        max_favorable_excursion_before_outcome_r=round(
+            favorable_before_touch,
+            3,
+        ),
     )
 
 

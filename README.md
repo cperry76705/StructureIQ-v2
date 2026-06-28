@@ -117,7 +117,7 @@ The response preserves established top-level fields and adds typed internal bloc
 
 ## Roadmap and Release Information
 
-Version `1.7.0` adds executed-trade path diagnostics: first touch, bars to outcome, MFE/MAE in R, initial directional follow-through, and deterministic loss classifications. The simulator, strategy selection, thresholds, stops, and targets remain unchanged.
+Version `1.8.0` adds a read-only stop-management and profit-protection sensitivity study over executed trades. Seven deterministic rules are compared with the unchanged production baseline; no rule is applied to production automatically.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

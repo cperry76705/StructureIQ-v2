@@ -459,6 +459,8 @@ Version 1.5 adds per-record `risk_reward_diagnostics` and `setup_level_diagnosti
 
 Version 1.7 adds `outcome_diagnostics` to executed backtest records and `outcome_diagnostics_summary` to the result. Skipped records expose `null` because no trade path exists. First-touch and excursion fields are derived from the same candles used by the unchanged simulator.
 
+Version 1.8 adds `trade_management_sensitivity` to `/backtest`. It always includes `none`, break-even at `1R` and `1.5R`, partial profit at `1R` and `1.5R`, and trailing after `1R` and `1.5R`. Results are counterfactual and never replace production metrics.
+
 ```json
 {
   "skip_diagnostics": {
@@ -606,17 +608,45 @@ Response shape:
   },
   "aggregate_outcome_diagnostics": {
     "executed_trades": 3,
-    "wins": 0,
-    "losses": 3,
-    "average_bars_to_outcome": 4.667,
-    "average_mfe_r": 1.276,
-    "average_mae_r": 1.7,
-    "by_loss_reason": {"stop_too_tight": 3},
+    "wins": 1,
+    "losses": 2,
+    "average_bars_to_outcome": 4.333,
+    "average_mfe_r": 2.159,
+    "average_mae_r": 0.904,
+    "by_loss_reason": {"adverse_move_before_follow_through": 1, "stop_too_tight": 1},
     "same_candle_ambiguity_count": 0,
     "stopped_immediately_count": 0,
     "no_follow_through_count": 0,
-    "human_readable_summary": "3 executed trades produced 0 wins and 3 losses, with average MFE 1.28R."
+    "human_readable_summary": "3 executed trades produced 1 win and 2 losses, with average MFE 2.16R."
   },
+  "aggregate_trade_management_sensitivity": [
+    {
+      "rule": "none",
+      "simulated_trades": 3,
+      "wins": 1,
+      "losses": 2,
+      "breakeven": 0,
+      "average_r": 0.167,
+      "total_r": 0.5,
+      "profit_factor": 1.25,
+      "max_drawdown_r": 1.0,
+      "improved_vs_baseline": false,
+      "human_readable_summary": "None produces 0.50R across 3 closed trades versus 0.50R baseline."
+    },
+    {
+      "rule": "trail_after_1r",
+      "simulated_trades": 3,
+      "wins": 2,
+      "losses": 1,
+      "breakeven": 0,
+      "average_r": 0.583,
+      "total_r": 1.75,
+      "profit_factor": 2.75,
+      "max_drawdown_r": 1.0,
+      "improved_vs_baseline": true,
+      "human_readable_summary": "Trail After 1R produces 1.75R across 3 closed trades versus 0.50R baseline."
+    }
+  ],
   "setup_performance": [],
   "strategy_performance": [],
   "recommendations": [

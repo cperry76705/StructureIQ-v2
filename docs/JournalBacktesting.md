@@ -112,6 +112,14 @@ Loss classifications include immediate stop, no follow-through, wrong direction,
 
 `BacktestResult.outcome_diagnostics_summary` aggregates executed trades, wins, losses, average bars, average MFE/MAE, loss reasons, same-candle ambiguity, immediate stops, and no-follow-through counts.
 
+### Trade-Management Sensitivity
+
+Version 1.8 adds `trade_management_sensitivity` for closed executed trades. It compares the unchanged baseline with break-even at `1R` or `1.5R`, half-position partial profit at `1R` or `1.5R`, and protective trailing floors after `1R` or `1.5R`.
+
+The study transforms a copied realized-R stream only. Same-candle stop/target ambiguity retains the original conservative loss because threshold ordering is unknowable. A losing trade qualifies for management only when a prior completed candle reached the rule threshold; outcome-candle highs or lows are not assumed to occur before the stop.
+
+Partial-profit approximations contribute `+0.5R` at the `1R` threshold or `+0.75R` at `1.5R`, then apply half of the original remaining-position outcome. Trailing studies cap a qualified loss at `+0.25R` or `+0.5R`. These are research approximations without spread, slippage, gaps, or intrabar sequencing.
+
 ### Outcome Rules
 
 - Target before stop produces a win and the estimated or level-derived reward multiple.

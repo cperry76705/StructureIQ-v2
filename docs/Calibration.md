@@ -125,6 +125,12 @@ Recommendations remain observational:
 - Same-candle ambiguity prioritizes finer-grained data rather than rule changes.
 - High MFE before eventual stop identifies cases worth inspecting for structural stop placement, without automatically widening stops.
 
+## Aggregate Trade-Management Sensitivity
+
+Version 1.8 returns `aggregate_trade_management_sensitivity`, calculated over all closed executed trades across calibration runs. Each rule reports simulated wins, losses, breakeven outcomes, average and total R, profit factor, maximum drawdown, and whether it improves on the unchanged baseline.
+
+Calibration recommends only the highest-total-R improving rule and explicitly requires a larger out-of-sample sample before production consideration. The study does not mutate journal entries, backtest outcomes, setup plans, stops, targets, or production metrics.
+
 ## Setup and Strategy Performance
 
 Closed and skipped records are grouped by `setup_type` and `strategy_type`. Each group reports record count, closed trade count, skipped count, outcomes, win rate, average R, total R, and profit factor.

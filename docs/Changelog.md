@@ -2,6 +2,34 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.8.0 — Stop Management and Profit Protection Study — 2026-06-28
+
+### Added
+
+- Typed management rules for unchanged, break-even, partial-profit, and trailing studies at `1R` and `1.5R`.
+- Per-backtest and aggregate calibration `TradeManagementSensitivityResult` collections.
+- Deterministic R, profit-factor, and drawdown comparisons against the unchanged baseline.
+- Conservative handling that excludes same-candle ambiguity and requires prior completed-candle threshold reach for losing trades.
+- Recommendations naming the strongest improving rule while requiring out-of-sample validation.
+- Focused break-even, partial-profit, trailing, baseline-equivalence, aggregation, and production-metric regression tests.
+
+### Compatibility
+
+- Production stop/target behavior and the original backtest simulator are unchanged.
+- `/analysis` request and response remain unchanged.
+- Strategy selection, thresholds, and setup confirmation remain unchanged.
+- New `/backtest` and `/calibrate` fields are additive research output.
+- No dashboard, broker execution, live trading, or automatic management adoption was added.
+
+### Changed
+
+- Application and OpenAPI version are now `1.8.0`.
+
+### Verification
+
+- 176 automated tests pass together.
+- The live four-symbol calibration ranked `trail_after_1r` highest at 1.75R versus 0.50R baseline on three closed trades; the sample is explicitly too small for production adoption.
+
 ## Version 1.7.0 — Trade Outcome Diagnostics — 2026-06-28
 
 ### Added

@@ -219,6 +219,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can inspect why qualified trades win or lose before considering any strategy, threshold, confirmation, stop, or target changes.
 
+## Version 1.8 — Stop Management and Profit Protection Study
+
+- Compare unchanged management with break-even rules at `1R` and `1.5R`.
+- Approximate half-position partial profit at `1R` and `1.5R`.
+- Study protective trailing floors after `1R` and `1.5R`.
+- Preserve conservative same-candle ambiguity and production metrics.
+- Rank results by R, profit factor, and drawdown without automatic adoption.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can measure whether favorable excursion can be protected before changing production stops, targets, or trade-management behavior.
+
 ## Beyond Version 1.0
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
