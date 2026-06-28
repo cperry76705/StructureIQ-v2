@@ -170,6 +170,12 @@ Current source labels reflect the deterministic level builder:
 
 Level quality describes availability and geometry, not setup profitability. A complete level set can still fail the `1.5R` requirement, while an invalid set has directionally inconsistent price ordering.
 
+## v1.6 Instrument-Aware Levels
+
+Level construction now infers asset class, decimal precision, tick or pip size, and a minimum zone width from the requested symbol. Zone half-width uses the smaller of a percentage-based width and one quarter of recent average true range, bounded by the instrument minimum.
+
+EUR-USD and GBP-USD preserve five decimals; BTC-USD and ETH-USD preserve two. Risk/reward is calculated from numeric entry, stop, and target geometry before those values are formatted for API output. The `1.5R` requirement and setup-confirmation rules are unchanged.
+
 Compression is approximated from contraction in recent candle ranges relative to a prior baseline. A compression candidate remains developing until price closes beyond the preceding compression range.
 
 The current BOS-retest implementation uses the relevant support or resistance zone as a proxy for the broken level because the Market Structure Engine does not yet expose a dedicated persisted BOS level. This assumption is explicit and should be replaced when structural-level provenance is expanded.

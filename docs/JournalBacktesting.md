@@ -100,6 +100,8 @@ Below-minimum valid geometry is classified as `stop_too_wide` when stop distance
 
 `BacktestResult.risk_reward_summary` aggregates completeness, missing fields, invalid geometry, below-minimum counts, average and median R, the `1.2R–1.5R` near-threshold band, records at or above `1.5R`, and failure reasons. `setup_level_summary` aggregates complete, partial, missing, and invalid setup-level snapshots.
 
+Version 1.6 preserves symbol-appropriate precision in these snapshots and derives the upstream estimated R from numeric geometry. Backtest execution rules, stop/target outcome ordering, and the `1.5R` gate are unchanged.
+
 ### Outcome Rules
 
 - Target before stop produces a win and the estimated or level-derived reward multiple.

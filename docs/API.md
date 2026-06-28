@@ -625,6 +625,8 @@ Calibration combinations are capped at 100 per request. Recommendations use `dec
 
 Risk/reward summaries calculate R from parsed geometry rather than trusting a supplied ratio. The report preserves the current `1.5R` minimum and is intended to identify the next controlled level-generation or threshold experiment.
 
+As of v1.6, public price strings preserve instrument precision: supported non-JPY forex pairs use five decimals, crypto uses two decimals, and the default uses two. Internal estimated R is calculated from numeric levels before formatting.
+
 Calibration is deterministic for the same data and engine versions. It observes historical behavior and suggests areas to inspect; it does not optimize or change application logic automatically.
 
 ## Contract Evolution

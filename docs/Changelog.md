@@ -2,6 +2,32 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.6.0 — Instrument-Aware Level Precision and Zone Width — 2026-06-28
+
+### Added
+
+- Instrument metadata helpers for asset class, precision, tick size, pip size, minimum zone width, ATR, and adaptive zone width.
+- Numeric risk-level plans calculated before public formatting.
+- Focused forex, crypto, zone-width, formatting, geometry, numeric-R, and unchanged-gate tests.
+
+### Changed
+
+- Removed the fixed `25.0` minimum zone width in favor of instrument floors plus percentage/ATR scaling.
+- EUR-USD and GBP-USD levels preserve five decimals; BTC-USD, ETH-USD, and default symbols preserve two.
+- Analysis estimated R now derives from the same numeric entry, stop, and target geometry represented by the plan.
+- Application and OpenAPI version are now `1.6.0`.
+
+### Compatibility
+
+- `/analysis` request and response fields remain unchanged.
+- Execution simulation, setup confirmation, strategy routing, and the `1.5R` minimum are unchanged.
+- No dashboard, broker execution, live trading, or forced trade qualification was added.
+
+### Verification
+
+- 163 automated tests pass together.
+- The requested live four-symbol calibration was rerun with 200 records after implementation.
+
 ## Version 1.5.0 — Risk/Reward and Setup Level Diagnostics — 2026-06-28
 
 ### Added

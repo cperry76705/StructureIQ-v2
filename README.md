@@ -117,7 +117,7 @@ The response preserves established top-level fields and adds typed internal bloc
 
 ## Roadmap and Release Information
 
-Version `1.5.0` adds setup-level provenance and detailed risk/reward geometry diagnostics. Backtests and calibration now distinguish missing levels, invalid directional geometry, wide stops, close targets, and near-threshold R:R clusters without changing execution rules. Future work focuses on controlled level-generation experiments, out-of-sample validation, data quality, and client experiences—not autonomous execution.
+Version `1.6.0` makes zone widths and price precision instrument-aware. Forex retains five decimal places, crypto retains two, and zones use tick floors plus percentage/ATR scaling instead of a fixed 25-point width. Execution gates and the `1.5R` minimum remain unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

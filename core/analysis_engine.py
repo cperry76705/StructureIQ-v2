@@ -6,7 +6,7 @@ from core.indicators import calculate_rsi
 from core.market_data import Candle, MarketDataProvider
 from core.market_structure import MarketStructureEngine
 from core.multi_timeframe import MultiTimeframeEngine
-from core.risk import build_risk_levels
+from core.risk import build_numeric_risk_levels, format_risk_levels
 from core.setup_engine import (
     SetupEngine,
     approximate_compression,
@@ -20,25 +20,6 @@ from models.schemas import AnalysisRequest, AnalysisResponse
 
 def _bullish_candle(candle: Candle) -> bool:
     return candle.close > candle.open
-
-
-def _risk_reward_ratio(
-    bias: str,
-    price: float,
-    support: tuple[float, float],
-    resistance: tuple[float, float],
-) -> float | None:
-    if bias == "bullish":
-        risk = price - support[0]
-        reward = resistance[0] - price
-    elif bias == "bearish":
-        risk = resistance[1] - price
-        reward = price - support[1]
-    else:
-        return None
-    if risk <= 0 or reward <= 0:
-        return None
-    return round(reward / risk, 2)
 
 
 class AnalysisEngine:
@@ -109,7 +90,12 @@ def _build_analysis(
     # richer engine keeps "unclear" distinct; the API maps it to the safest option.
     bias = higher_structure.trend if higher_structure.trend != "unclear" else "ranging"
     structure = entry_structure.phase
-    support, resistance = detect_zones(entry_candles, entry_highs, entry_lows)
+    support, resistance = detect_zones(
+        entry_candles,
+        entry_highs,
+        entry_lows,
+        request.symbol,
+    )
 
     price = entry_candles[-1].close
     relevant_zone = support if bias == "bullish" else resistance
@@ -124,9 +110,12 @@ def _build_analysis(
     rsi = calculate_rsi(entry_candles)
     rsi_supportive = 40 <= rsi <= 65 if bias == "bullish" else 35 <= rsi <= 60
 
-    risk_reward_ratio = _risk_reward_ratio(
-        bias, price, support, resistance
+    numeric_risk_levels = build_numeric_risk_levels(
+        bias,
+        support,
+        resistance,
     )
+    risk_reward_ratio = numeric_risk_levels.estimated_r
     decision = decision_engine.analyze(
         market_structure=entry_structure,
         multi_timeframe=multi_timeframe,
@@ -142,7 +131,10 @@ def _build_analysis(
         else decision.action.value
     )
     confidence = round(decision.confidence / 10.0, 1)
-    entry_zone, stop_loss, target = build_risk_levels(bias, support, resistance)
+    entry_zone, stop_loss, target = format_risk_levels(
+        numeric_risk_levels,
+        request.symbol,
+    )
     compression_detected = approximate_compression(entry_candles[:-1])
     breakout_direction = (
         compression_breakout_direction(entry_candles)

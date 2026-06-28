@@ -111,6 +111,8 @@ Recommendations map dominant evidence to the owning component:
 - Material `1.2R–1.5R` clustering: a controlled minimum-R sensitivity study, not an automatic threshold reduction.
 - Complete risk plans that remain unconfirmed: setup-confirmation rule review.
 
+Version 1.6 replaces the former fixed 25-point zone floor and zero-decimal level formatting with instrument-aware metadata, ATR/percentage zone scaling, and symbol precision. Calibration summaries therefore measure the corrected numeric geometry while retaining every v1.5 execution and confirmation rule.
+
 ## Setup and Strategy Performance
 
 Closed and skipped records are grouped by `setup_type` and `strategy_type`. Each group reports record count, closed trade count, skipped count, outcomes, win rate, average R, total R, and profit factor.

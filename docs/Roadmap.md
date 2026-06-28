@@ -195,6 +195,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can identify why execution readiness fails and choose the correct controlled experiment without reducing the `1.5R` minimum or relaxing setup confirmation.
 
+## Version 1.6 — Instrument-Aware Level Precision and Zone Width
+
+- Infer forex, crypto, and default instrument metadata from symbols.
+- Preserve five-decimal forex and two-decimal crypto price levels.
+- Replace the fixed 25-point zone floor with tick-aware percentage/ATR scaling.
+- Calculate estimated R from numeric geometry before formatting.
+- Preserve execution, setup-confirmation, strategy, and `1.5R` rules.
+
+**Status:** implemented.
+
+**Outcome:** level geometry remains proportional across instruments with radically different price scales, allowing calibration to measure genuine setup quality instead of formatting and fixed-width artifacts.
+
 ## Beyond Version 1.0
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

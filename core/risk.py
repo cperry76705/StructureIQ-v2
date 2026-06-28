@@ -5,8 +5,21 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Literal
 
+from core.instruments import format_price
+
 
 RiskDirection = Literal["bullish", "bearish", "neutral", "unclear"]
+
+
+@dataclass(frozen=True)
+class NumericRiskLevels:
+    entry_zone: tuple[float, float]
+    entry_price: float
+    stop_loss: float
+    target: float
+    risk: float
+    reward: float
+    estimated_r: float | None
 
 
 class RiskRewardFailureReason(str, Enum):
@@ -169,9 +182,11 @@ def _failed_risk(
     )
 
 
-def build_risk_levels(
-    bias: str, support: tuple[float, float], resistance: tuple[float, float]
-) -> tuple[str, str, str]:
+def build_numeric_risk_levels(
+    bias: str,
+    support: tuple[float, float],
+    resistance: tuple[float, float],
+) -> NumericRiskLevels:
     if bias == "bearish":
         entry = resistance
         stop = resistance[1] + (resistance[1] - resistance[0])
@@ -180,4 +195,47 @@ def build_risk_levels(
         entry = support
         stop = support[0] - (support[1] - support[0])
         target = resistance[0]
-    return f"{entry[0]:.0f}-{entry[1]:.0f}", f"{stop:.0f}", f"{target:.0f}"
+    entry_price = sum(entry) / 2.0
+    risk = abs(entry_price - stop)
+    reward = abs(target - entry_price)
+    valid_geometry = (
+        stop < entry_price < target
+        if bias == "bullish"
+        else target < entry_price < stop
+        if bias == "bearish"
+        else False
+    )
+    estimated_r = round(reward / risk, 6) if valid_geometry and risk > 0 else None
+    return NumericRiskLevels(
+        entry_zone=entry,
+        entry_price=entry_price,
+        stop_loss=stop,
+        target=target,
+        risk=risk,
+        reward=reward,
+        estimated_r=estimated_r,
+    )
+
+
+def format_risk_levels(
+    levels: NumericRiskLevels,
+    symbol: str = "",
+) -> tuple[str, str, str]:
+    entry = levels.entry_zone
+    return (
+        f"{format_price(entry[0], symbol)}-{format_price(entry[1], symbol)}",
+        format_price(levels.stop_loss, symbol),
+        format_price(levels.target, symbol),
+    )
+
+
+def build_risk_levels(
+    bias: str,
+    support: tuple[float, float],
+    resistance: tuple[float, float],
+    symbol: str = "",
+) -> tuple[str, str, str]:
+    return format_risk_levels(
+        build_numeric_risk_levels(bias, support, resistance),
+        symbol,
+    )
