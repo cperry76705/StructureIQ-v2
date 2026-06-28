@@ -2,6 +2,34 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.1.0 — Actionability Diagnostics — 2026-06-27
+
+### Added
+
+- Primary skip reason code, detail, blocking engine, and actionability status on backtest records.
+- Typed `SkipDiagnostics` on backtest results with reason and engine counts.
+- Aggregate skip diagnostics across all calibration runs.
+- Gate-specific calibration recommendations based on the dominant skip cause.
+- Focused diagnostics, aggregation, API, and unchanged-behavior regression tests.
+
+### Changed
+
+- Centralized the existing `1.5R` Setup Engine minimum so diagnostics describe the current gate without duplicating or changing it.
+- Backtest and calibration summaries expose skipped-record context while preserving simulation and scoring behavior.
+- Application and OpenAPI version are now `1.1.0`.
+
+### Compatibility
+
+- `/analysis` input and output are unchanged.
+- `/backtest` and `/calibrate` only add response fields.
+- No decision, setup, strategy, confidence, or risk/reward threshold was loosened.
+- No dashboard, broker execution, or live trading was added.
+
+### Verification
+
+- 135 automated tests pass together.
+- Regression coverage confirms actionable trade simulation and `/analysis` compatibility remain unchanged.
+
 ## Version 1.0.0 — Stable MVP Release Candidate — 2026-06-27
 
 ### Added

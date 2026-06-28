@@ -1,8 +1,9 @@
 """Simplified deterministic historical evaluation for StructureIQ analyses."""
 
 import re
-from dataclasses import dataclass
-from typing import Callable, Protocol
+from collections import Counter
+from dataclasses import dataclass, field
+from typing import Callable, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -10,7 +11,39 @@ from app.config import SUPPORTED_TIMEFRAMES
 from core.analysis_engine import AnalysisEngine
 from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
+from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from models.schemas import AnalysisRequest, AnalysisResponse
+
+
+SkipReasonCode = Literal[
+    "decision_not_actionable",
+    "setup_not_confirmed",
+    "setup_missing_levels",
+    "trader_plan_not_actionable",
+    "strategy_not_aligned",
+    "risk_reward_missing",
+    "risk_reward_too_low",
+    "no_valid_setup",
+    "no_strategy",
+    "unknown",
+]
+BlockingEngine = Literal[
+    "decision_engine",
+    "setup_engine",
+    "strategy_engine",
+    "explanation_engine",
+    "risk_engine",
+    "backtesting_engine",
+    "unknown",
+]
+ActionabilityStatus = Literal[
+    "actionable",
+    "waiting",
+    "developing",
+    "avoid",
+    "no_trade",
+    "skipped",
+]
 
 
 class BacktestRequest(BaseModel):
@@ -65,6 +98,10 @@ class BacktestTrade:
     outcome: TradeOutcome
     realized_r: float | None
     reason: str
+    skip_reason_code: SkipReasonCode | None = None
+    skip_reason_detail: str | None = None
+    blocking_engine: BlockingEngine | None = None
+    actionability_status: ActionabilityStatus = "actionable"
 
 
 @dataclass(frozen=True)
@@ -81,12 +118,24 @@ class BacktestMetrics:
 
 
 @dataclass(frozen=True)
+class SkipDiagnostics:
+    total_skipped: int
+    by_reason_code: dict[str, int]
+    by_blocking_engine: dict[str, int]
+    most_common_reason: str | None
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class BacktestResult:
     request: BacktestRequest
     trades: tuple[BacktestTrade, ...]
     metrics: BacktestMetrics
     human_readable_summary: str
     limitations: tuple[str, ...]
+    skip_diagnostics: SkipDiagnostics = field(
+        default_factory=lambda: _empty_skip_diagnostics()
+    )
 
 
 class _AnalysisRunner(Protocol):
@@ -150,11 +199,13 @@ class BacktestingEngine:
             )
 
         metrics = calculate_backtest_metrics(trades)
+        skip_diagnostics = calculate_skip_diagnostics(trades)
         limitations = backtest_limitations()
         summary = (
             f"Backtest evaluated {len(trades)} analysis windows and produced "
             f"{metrics.total_trades} closed simulated trades with "
-            f"{metrics.total_r:.2f}R total performance."
+            f"{metrics.total_r:.2f}R total performance; "
+            f"{skip_diagnostics.total_skipped} records were skipped."
         )
         return BacktestResult(
             request=request,
@@ -162,6 +213,7 @@ class BacktestingEngine:
             metrics=metrics,
             human_readable_summary=summary,
             limitations=limitations,
+            skip_diagnostics=skip_diagnostics,
         )
 
 
@@ -179,25 +231,26 @@ def build_backtest_trade(
     setup_type = analysis.setup_plan.setup_type.value
     strategy_type = analysis.strategy.preferred_strategy.value
     if plan.status != "actionable" or action not in {"buy", "sell"}:
-        return BacktestTrade(
+        code, engine, detail = diagnose_non_actionable_analysis(analysis)
+        return _skipped_trade(
             timestamp=timestamp,
             symbol=symbol,
             action=action,
             setup_type=setup_type,
             strategy_type=strategy_type,
-            entry=None,
-            stop_loss=None,
-            target=None,
             estimated_risk_reward=plan.estimated_risk_reward,
-            outcome=TradeOutcome.SKIPPED,
-            realized_r=None,
             reason="Trade skipped because the trader-facing plan was not actionable.",
+            skip_reason_code=code,
+            skip_reason_detail=detail,
+            blocking_engine=engine,
+            actionability_status=_actionability_status(plan.status),
         )
 
     entry = parse_price_level(plan.entry_zone, midpoint=True)
     stop = parse_price_level(plan.stop_loss)
     target = parse_price_level(plan.target)
     if entry is None or stop is None or target is None:
+        detail = "Entry, stop loss, or target could not be parsed from the setup plan."
         return BacktestTrade(
             timestamp=timestamp,
             symbol=symbol,
@@ -211,6 +264,10 @@ def build_backtest_trade(
             outcome=TradeOutcome.SKIPPED,
             realized_r=None,
             reason="Trade skipped because entry, stop, or target was unavailable.",
+            skip_reason_code="setup_missing_levels",
+            skip_reason_detail=detail,
+            blocking_engine="setup_engine",
+            actionability_status=_actionability_status(plan.status),
         )
 
     outcome, realized_r, reason = simulate_trade_outcome(
@@ -234,7 +291,173 @@ def build_backtest_trade(
         outcome=outcome,
         realized_r=realized_r,
         reason=reason,
+        actionability_status="actionable",
     )
+
+
+def diagnose_non_actionable_analysis(
+    analysis: AnalysisResponse,
+) -> tuple[SkipReasonCode, BlockingEngine, str]:
+    """Identify the first explanatory gate without changing execution behavior."""
+
+    decision_action = _enum_value(analysis.decision.action)
+    setup = analysis.setup_plan
+    setup_status = _enum_value(getattr(setup, "setup_status", None))
+    plan = analysis.trader_analysis.trade_plan
+    strategy = analysis.strategy
+
+    if decision_action not in {"buy", "sell"}:
+        return (
+            "decision_not_actionable",
+            "decision_engine",
+            f"Decision Engine returned {decision_action or 'an unknown action'}.",
+        )
+    if setup_status in {"invalid", "no_setup"}:
+        return (
+            "no_valid_setup",
+            "setup_engine",
+            f"Setup Engine returned {setup_status.replace('_', ' ')}.",
+        )
+    if setup_status in {"developing", "waiting_for_confirmation"}:
+        return (
+            "setup_not_confirmed",
+            "setup_engine",
+            f"Setup status is {setup_status.replace('_', ' ')}.",
+        )
+
+    setup_levels = (
+        getattr(setup, "entry_zone", getattr(plan, "entry_zone", None)),
+        getattr(setup, "stop_loss", getattr(plan, "stop_loss", None)),
+        getattr(setup, "target", getattr(plan, "target", None)),
+    )
+    if any(level is None for level in setup_levels):
+        return (
+            "setup_missing_levels",
+            "setup_engine",
+            "Setup entry, stop loss, or target is missing.",
+        )
+
+    risk_reward = getattr(setup, "estimated_risk_reward", None)
+    if risk_reward is None:
+        risk_reward = getattr(plan, "estimated_risk_reward", None)
+    if risk_reward is None:
+        return (
+            "risk_reward_missing",
+            "risk_engine",
+            "Estimated risk/reward is unavailable.",
+        )
+    if risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
+        return (
+            "risk_reward_too_low",
+            "risk_engine",
+            f"Estimated risk/reward {risk_reward:.2f}R is below the "
+            f"{MINIMUM_ACCEPTABLE_RISK_REWARD:.2f}R setup gate.",
+        )
+
+    preferred_strategy = _enum_value(getattr(strategy, "preferred_strategy", None))
+    strategy_alignment = _enum_value(getattr(strategy, "strategy_alignment", None))
+    if preferred_strategy == "no_strategy":
+        return (
+            "no_strategy",
+            "strategy_engine",
+            "Strategy Engine did not identify a preferred playbook.",
+        )
+    if strategy_alignment in {"conflicts_with_decision", "no_clear_strategy"}:
+        return (
+            "strategy_not_aligned",
+            "strategy_engine",
+            f"Strategy alignment is {strategy_alignment.replace('_', ' ')}.",
+        )
+    if _actionability_status(plan.status) != "actionable":
+        return (
+            "trader_plan_not_actionable",
+            "explanation_engine",
+            f"Trader-facing plan status is {_actionability_status(plan.status)}.",
+        )
+    return (
+        "unknown",
+        "backtesting_engine",
+        "The analysis was non-actionable but no known blocking gate was identified.",
+    )
+
+
+def calculate_skip_diagnostics(trades: list[BacktestTrade]) -> SkipDiagnostics:
+    """Aggregate primary skip reasons and their owning engines."""
+
+    skipped = [trade for trade in trades if trade.outcome is TradeOutcome.SKIPPED]
+    reasons = Counter(trade.skip_reason_code or "unknown" for trade in skipped)
+    engines = Counter(trade.blocking_engine or "unknown" for trade in skipped)
+    most_common = (
+        sorted(reasons, key=lambda key: (-reasons[key], key))[0] if reasons else None
+    )
+    if not skipped:
+        summary = "No analysis records were skipped."
+    else:
+        dominant_engine = sorted(
+            engines, key=lambda key: (-engines[key], key)
+        )[0]
+        summary = (
+            f"{len(skipped)} records were skipped; the most common reason was "
+            f"{most_common.replace('_', ' ')}, primarily blocked by "
+            f"{dominant_engine.replace('_', ' ')}."
+        )
+    return SkipDiagnostics(
+        total_skipped=len(skipped),
+        by_reason_code=dict(sorted(reasons.items())),
+        by_blocking_engine=dict(sorted(engines.items())),
+        most_common_reason=most_common,
+        human_readable_summary=summary,
+    )
+
+
+def _empty_skip_diagnostics() -> SkipDiagnostics:
+    return SkipDiagnostics(0, {}, {}, None, "No analysis records were skipped.")
+
+
+def _skipped_trade(
+    *,
+    timestamp: int,
+    symbol: str,
+    action: str,
+    setup_type: str,
+    strategy_type: str,
+    estimated_risk_reward: float | None,
+    reason: str,
+    skip_reason_code: SkipReasonCode,
+    skip_reason_detail: str,
+    blocking_engine: BlockingEngine,
+    actionability_status: ActionabilityStatus,
+) -> BacktestTrade:
+    return BacktestTrade(
+        timestamp=timestamp,
+        symbol=symbol,
+        action=action,
+        setup_type=setup_type,
+        strategy_type=strategy_type,
+        entry=None,
+        stop_loss=None,
+        target=None,
+        estimated_risk_reward=estimated_risk_reward,
+        outcome=TradeOutcome.SKIPPED,
+        realized_r=None,
+        reason=reason,
+        skip_reason_code=skip_reason_code,
+        skip_reason_detail=skip_reason_detail,
+        blocking_engine=blocking_engine,
+        actionability_status=actionability_status,
+    )
+
+
+def _enum_value(value: object) -> str:
+    raw = getattr(value, "value", value)
+    return raw if isinstance(raw, str) else ""
+
+
+def _actionability_status(value: object) -> ActionabilityStatus:
+    raw = _enum_value(value)
+    if raw in {"actionable", "waiting", "developing", "avoid", "no_trade"}:
+        return raw  # type: ignore[return-value]
+    return "skipped"
 
 
 def simulate_trade_outcome(

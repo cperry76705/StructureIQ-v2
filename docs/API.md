@@ -415,7 +415,27 @@ Request:
 }
 ```
 
-The response contains the validated request, simulated or skipped trade records, aggregate metrics, a summary, and explicit limitations. `max_trades` caps returned analysis-window records, including skipped records.
+The response contains the validated request, simulated or skipped trade records, aggregate metrics, skip diagnostics, a summary, and explicit limitations. `max_trades` caps returned analysis-window records, including skipped records.
+
+Skipped trade records add `skip_reason_code`, `skip_reason_detail`, `blocking_engine`, and `actionability_status`. Actionable records retain these fields with null skip metadata and `actionability_status: "actionable"`.
+
+```json
+{
+  "skip_diagnostics": {
+    "total_skipped": 50,
+    "by_reason_code": {
+      "decision_not_actionable": 38,
+      "setup_not_confirmed": 12
+    },
+    "by_blocking_engine": {
+      "decision_engine": 38,
+      "setup_engine": 12
+    },
+    "most_common_reason": "decision_not_actionable",
+    "human_readable_summary": "50 records were skipped; the most common reason was decision not actionable, primarily blocked by decision engine."
+  }
+}
+```
 
 `BacktestMetrics.total_trades` counts closed wins, losses, and breakeven trades; skipped and open records remain visible in `trades` but are excluded from closed-trade metrics. Profit factor is `null` when no losing R exists.
 
@@ -478,6 +498,19 @@ Response shape:
     "total_r": 4.0,
     "profit_factor": 2.0,
     "max_drawdown_r": 2.0
+  },
+  "aggregate_skip_diagnostics": {
+    "total_skipped": 40,
+    "by_reason_code": {
+      "decision_not_actionable": 30,
+      "setup_not_confirmed": 10
+    },
+    "by_blocking_engine": {
+      "decision_engine": 30,
+      "setup_engine": 10
+    },
+    "most_common_reason": "decision_not_actionable",
+    "human_readable_summary": "40 records were skipped; the most common reason was decision not actionable, primarily blocked by decision engine."
   },
   "setup_performance": [],
   "strategy_performance": [],

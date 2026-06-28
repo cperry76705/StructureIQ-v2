@@ -2,7 +2,7 @@
 
 ## Purpose
 
-StructureIQ v0.9 adds deterministic tools for observing whether current decision thresholds, setup qualification, strategy ranking, and risk assumptions appear too conservative, too aggressive, or reasonably balanced over historical samples.
+StructureIQ provides deterministic tools for observing whether current decision thresholds, setup qualification, strategy ranking, and risk assumptions appear too conservative, too aggressive, or reasonably balanced over historical samples. Version 1.1 explains why records fail to become actionable before any threshold is changed.
 
 Calibration is diagnostic. It produces recommendations for human inspection and never changes scoring weights, thresholds, setup rules, or strategy rankings automatically.
 
@@ -62,6 +62,17 @@ Every run delegates to the existing Backtesting Engine. Calibration does not int
 
 Metrics use the same deterministic definitions as v0.8 backtesting.
 
+## Aggregate Skip Diagnostics
+
+`CalibrationResult.aggregate_skip_diagnostics` combines primary skip causes from every run. It reports total skipped records, counts by reason code, counts by blocking engine, the most common reason, and a readable summary.
+
+Each skipped record receives one primary cause according to the current authority chain. For example, a `wait` decision is attributed to the Decision Engine even if downstream setup and plan output are also non-actionable. A directional decision with a developing setup is attributed to setup confirmation. This prevents one historical window from being counted as several independent failures.
+
+The breakdown answers two distinct questions:
+
+- **Reason code:** which condition prevented actionability?
+- **Blocking engine:** which engine owns the condition that should be inspected?
+
 ## Setup and Strategy Performance
 
 Closed and skipped records are grouped by `setup_type` and `strategy_type`. Each group reports record count, closed trade count, skipped count, outcomes, win rate, average R, total R, and profit factor.
@@ -89,8 +100,9 @@ The v0.9 rules flag:
 - High R drawdown.
 - Setup or strategy groups with negative average R.
 - Missing evaluable records.
+- Dominant actionability skip reasons and their owning gates.
 
-Recommendations ask maintainers to inspect evidence and rules. They do not apply parameter changes.
+Recommendations now name the specific gate to inspect—for example, Decision Engine evidence distributions, unmet Setup Engine confirmation conditions, level derivation, risk/reward availability, or strategy eligibility. They do not apply parameter changes or recommend loosening a threshold without first measuring its distribution and historical sensitivity.
 
 ## Determinism
 

@@ -1,0 +1,146 @@
+"""Focused diagnostics for unchanged backtest actionability gates."""
+
+from types import SimpleNamespace
+
+from core.backtesting import build_backtest_trade, calculate_skip_diagnostics
+from core.decision_engine import DecisionAction
+from core.journal import TradeOutcome
+from core.market_data import Candle
+from core.setup_engine import SetupStatus, SetupType
+from core.strategy_engine import StrategyType
+
+
+def _analysis(
+    *,
+    decision: DecisionAction = DecisionAction.BUY,
+    setup_status: SetupStatus = SetupStatus.CONFIRMED,
+    plan_status: str = "waiting",
+    entry_zone: str | None = "100-101",
+    stop_loss: str | None = "98",
+    target: str | None = "105",
+    risk_reward: float | None = 2.0,
+):
+    plan = SimpleNamespace(
+        status=plan_status,
+        entry_zone=entry_zone,
+        stop_loss=stop_loss,
+        target=target,
+        estimated_risk_reward=risk_reward,
+    )
+    setup = SimpleNamespace(
+        setup_type=SetupType.BULLISH_PULLBACK_CONTINUATION,
+        setup_status=setup_status,
+        entry_zone=entry_zone,
+        stop_loss=stop_loss,
+        target=target,
+        estimated_risk_reward=risk_reward,
+    )
+    return SimpleNamespace(
+        trader_analysis=SimpleNamespace(trade_plan=plan),
+        decision=SimpleNamespace(action=decision),
+        setup_plan=setup,
+        strategy=SimpleNamespace(
+            preferred_strategy=StrategyType.PULLBACK_CONTINUATION,
+            strategy_alignment="aligned_with_decision",
+        ),
+    )
+
+
+def _trade(analysis):
+    return build_backtest_trade(
+        analysis=analysis,
+        timestamp=1,
+        symbol="BTC-USD",
+        future_candles=[],
+    )
+
+
+def test_wait_decision_is_attributed_to_decision_engine() -> None:
+    trade = _trade(_analysis(decision=DecisionAction.WAIT))
+
+    assert trade.outcome is TradeOutcome.SKIPPED
+    assert trade.skip_reason_code == "decision_not_actionable"
+    assert trade.blocking_engine == "decision_engine"
+
+
+def test_developing_setup_is_attributed_to_setup_confirmation() -> None:
+    trade = _trade(
+        _analysis(
+            setup_status=SetupStatus.DEVELOPING,
+            plan_status="developing",
+        )
+    )
+
+    assert trade.skip_reason_code == "setup_not_confirmed"
+    assert trade.blocking_engine == "setup_engine"
+    assert trade.actionability_status == "developing"
+
+
+def test_missing_entry_stop_or_target_is_reported() -> None:
+    trade = _trade(_analysis(plan_status="actionable", target=None))
+
+    assert trade.skip_reason_code == "setup_missing_levels"
+    assert trade.blocking_engine == "setup_engine"
+
+
+def test_missing_risk_reward_is_reported() -> None:
+    trade = _trade(_analysis(risk_reward=None))
+
+    assert trade.skip_reason_code == "risk_reward_missing"
+    assert trade.blocking_engine == "risk_engine"
+
+
+def test_low_risk_reward_is_reported_without_changing_threshold() -> None:
+    trade = _trade(_analysis(risk_reward=1.4))
+
+    assert trade.skip_reason_code == "risk_reward_too_low"
+    assert "1.50R" in (trade.skip_reason_detail or "")
+
+
+def test_waiting_trader_plan_status_and_explanation_gate_are_captured() -> None:
+    trade = _trade(_analysis(plan_status="waiting"))
+
+    assert trade.skip_reason_code == "trader_plan_not_actionable"
+    assert trade.blocking_engine == "explanation_engine"
+    assert trade.actionability_status == "waiting"
+
+
+def test_skip_diagnostics_aggregate_reasons_and_blocking_engines() -> None:
+    trades = [
+        _trade(_analysis(decision=DecisionAction.WAIT)),
+        _trade(_analysis(decision=DecisionAction.WAIT)),
+        _trade(
+            _analysis(
+                setup_status=SetupStatus.DEVELOPING,
+                plan_status="developing",
+            )
+        ),
+    ]
+
+    diagnostics = calculate_skip_diagnostics(trades)
+
+    assert diagnostics.total_skipped == 3
+    assert diagnostics.by_reason_code == {
+        "decision_not_actionable": 2,
+        "setup_not_confirmed": 1,
+    }
+    assert diagnostics.by_blocking_engine == {
+        "decision_engine": 2,
+        "setup_engine": 1,
+    }
+    assert diagnostics.most_common_reason == "decision_not_actionable"
+
+
+def test_actionable_trade_simulation_behavior_is_unchanged() -> None:
+    trade = build_backtest_trade(
+        analysis=_analysis(plan_status="actionable"),
+        timestamp=1,
+        symbol="BTC-USD",
+        future_candles=[Candle(2, 101, 106, 100, 105, 100)],
+    )
+
+    assert trade.outcome is TradeOutcome.WIN
+    assert trade.realized_r == 2.0
+    assert trade.skip_reason_code is None
+    assert trade.blocking_engine is None
+    assert trade.actionability_status == "actionable"

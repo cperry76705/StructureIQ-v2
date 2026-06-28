@@ -20,6 +20,8 @@ def _trade(
     *,
     setup: str = "bullish_pullback_continuation",
     strategy: str = "pullback_continuation",
+    skip_reason_code: str | None = None,
+    blocking_engine: str | None = None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=1,
@@ -34,6 +36,11 @@ def _trade(
         outcome=outcome,
         realized_r=realized_r,
         reason="Synthetic calibration trade.",
+        skip_reason_code=skip_reason_code,
+        blocking_engine=blocking_engine,
+        actionability_status="waiting"
+        if outcome is TradeOutcome.SKIPPED
+        else "actionable",
     )
 
 
@@ -131,6 +138,34 @@ def test_aggregate_metrics_calculate_totals() -> None:
     assert result.aggregate_metrics.total_trades == 2
     assert result.aggregate_metrics.total_skipped == 1
     assert result.aggregate_metrics.total_r == 1.0
+
+
+def test_calibration_aggregates_skip_diagnostics_across_runs() -> None:
+    runner = _Runner(
+        lambda request: [
+            _trade(
+                TradeOutcome.SKIPPED,
+                None,
+                skip_reason_code="decision_not_actionable",
+                blocking_engine="decision_engine",
+            )
+        ]
+    )
+    result = _engine(runner).run(
+        _request(symbols=["BTC-USD", "ETH-USD"])
+    )
+
+    assert result.aggregate_skip_diagnostics.total_skipped == 2
+    assert result.aggregate_skip_diagnostics.by_reason_code == {
+        "decision_not_actionable": 2
+    }
+    assert result.aggregate_skip_diagnostics.by_blocking_engine == {
+        "decision_engine": 2
+    }
+    assert any(
+        "dominant skip reason" in recommendation.message.lower()
+        for recommendation in result.recommendations
+    )
 
 
 def test_skipped_heavy_results_produce_conservative_recommendation() -> None:

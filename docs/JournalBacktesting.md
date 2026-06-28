@@ -2,7 +2,7 @@
 
 ## Purpose
 
-StructureIQ v0.8 introduces a measurement foundation for recording analysis decisions and evaluating their directional usefulness over historical candles.
+StructureIQ provides a measurement foundation for recording analysis decisions and evaluating their directional usefulness over historical candles. Version 1.1 adds actionability diagnostics without changing which records become simulated trades.
 
 The journal and backtester are research tools. They do not place orders, reproduce broker execution, guarantee profitability, or convert StructureIQ into a live trading system.
 
@@ -64,6 +64,22 @@ The backtester:
 7. Caps returned records using `max_trades`.
 8. Calculates deterministic R-based metrics and returns explicit limitations.
 
+### Actionability Diagnostics
+
+Every `BacktestTrade` records `actionability_status`. Skipped records also identify one primary `skip_reason_code`, a plain-English `skip_reason_detail`, and the `blocking_engine` that owns the first explanatory gate.
+
+Reason codes cover non-actionable decisions, unconfirmed or absent setups, missing setup levels, non-actionable trader plans, strategy alignment, missing or insufficient risk/reward, and unclassified backtesting conditions. The diagnostic order follows existing engine authority: decision state is inspected before setup qualification, then levels, risk context, strategy context, and trader-plan presentation.
+
+`BacktestResult.skip_diagnostics` aggregates:
+
+- Total skipped records.
+- Counts by primary reason code.
+- Counts by blocking engine.
+- The most common reason, with deterministic tie handling.
+- A readable summary of the dominant gate.
+
+Diagnostics do not add an execution gate. The existing behavior remains unchanged: only a directional decision with an actionable trader plan and parseable entry, stop, and target is simulated.
+
 ### Outcome Rules
 
 - Target before stop produces a win and the estimated or level-derived reward multiple.
@@ -87,6 +103,8 @@ The journal endpoints persist and retrieve local records. The backtest endpoint 
 The v0.9 Calibration Engine composes multiple Backtesting Engine runs across symbol and timeframe combinations. It reuses backtest trades and metrics, then aggregates results and groups them by setup and strategy.
 
 Calibration does not change the backtest simulation model and does not tune application rules. Its recommendations identify historical behavior for human inspection.
+
+Version 1.1 aggregates the same skip diagnostics across calibration runs so maintainers can distinguish Decision, Setup, Strategy, Explanation, risk-context, and backtesting blockers before considering any threshold change.
 
 Known forex symbols are normalized only when the Yahoo provider is queried. Backtest and calibration requests and results preserve the user-facing symbol.
 

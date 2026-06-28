@@ -10,6 +10,9 @@ from core.market_structure import MarketStructureResult
 from core.multi_timeframe import MultiTimeframeResult, TimeframeAlignment
 
 
+MINIMUM_ACCEPTABLE_RISK_REWARD = 1.5
+
+
 SetupDirection = Literal["bullish", "bearish", "neutral"]
 ConditionImportance = Literal["required", "recommended", "optional"]
 InvalidationSeverity = Literal["soft", "hard"]
@@ -392,7 +395,8 @@ def _build_conditions(
         ),
         EntryCondition(
             "Estimated risk/reward is at least 1.5R.",
-            estimated_risk_reward is not None and estimated_risk_reward >= 1.5,
+            estimated_risk_reward is not None
+            and estimated_risk_reward >= MINIMUM_ACCEPTABLE_RISK_REWARD,
             "required",
         ),
         EntryCondition(
@@ -503,7 +507,7 @@ def _warning_notes(
         warnings.append("Timeframes conflict and materially weaken setup quality.")
     if estimated_risk_reward is None:
         warnings.append("Estimated risk/reward is unavailable.")
-    elif estimated_risk_reward < 1.5:
+    elif estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
         warnings.append("Estimated risk/reward is below the 1.5R setup threshold.")
     if candidate.setup_type in {
         SetupType.COMPRESSION_BREAKOUT_LONG,

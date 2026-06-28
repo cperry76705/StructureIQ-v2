@@ -107,3 +107,6 @@ def test_post_backtest_works() -> None:
     assert response.status_code == 200
     assert len(response.json()["trades"]) == 1
     assert response.json()["limitations"]
+    assert response.json()["skip_diagnostics"]["total_skipped"] == 1
+    assert response.json()["trades"][0]["skip_reason_code"]
+    assert response.json()["trades"][0]["blocking_engine"]

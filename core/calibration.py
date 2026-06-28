@@ -13,7 +13,9 @@ from core.backtesting import (
     BacktestResult,
     BacktestTrade,
     BacktestingEngine,
+    SkipDiagnostics,
     calculate_backtest_metrics,
+    calculate_skip_diagnostics,
 )
 from core.journal import TradeOutcome
 from core.market_data import MarketDataProvider
@@ -156,6 +158,7 @@ class CalibrationRecommendation:
 class CalibrationResult:
     runs: tuple[CalibrationRun, ...]
     aggregate_metrics: CalibrationMetrics
+    aggregate_skip_diagnostics: SkipDiagnostics
     setup_performance: tuple[SetupPerformance, ...]
     strategy_performance: tuple[StrategyPerformance, ...]
     recommendations: tuple[CalibrationRecommendation, ...]
@@ -222,6 +225,7 @@ class CalibrationEngine:
                     )
 
         aggregate = _aggregate_metrics(runs, all_trades)
+        aggregate_skip_diagnostics = calculate_skip_diagnostics(all_trades)
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -229,6 +233,7 @@ class CalibrationEngine:
             all_trades,
             setup_performance,
             strategy_performance,
+            aggregate_skip_diagnostics,
         )
         summary = (
             f"Calibration completed {aggregate.total_runs} runs with "
@@ -238,6 +243,7 @@ class CalibrationEngine:
         return CalibrationResult(
             runs=tuple(runs),
             aggregate_metrics=aggregate,
+            aggregate_skip_diagnostics=aggregate_skip_diagnostics,
             setup_performance=setup_performance,
             strategy_performance=strategy_performance,
             recommendations=recommendations,
@@ -312,6 +318,7 @@ def _recommendations(
     records: list[BacktestTrade],
     setups: tuple[SetupPerformance, ...],
     strategies: tuple[StrategyPerformance, ...],
+    skip_diagnostics: SkipDiagnostics,
 ) -> tuple[CalibrationRecommendation, ...]:
     recommendations: list[CalibrationRecommendation] = []
     record_count = len(records)
@@ -335,6 +342,10 @@ def _recommendations(
                 "Review which required setup conditions most often remain unmet.",
             )
         )
+
+    diagnostic_recommendation = _skip_diagnostic_recommendation(skip_diagnostics)
+    if diagnostic_recommendation is not None:
+        recommendations.append(diagnostic_recommendation)
 
     if metrics.total_trades and metrics.win_rate < 35.0:
         recommendations.append(
@@ -413,6 +424,91 @@ def _recommendations(
             )
         )
     return tuple(recommendations)
+
+
+def _skip_diagnostic_recommendation(
+    diagnostics: SkipDiagnostics,
+) -> CalibrationRecommendation | None:
+    """Translate the dominant skip cause into a specific inspection target."""
+
+    reason = diagnostics.most_common_reason
+    if reason is None:
+        return None
+    count = diagnostics.by_reason_code.get(reason, 0)
+    recommendations: dict[
+        str, tuple[RecommendationCategory, RecommendationSeverity, str]
+    ] = {
+        "decision_not_actionable": (
+            "decision_threshold",
+            "high",
+            "Inspect the Decision Engine confidence distribution and the evidence "
+            "gates that most often produce wait or avoid; do not lower them until "
+            "their contribution is measured.",
+        ),
+        "setup_not_confirmed": (
+            "setup_quality",
+            "high",
+            "Measure which required Setup Engine confirmation conditions remain "
+            "unmet most often before considering gate changes.",
+        ),
+        "setup_missing_levels": (
+            "setup_quality",
+            "high",
+            "Inspect setup entry, stop, and target derivation for the affected "
+            "market regimes and data windows.",
+        ),
+        "risk_reward_missing": (
+            "risk_reward",
+            "high",
+            "Inspect why entry and invalidation context cannot produce a risk/reward "
+            "estimate before reviewing the minimum threshold.",
+        ),
+        "risk_reward_too_low": (
+            "risk_reward",
+            "medium",
+            "Review the distribution around the existing minimum risk/reward gate; "
+            "do not change the gate until outcome sensitivity is measured.",
+        ),
+        "trader_plan_not_actionable": (
+            "setup_quality",
+            "medium",
+            "Inspect how confirmed decision and setup states propagate into the "
+            "trader-facing plan status.",
+        ),
+        "strategy_not_aligned": (
+            "strategy_selection",
+            "medium",
+            "Inspect strategy alignment and candidate eligibility by market regime.",
+        ),
+        "no_strategy": (
+            "strategy_selection",
+            "medium",
+            "Inspect which strategy fit components prevent any playbook from reaching "
+            "eligibility.",
+        ),
+        "no_valid_setup": (
+            "setup_quality",
+            "high",
+            "Inspect why the Setup Engine rejects all candidates, grouped by setup "
+            "type and missing required condition.",
+        ),
+        "unknown": (
+            "data_quality",
+            "high",
+            "Inspect raw analysis snapshots for an unclassified backtesting gate and "
+            "add a diagnostic code before tuning.",
+        ),
+    }
+    category, severity, action = recommendations[reason]
+    return CalibrationRecommendation(
+        category=category,
+        message=(
+            f"The dominant skip reason was {reason.replace('_', ' ')} "
+            f"({count} records)."
+        ),
+        severity=severity,
+        suggested_action=action,
+    )
 
 
 def calibration_limitations() -> tuple[str, ...]:

@@ -135,6 +135,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Release gate:** tag `v1.0.0` after the release candidate passes continuous integration and the owner approves the distribution license and deployment security posture.
 
+## Version 1.1 — Actionability Diagnostics and Conservative-Gate Calibration
+
+- Per-record skip reason, detail, blocking engine, and actionability status.
+- Backtest skip aggregation by reason and engine.
+- Cross-run calibration skip diagnostics.
+- Gate-specific recommendations for human inspection.
+- No automatic threshold or scoring changes.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can identify whether Decision, Setup, Strategy, Explanation, risk context, or the backtester is the dominant actionability blocker before designing a controlled threshold experiment. Trade-selection behavior remains unchanged.
+
 ## Beyond Version 1.0
 
-Future work may improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
+Future work may add per-condition setup diagnostics, score-distribution reports, and controlled sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

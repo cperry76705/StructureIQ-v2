@@ -38,6 +38,7 @@ def test_calibrate_endpoint_works() -> None:
 
     assert response.status_code == 200
     assert response.json()["aggregate_metrics"]["total_runs"] == 2
+    assert response.json()["aggregate_skip_diagnostics"]["total_skipped"] == 2
     assert response.json()["recommendations"]
 
 
