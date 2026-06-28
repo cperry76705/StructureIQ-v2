@@ -29,7 +29,7 @@ Integration tests verify engine boundaries and typed contracts, including the fu
 
 ### API Contract Tests
 
-API tests verify status codes, validation, response schemas, dependency injection, and informative failure behavior for `GET /health` and `POST /analysis`. Existing clients should not be broken by undocumented response changes.
+API tests verify status codes, validation, response schemas, dependency injection, and informative failure behavior for the complete public surface: `GET /health`, `POST /analysis`, `POST /journal`, `GET /journal`, `GET /journal/summary`, `POST /backtest`, and `POST /calibrate`. A release contract test also verifies the version identity and that every supported method remains present in OpenAPI. Existing clients should not be broken by undocumented response changes.
 
 ### Regression Tests
 
@@ -60,3 +60,5 @@ python -m pytest
 ```
 
 Continuous integration should run the complete suite for every pull request and block merging on failures.
+
+The repository includes a GitHub Actions workflow that runs this command on pull requests and pushes to `main` using Python 3.12.

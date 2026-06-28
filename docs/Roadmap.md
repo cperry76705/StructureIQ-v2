@@ -129,9 +129,11 @@ Every version must preserve automated tests, stable contracts, explainability, a
 - Journal and backtesting workflows.
 - Dashboard-ready architecture without coupling domain engines to a UI.
 
-**Status:** planned.
+**Status:** release candidate; Stable MVP prepared.
 
-**Exit criteria:** StructureIQ consistently turns market data into traceable internal intelligence and a disciplined trader-facing plan while remaining a decision-support platform, not a live trading bot.
+**Outcome:** StructureIQ consistently turns market data into traceable internal intelligence and a disciplined trader-facing plan. The complete API surface, repository guidance, release identity, automated contract coverage, journal, backtesting, and calibration foundations are documented and verified while the product remains decision-support software rather than a live trading bot.
+
+**Release gate:** tag `v1.0.0` after the release candidate passes continuous integration and the owner approves the distribution license and deployment security posture.
 
 ## Beyond Version 1.0
 

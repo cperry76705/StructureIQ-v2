@@ -1,6 +1,10 @@
 """Application-level constants and defaults."""
 
 APP_NAME = "StructureIQ v2"
+APP_VERSION = "1.0.0"
+APP_DESCRIPTION = (
+    "Explainable market-structure intelligence and trader decision support."
+)
 DEFAULT_LOOKBACK = 200
 MIN_LOOKBACK = 50
 MAX_LOOKBACK = 1000

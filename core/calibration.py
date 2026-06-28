@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable, Literal, Protocol
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.config import SUPPORTED_TIMEFRAMES
 from core.backtesting import (
@@ -32,6 +32,22 @@ RecommendationSeverity = Literal["low", "medium", "high"]
 
 
 class CalibrationRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "symbols": ["BTC-USD", "EUR-USD"],
+                    "timeframes": ["5m"],
+                    "higher_timeframes": ["1h"],
+                    "lookback": 300,
+                    "max_trades_per_run": 25,
+                    "risk_per_trade_percent": 1.0,
+                    "starting_balance": 10_000,
+                }
+            ]
+        }
+    )
+
     symbols: list[str] = Field(min_length=1, max_length=20)
     timeframes: list[str] = Field(min_length=1, max_length=10)
     higher_timeframes: list[str] = Field(min_length=1, max_length=10)

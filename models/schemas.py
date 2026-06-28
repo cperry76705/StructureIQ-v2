@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.config import DEFAULT_LOOKBACK, MAX_LOOKBACK, MIN_LOOKBACK, SUPPORTED_TIMEFRAMES
 from core.decision_engine import DecisionResult
@@ -17,6 +17,19 @@ Action = Literal["buy", "sell", "wait", "no_trade"]
 
 
 class AnalysisRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "symbol": "EUR-USD",
+                    "timeframe": "5m",
+                    "higher_timeframe": "1h",
+                    "lookback": 200,
+                }
+            ]
+        }
+    )
+
     symbol: str = Field(default="BTC-USD", min_length=3, max_length=20)
     timeframe: str = "5m"
     higher_timeframe: str = "1h"

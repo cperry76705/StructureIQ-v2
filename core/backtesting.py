@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Protocol
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.config import SUPPORTED_TIMEFRAMES
 from core.analysis_engine import AnalysisEngine
@@ -14,6 +14,22 @@ from models.schemas import AnalysisRequest, AnalysisResponse
 
 
 class BacktestRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "symbol": "BTC-USD",
+                    "timeframe": "5m",
+                    "higher_timeframe": "1h",
+                    "lookback": 300,
+                    "starting_balance": 10_000,
+                    "risk_per_trade_percent": 1.0,
+                    "max_trades": 25,
+                }
+            ]
+        }
+    )
+
     symbol: str = Field(min_length=1, max_length=20)
     timeframe: str = Field(min_length=1)
     higher_timeframe: str = Field(min_length=1)

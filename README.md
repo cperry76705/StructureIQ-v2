@@ -1,76 +1,130 @@
-# StructureIQ v2
+# StructureIQ
 
-A clean, rule-based market analysis API built with FastAPI. It reads real market candles from Yahoo Finance by default, performs no live execution, and does not connect to a broker.
+StructureIQ is an explainable market-intelligence and trader decision-support platform. It does not predict markets or place trades. It interprets current price structure, quantifies weighted evidence, explains uncertainty, and helps traders make disciplined decisions.
 
-## What it does
+## Project Overview
 
-- Detects swing highs and lows and derives higher-timeframe bias.
-- Labels higher highs, higher lows, lower highs, and lower lows.
-- Detects bullish/bearish breaks of structure (BOS), changes of character (CHOCH), and liquidity sweeps.
-- Classifies impulse, pullback, range, reversal-attempt, and unclear phases.
-- Identifies simple support and resistance zones.
-- Classifies current structure, routes to a basic strategy, and scores confluence from 0-10.
-- Returns illustrative entry, stop, and target levels. These are analysis outputs, not financial advice or live orders.
-- Converts provider responses into a standard `Candle` model before analysis.
-- Returns HTTP 503 with an informative message when market data is unavailable.
+The service turns historical candle data into two deliberately separate outputs:
 
-## Setup
+1. Internal engine output: structure events, timeframe alignment, decision scores, setup qualification, and ranked strategy candidates.
+2. Trader-facing output: a plain-English narrative, recommendation, risks, invalidation, and checklist-style trade plan.
 
-Run these commands from the `structureiq-v2` directory:
+All results are deterministic for the same inputs and provider data. StructureIQ is a research and decision-support tool, not an autonomous trading system.
+
+## Architecture
+
+The analysis path is modular:
+
+`Market Data -> Market Structure -> Multi-Timeframe -> Indicators -> Decision -> Setup -> Strategy -> Explanation`
+
+The platform includes:
+
+- **Market Data Engine** — provider abstraction, candle normalization, and friendly-symbol mapping.
+- **Market Structure Engine** — swings, HH/HL/LH/LL, BOS, CHOCH, liquidity sweeps, trend, and phase.
+- **Multi-Timeframe Engine** — higher-timeframe context, execution-timeframe state, alignment, and directional bias.
+- **Indicator Framework** — EMA, RSI, MACD, ATR, ADX, and volume confirmation where data permits.
+- **Decision Engine** — weighted evidence producing `buy`, `sell`, `wait`, or `avoid` with confidence.
+- **Setup Engine** — qualifies a specific setup and its entry, risk, confirmation, and invalidation conditions.
+- **Strategy Engine** — compares broader playbooks without overriding the decision or setup.
+- **Analysis/Explanation Engine** — translates internal outputs into a trader-facing narrative and plan.
+- **Journal/Backtesting Engine** — local journaling and simplified deterministic historical evaluation.
+- **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
+
+See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
+
+## Quick Start
+
+Python 3.11 or newer is recommended.
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-uvicorn app.main:app --reload
+python -m uvicorn app.main:app --reload
 ```
 
-The API is available at `http://127.0.0.1:8000`; interactive docs are at `http://127.0.0.1:8000/docs`.
+The API is available at `http://127.0.0.1:8000`; interactive OpenAPI documentation is at `/docs`.
 
-## API
-
-Health check:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:8000/health
-```
-
-Run an analysis:
-
-```powershell
-$body = @{
-  symbol = "BTC-USD"
-  timeframe = "5m"
-  higher_timeframe = "1h"
-  lookback = 200
-} | ConvertTo-Json
-
-Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8000/analysis `
-  -ContentType "application/json" -Body $body
-```
-
-## Tests
+## Running Tests
 
 ```powershell
 python -m pytest
 ```
 
-## Market data providers
+Tests use deterministic fixtures and do not require live market-data access.
 
-`core/market_data.py` defines the provider contract and standardized candle model. Yahoo Finance is the default implementation. OANDA and Polygon.io adapters are present as explicit future placeholders and report that they are not configured if selected.
+## API Endpoints
 
-Provider selection is dependency-injected in `app/main.py`. Swap `get_market_data_provider()` or override that FastAPI dependency in tests; the analysis engine requires no changes.
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/health` | Service liveness |
+| `POST` | `/analysis` | Full market analysis and trader-facing explanation |
+| `POST` | `/journal` | Save an entry or compatible analysis snapshot |
+| `GET` | `/journal` | List and filter journal entries |
+| `GET` | `/journal/summary` | Aggregate journal outcomes |
+| `POST` | `/backtest` | Run simplified historical evaluation |
+| `POST` | `/calibrate` | Aggregate backtests across requested combinations |
 
-## Market structure engine
+### Analysis Request
 
-`core/market_structure.py` analyzes only standardized `Candle` objects. Its typed result contains:
+```json
+{
+  "symbol": "EUR-USD",
+  "timeframe": "5m",
+  "higher_timeframe": "1h",
+  "lookback": 200
+}
+```
 
-- `trend`: bullish, bearish, ranging, or unclear
-- `phase`: impulse, pullback, range, reversal attempt, or unclear
-- Latest confirmed swing high and low
-- Recent structural events such as `higher_high`, `bullish_bos`, and `bearish_choch`
-- Liquidity-sweep state, a confidence modifier, and a human-readable summary
+The response preserves established top-level fields and adds typed internal blocks (`multi_timeframe`, `decision`, `setup_plan`, and `strategy`) plus the trader-facing `trader_analysis` block.
 
-A BOS requires a candle close through the latest confirmed swing. When that close breaks an established opposite trend, the event is classified as CHOCH. A liquidity sweep requires a wick through a confirmed swing followed by a close back inside its level.
+### Backtest Request
 
-Swings use a two-candle fractal confirmation window by default. This avoids treating every local fluctuation as structure, but means swing labels lag by two completed candles. The internal engine can report `unclear`; to preserve the existing `/analysis` response contract, an unclear higher-timeframe trend is exposed as the conservative `ranging` bias.
+```json
+{
+  "symbol": "BTC-USD",
+  "timeframe": "5m",
+  "higher_timeframe": "1h",
+  "lookback": 300,
+  "starting_balance": 10000,
+  "risk_per_trade_percent": 1.0,
+  "max_trades": 25
+}
+```
+
+### Calibration Request
+
+```json
+{
+  "symbols": ["BTC-USD", "EUR-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 25,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000
+}
+```
+
+## Limitations
+
+- Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
+- The default Yahoo adapter depends on external data availability, quality, and interval limits.
+- Backtests use simplified fills and do not model fees, slippage, spread, latency, partial fills, or portfolio exposure.
+- Calibration observes historical behavior; it does not prove profitability or change production thresholds automatically.
+- The local JSONL journal is intended for a single local process, not concurrent or multi-user deployment.
+- There is no dashboard, broker integration, order execution, alerting, or live-trading loop.
+
+## Roadmap and Release Information
+
+Version `1.0.0` is the Stable MVP release candidate: the engine pipeline, API contracts, research tools, and documentation are in place. Future work focuses on data-quality controls, stronger out-of-sample validation, persistence options, observability, and client experiences—not autonomous execution.
+
+- [Roadmap](docs/Roadmap.md)
+- [Changelog](docs/Changelog.md)
+- [v1.0.0 Release Notes](docs/ReleaseNotes_v1.0.0.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security Policy](SECURITY.md)
+
+## Disclaimer
+
+StructureIQ is decision-support and research software. It is not financial, investment, legal, or tax advice. Its outputs may be incomplete or wrong. Users are solely responsible for validating data, assessing risk, and making trading decisions. Past or simulated performance does not guarantee future results.

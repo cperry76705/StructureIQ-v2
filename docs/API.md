@@ -2,9 +2,9 @@
 
 ## Overview
 
-StructureIQ currently exposes a FastAPI HTTP interface for service health and market analysis. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `1.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
-Interactive OpenAPI documentation is available at `/docs` when the service is running.
+Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
 ## Symbol Normalization
 

@@ -3,4 +3,16 @@
 __pycache__/
 .pytest_cache/
 *.py[cod]
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
 journal/*.jsonl

@@ -2,6 +2,34 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 1.0.0 — Stable MVP Release Candidate — 2026-06-27
+
+### Added
+
+- Central `APP_VERSION` release identity used by FastAPI and OpenAPI.
+- Professional project overview, architecture summary, quick start, API examples, limitations, roadmap, and decision-support disclaimer in `README.md`.
+- Contribution and security policies, a distribution-license placeholder, and a pull-request test workflow.
+- `docs/ReleaseNotes_v1.0.0.md` with the Stable MVP scope, endpoints, limitations, and next improvements.
+- Release contract tests for the version identity and complete OpenAPI endpoint/method surface.
+
+### Changed
+
+- Added endpoint grouping, summaries, and docstrings to improve generated OpenAPI documentation without changing request or response contracts.
+- Expanded ignore rules for secrets, editor state, coverage output, and Python build artifacts.
+- Reviewed legacy scoring and strategy-router compatibility layers; they remain intentionally available while primary analysis uses the dedicated engines.
+- Updated roadmap, API, and testing documentation for the release-candidate state.
+
+### Compatibility
+
+- The `/analysis` request body is unchanged.
+- Existing response fields and all seven public endpoint paths remain available.
+- No dashboard, broker execution, live trading, or major trading feature was added.
+
+### Verification
+
+- 126 automated tests pass together.
+- The release contract is checked through generated OpenAPI metadata.
+
 ## Version 0.9 — Validation and Calibration — 2026-06-27
 
 ### Added
