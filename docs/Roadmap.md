@@ -106,6 +106,20 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** users can persist analysis snapshots in a filterable local journal and replay the current analysis pipeline over historical candle windows with skipped-plan records, conservative stop/target simulation, R-based metrics, and explicit limitations.
 
+## Version 0.9 — Validation and Calibration
+
+- User-facing to provider-specific symbol normalization.
+- Multi-symbol and multi-timeframe calibration runs.
+- Aggregate backtest behavior.
+- Setup and strategy performance groups.
+- Conservative and aggressive behavior diagnostics.
+- Severity-ranked recommendations for human inspection.
+- No automatic parameter tuning.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can measure how often the current engine acts or skips, inspect historical R-based behavior by setup and strategy, and identify rules worth reviewing without allowing calibration to modify production logic.
+
 ## Version 1.0 — StructureIQ Platform
 
 - Cohesive trader-facing decision-support experience.

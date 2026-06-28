@@ -2,6 +2,36 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 0.9 — Validation and Calibration — 2026-06-27
+
+### Added
+
+- Provider-boundary symbol normalization in `core/symbols.py`.
+- Yahoo mappings for supported user-facing forex pairs while preserving crypto, existing Yahoo symbols, and unknown symbols safely.
+- Deterministic calibration in `core/calibration.py`.
+- Typed `CalibrationRequest`, `CalibrationResult`, `CalibrationRun`, `CalibrationMetrics`, `SetupPerformance`, `StrategyPerformance`, and `CalibrationRecommendation` models.
+- Cartesian calibration runs across requested symbols, current timeframes, and higher timeframes.
+- Aggregate closed/skipped behavior, setup and strategy performance groups, and R-based metrics.
+- Diagnostic recommendations for conservative, aggressive, weak setup, weak strategy, risk, and data-quality behavior.
+- `POST /calibrate` endpoint.
+- `docs/Calibration.md` describing normalization, metrics, recommendations, determinism, and limitations.
+- Focused symbol, provider integration, calibration aggregation, recommendation, endpoint, and regression tests.
+
+### Changed
+
+- `/analysis`, `/backtest`, and `/calibrate` can use friendly forex symbols with the default Yahoo provider while preserving the requested symbol in public results.
+- Calibration recommendations remain observational and never change weights or thresholds automatically.
+
+### Verification
+
+- 124 automated tests pass.
+- The complete v0.1 through v0.9 suite passes together.
+
+### Scope
+
+- Calibration inherits the simplified backtest's execution assumptions and has no statistical significance or out-of-sample model yet.
+- No automatic optimization, machine learning, dashboard, broker execution, or live trading was added.
+
 ## Version 0.8 — Journal and Backtesting — 2026-06-27
 
 ### Added

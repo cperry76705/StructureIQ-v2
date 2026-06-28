@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from core.market_data import Candle, MarketDataError
+from core.symbols import normalize_yahoo_symbol
 
 
 _INTERVALS = {
@@ -45,8 +46,9 @@ class YahooFinanceMarketDataProvider:
 
         interval, aggregation, source_minutes = _INTERVALS[timeframe]
         range_value = self._select_range(lookback * aggregation, source_minutes)
+        provider_symbol = normalize_yahoo_symbol(symbol)
         try:
-            payload = self._fetch(symbol, interval, range_value)
+            payload = self._fetch(provider_symbol, interval, range_value)
             candles = self._parse(payload)
         except MarketDataError:
             raise

@@ -6,6 +6,10 @@ StructureIQ currently exposes a FastAPI HTTP interface for service health and ma
 
 Interactive OpenAPI documentation is available at `/docs` when the service is running.
 
+## Symbol Normalization
+
+Public requests and responses preserve user-facing symbols. The default Yahoo provider translates supported forex pairs only when requesting market data. For example, `EUR-USD` is queried as `EURUSD=X`, while `BTC-USD`, existing Yahoo symbols such as `EURUSD=X`, and unknown symbols pass through safely.
+
 ## `GET /health`
 
 Reports whether the API application is running.
@@ -417,6 +421,85 @@ The response contains the validated request, simulated or skipped trade records,
 
 This endpoint is synchronous and research-oriented. It does not model live execution or guarantee profitability.
 
+## `POST /calibrate`
+
+Runs the existing Backtesting Engine across the Cartesian product of requested symbols, current timeframes, and higher timeframes, then aggregates behavior and returns diagnostic recommendations.
+
+Request:
+
+```json
+{
+  "symbols": ["BTC-USD", "EUR-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 25,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000
+}
+```
+
+Response shape:
+
+```json
+{
+  "runs": [
+    {
+      "symbol": "EUR-USD",
+      "normalized_symbol": "EURUSD=X",
+      "timeframe": "5m",
+      "higher_timeframe": "1h",
+      "total_records": 25,
+      "total_skipped": 20,
+      "total_open": 1,
+      "metrics": {
+        "total_trades": 4,
+        "wins": 2,
+        "losses": 2,
+        "breakeven": 0,
+        "win_rate": 50.0,
+        "average_r": 0.5,
+        "total_r": 2.0,
+        "profit_factor": 2.0,
+        "max_drawdown_r": 1.0
+      },
+      "human_readable_summary": "Historical run summary."
+    }
+  ],
+  "aggregate_metrics": {
+    "total_runs": 2,
+    "total_trades": 8,
+    "total_skipped": 40,
+    "wins": 4,
+    "losses": 4,
+    "breakeven": 0,
+    "win_rate": 50.0,
+    "average_r": 0.5,
+    "total_r": 4.0,
+    "profit_factor": 2.0,
+    "max_drawdown_r": 2.0
+  },
+  "setup_performance": [],
+  "strategy_performance": [],
+  "recommendations": [
+    {
+      "category": "setup_quality",
+      "message": "80% of calibration records were skipped.",
+      "severity": "medium",
+      "suggested_action": "Review which required setup conditions most often remain unmet."
+    }
+  ],
+  "human_readable_summary": "Calibration completed 2 runs with 8 closed trades, 40 skipped records, and 4.00R aggregate performance.",
+  "limitations": [
+    "Recommendations identify historical patterns for inspection; they do not tune weights automatically."
+  ]
+}
+```
+
+Calibration combinations are capped at 100 per request. Recommendations use `decision_threshold`, `setup_quality`, `strategy_selection`, `risk_reward`, `market_structure`, or `data_quality` categories with low, medium, or high severity.
+
+Calibration is deterministic for the same data and engine versions. It observes historical behavior and suggests areas to inspect; it does not optimize or change application logic automatically.
+
 ## Contract Evolution
 
 The `/analysis` response now exposes both architectural layers:
@@ -424,4 +507,4 @@ The `/analysis` response now exposes both architectural layers:
 - `multi_timeframe`, `decision`, `setup_plan`, and `strategy` preserve detailed internal engine output.
 - `trader_analysis` translates those results into a readable narrative and checklist plan.
 
-The trader-facing block does not recalculate action, confidence, setup qualification, or strategy ranking. Evidence and checklist states remain traceable to typed engine output. Journal and backtest endpoints consume or replay these contracts without changing `/analysis` request or response behavior.
+The trader-facing block does not recalculate action, confidence, setup qualification, or strategy ranking. Evidence and checklist states remain traceable to typed engine output. Journal, backtest, and calibration endpoints consume, replay, or aggregate these contracts without changing `/analysis` request or response behavior.

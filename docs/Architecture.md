@@ -67,6 +67,8 @@ The Market Data Engine retrieves, validates, and normalizes candles and related 
 
 Provider-specific representations must not leak into analytical engines. Missing, stale, or invalid data is reported explicitly rather than converted into false evidence.
 
+The v0.9 symbol-normalization boundary preserves user-facing symbols while translating known forex pairs into Yahoo-specific identifiers. Unknown symbols pass through safely, and analytical/API outputs retain the requested symbol.
+
 ### 2. Market Structure Engine
 
 The Market Structure Engine identifies confirmed swing highs and lows, HH/HL/LH/LL relationships, BOS, CHOCH, liquidity sweeps, and structural phases. It classifies trend as bullish, bearish, ranging, or unclear and returns both conclusions and timestamped supporting events.
@@ -132,6 +134,12 @@ Backtesting must disclose data quality, fees, slippage, execution assumptions, a
 
 The v0.8 implementation stores journal records in a local append-only JSONL file and provides a deterministic historical candle-window runner. Non-actionable analyses are retained as skipped records, while actionable plans use first-touch stop/target simulation and R-based metrics. The implementation explicitly reports its execution-model limitations.
 
+### Validation and Calibration Layer
+
+The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
+
+Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Strategy Engine rankings, or risk rules. Recommendations are inspection prompts for maintainers, not automatic optimization.
+
 ## Ownership Rules
 
 | Question | Owning component |
@@ -158,4 +166,4 @@ The v0.8 implementation stores journal records in a local append-only JSONL file
 
 ## Current Platform State
 
-Versions 0.1 through 0.8 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, weighted Decision Engine, Setup Engine, trader-facing Analysis/Explanation Engine, ranked strategy playbooks, local journaling, and deterministic historical evaluation. The remaining milestone is packaging these capabilities into the cohesive version 1.0 platform.
+Versions 0.1 through 0.9 provide the FastAPI foundation, provider abstraction and symbol normalization, typed market structure, two-timeframe alignment, weighted Decision Engine, Setup Engine, trader-facing Analysis/Explanation Engine, ranked strategy playbooks, local journaling, deterministic historical evaluation, and calibration diagnostics. The remaining milestone is packaging these capabilities into the cohesive version 1.0 platform.

@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from app.config import APP_NAME
 from core.analysis_engine import AnalysisEngine
 from core.backtesting import BacktestRequest, BacktestResult, BacktestingEngine
+from core.calibration import CalibrationEngine, CalibrationRequest, CalibrationResult
 from core.journal import JournalEntry, JournalStore, JournalSummary, TradeOutcome
 from core.market_data import MarketDataError, MarketDataProvider
 from core.providers.yahoo import YahooFinanceMarketDataProvider
@@ -92,6 +93,20 @@ def backtest(
 ) -> BacktestResult:
     try:
         return BacktestingEngine(provider).run(request)
+    except MarketDataError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Market data unavailable: {exc}",
+        ) from exc
+
+
+@app.post("/calibrate", response_model=CalibrationResult)
+def calibrate(
+    request: CalibrationRequest,
+    provider: MarketDataProvider = Depends(get_market_data_provider),
+) -> CalibrationResult:
+    try:
+        return CalibrationEngine(provider).run(request)
     except MarketDataError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

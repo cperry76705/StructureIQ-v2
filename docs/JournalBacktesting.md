@@ -82,6 +82,14 @@ Skipped and open records remain in `BacktestResult.trades` for auditability but 
 
 The journal endpoints persist and retrieve local records. The backtest endpoint runs the historical evaluator synchronously and returns a typed result. Existing `/health` and `/analysis` behavior remains unchanged.
 
+## Calibration Relationship
+
+The v0.9 Calibration Engine composes multiple Backtesting Engine runs across symbol and timeframe combinations. It reuses backtest trades and metrics, then aggregates results and groups them by setup and strategy.
+
+Calibration does not change the backtest simulation model and does not tune application rules. Its recommendations identify historical behavior for human inspection.
+
+Known forex symbols are normalized only when the Yahoo provider is queried. Backtest and calibration requests and results preserve the user-facing symbol.
+
 ## Limitations
 
 - This is a simplified deterministic backtest, not a production execution simulator.
