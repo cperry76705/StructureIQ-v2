@@ -2,6 +2,35 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 0.7 — Strategy Engine — 2026-06-27
+
+### Added
+
+- Dedicated playbook comparison in `core/strategy_engine.py`.
+- Typed `StrategyResult`, `StrategyCandidate`, `StrategyType`, `StrategyStatus`, and `StrategyScoreBreakdown` models.
+- Ranked trend-continuation, pullback-continuation, breakout-continuation, range-reversal, liquidity-sweep reversal, and compression-breakout candidates.
+- A `25/25/25/15/10` fit model across structure, timeframes, setup, risk, and existing indicator confirmation.
+- Candidate supporting evidence, opposing evidence, required conditions, invalidation, and notes.
+- Additive `strategy` data on successful `POST /analysis` responses.
+- Strategy context supplied to the Analysis/Explanation Engine after ranking.
+- Focused tests for all playbooks, decision constraints, selection, alignment, score breakdowns, evidence, no-strategy behavior, and API compatibility.
+
+### Changed
+
+- Broader playbook ranking now occurs after Setup Engine qualification and before trader-facing explanation.
+- Avoid rejects all candidates; wait permits developing or viable candidates but never promotes them to preferred status.
+- The legacy strategy router remains available but is not part of the primary analysis path.
+
+### Verification
+
+- 84 automated tests pass.
+- The complete v0.1 through v0.7 suite passes together.
+
+### Scope
+
+- Scores are deterministic heuristics and have not yet been calibrated with backtesting.
+- No journal, dashboard, broker execution, or live trading work was added.
+
 ## Version 0.6 — Analysis/Explanation Engine — 2026-06-27
 
 ### Added

@@ -30,13 +30,14 @@ It does not detect raw structure, calculate the directional decision, qualify se
 
 ## Outputs
 
-- Recommended playbook, or observation/no-playbook.
-- Ranked alternative playbooks.
-- Referenced setup candidates.
-- Suitability score and comparison reasons.
-- Required conditions and disqualifiers.
-- Risk posture and regime assumptions.
-- Rule and configuration version.
+`StrategyResult` contains:
+
+- Preferred strategy or `no_strategy`.
+- Ranked `StrategyCandidate` items.
+- Alignment with the Decision and Setup results.
+- A factual selection summary for the Explanation Engine.
+
+Each candidate contains direction, status, `0–100` score, score breakdown, supporting and opposing evidence, required conditions, invalidation, and notes.
 
 ## Initial Playbook Families
 
@@ -76,4 +77,47 @@ The Analysis/Explanation Engine presents the selected playbook, qualified setup,
 
 ## Current Status
 
-The existing strategy router is foundational compatibility logic, not the completed Strategy Engine defined here. The full engine is planned for version 0.7, after Setup Engine and Analysis/Explanation Engine contracts are established.
+Version 0.7 is implemented in `core/strategy_engine.py`. The existing strategy router remains compatibility logic and is not used by the primary analysis path.
+
+## v0.7 Scoring Model
+
+Every playbook is scored using five bounded components:
+
+| Component | Maximum |
+| --- | ---: |
+| Structure fit | 25 |
+| Timeframe fit | 25 |
+| Setup fit | 25 |
+| Risk fit | 15 |
+| Indicator confirmation | 10 |
+| **Total** | **100** |
+
+- **Structure fit** measures trend, phase, BOS, range-boundary, sweep, or compression relevance.
+- **Timeframe fit** rewards directional alignment or appropriate range context and penalizes conflict or uncertainty.
+- **Setup fit** gives the greatest credit when the selected Setup Engine result directly maps to the playbook.
+- **Risk fit** evaluates the existing estimated risk/reward without inventing new levels.
+- **Indicator confirmation** consumes existing indicator evidence and cannot create a strategy independently.
+
+Candidates are returned in descending score order. A candidate must score at least 50, match the Decision Engine direction, and remain consistent with the Setup Engine direction to become the preferred strategy. An avoid decision rejects every candidate. An invalid or absent setup prevents strategy preference.
+
+For buy or sell decisions with confirmed setups, the selected candidate may be marked `preferred`. Under a wait decision, the leading candidate remains `developing` or `viable`; strategy ranking never upgrades it to an actionable decision.
+
+## Setup-to-Strategy Mapping
+
+| Setup type | Broader strategy |
+| --- | --- |
+| Bullish or bearish BOS retest | Breakout continuation |
+| Bullish or bearish pullback continuation | Pullback continuation |
+| Long or short range reversal | Range reversal |
+| Long or short liquidity-sweep reversal | Liquidity-sweep reversal |
+| Long or short compression breakout | Compression breakout |
+
+Trend continuation remains a broader competing playbook when directional structure and timeframe context support it.
+
+## Known Limitations
+
+- Candidate weights and thresholds are deterministic heuristics and are not yet calibrated through backtesting.
+- The engine compares one selected setup against broader playbooks; it does not receive multiple Setup Engine candidates.
+- Indicator fit currently reflects the existing RSI confirmation only.
+- Risk fit uses the Setup Engine's approximate risk/reward.
+- Market-regime history and performance statistics belong to later journal/backtesting work.

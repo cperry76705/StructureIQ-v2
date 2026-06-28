@@ -57,6 +57,7 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "multi_timeframe",
         "decision",
         "setup_plan",
+        "strategy",
         "trader_analysis",
     }
     assert set(payload["multi_timeframe"]) == {
@@ -107,6 +108,25 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "human_readable_summary",
     }
     assert payload["setup"] == payload["setup_plan"]["setup_type"]
+    assert set(payload["strategy"]) == {
+        "preferred_strategy",
+        "candidates",
+        "strategy_alignment",
+        "human_readable_summary",
+    }
+    assert payload["strategy"]["candidates"]
+    assert set(payload["strategy"]["candidates"][0]) == {
+        "strategy_type",
+        "status",
+        "direction",
+        "score",
+        "score_breakdown",
+        "supporting_evidence",
+        "opposing_evidence",
+        "required_conditions",
+        "invalidation",
+        "notes",
+    }
     assert set(payload["trader_analysis"]) == {
         "headline",
         "summary",

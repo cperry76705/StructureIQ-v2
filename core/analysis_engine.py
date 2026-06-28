@@ -12,6 +12,7 @@ from core.setup_engine import (
     approximate_compression,
     compression_breakout_direction,
 )
+from core.strategy_engine import StrategyEngine
 from core.structure import find_swings
 from core.support_resistance import detect_zones
 from models.schemas import AnalysisRequest, AnalysisResponse
@@ -50,6 +51,7 @@ class AnalysisEngine:
         multi_timeframe_engine: MultiTimeframeEngine | None = None,
         decision_engine: DecisionEngine | None = None,
         setup_engine: SetupEngine | None = None,
+        strategy_engine: StrategyEngine | None = None,
         explanation_engine: ExplanationEngine | None = None,
     ) -> None:
         self._market_data = market_data
@@ -59,6 +61,7 @@ class AnalysisEngine:
         )
         self._decision_engine = decision_engine or DecisionEngine()
         self._setup_engine = setup_engine or SetupEngine()
+        self._strategy_engine = strategy_engine or StrategyEngine()
         self._explanation_engine = explanation_engine or ExplanationEngine()
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
@@ -77,6 +80,7 @@ class AnalysisEngine:
             self._multi_timeframe_engine,
             self._decision_engine,
             self._setup_engine,
+            self._strategy_engine,
             self._explanation_engine,
         )
 
@@ -89,6 +93,7 @@ def _build_analysis(
     multi_timeframe_engine: MultiTimeframeEngine,
     decision_engine: DecisionEngine,
     setup_engine: SetupEngine,
+    strategy_engine: StrategyEngine,
     explanation_engine: ExplanationEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
@@ -109,6 +114,10 @@ def _build_analysis(
     price = entry_candles[-1].close
     relevant_zone = support if bias == "bullish" else resistance
     tolerance = price * 0.005
+    near_support = support[0] - tolerance <= price <= support[1] + tolerance
+    near_resistance = (
+        resistance[0] - tolerance <= price <= resistance[1] + tolerance
+    )
     near_level = relevant_zone[0] - tolerance <= price <= relevant_zone[1] + tolerance
     bullish_confirmation = _bullish_candle(entry_candles[-1])
     confirmed = bullish_confirmation if bias == "bullish" else not bullish_confirmation
@@ -156,12 +165,22 @@ def _build_analysis(
         compression_breakout_direction=breakout_direction,
     )
     setup = setup_plan.setup_type.value
+    strategy = strategy_engine.analyze(
+        decision=decision,
+        market_structure=entry_structure,
+        multi_timeframe=multi_timeframe,
+        setup_plan=setup_plan,
+        price_near_support=near_support,
+        price_near_resistance=near_resistance,
+        indicator_supportive=rsi_supportive,
+    )
     trader_analysis = explanation_engine.analyze(
         symbol=request.symbol,
         market_structure=entry_structure,
         multi_timeframe=multi_timeframe,
         decision=decision,
         setup_plan=setup_plan,
+        strategy=strategy,
     )
 
     reasons = [
@@ -188,5 +207,6 @@ def _build_analysis(
         multi_timeframe=multi_timeframe,
         decision=decision,
         setup_plan=setup_plan,
+        strategy=strategy,
         trader_analysis=trader_analysis,
     )

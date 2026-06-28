@@ -147,6 +147,40 @@ Status: `200 OK`
     ],
     "human_readable_summary": "A bullish pullback continuation setup is waiting for required confirmation before entry."
   },
+  "strategy": {
+    "preferred_strategy": "pullback_continuation",
+    "strategy_alignment": "partially_aligned",
+    "human_readable_summary": "Pullback continuation is most relevant but still developing for the current decision and setup context.",
+    "candidates": [
+      {
+        "strategy_type": "pullback_continuation",
+        "status": "developing",
+        "direction": "bullish",
+        "score": 85.0,
+        "score_breakdown": {
+          "structure_fit": 25.0,
+          "timeframe_fit": 18.0,
+          "setup_fit": 20.0,
+          "risk_fit": 12.0,
+          "indicator_confirmation": 10.0,
+          "total": 85.0
+        },
+        "supporting_evidence": [
+          "Directional structure is in a pullback phase."
+        ],
+        "opposing_evidence": [],
+        "required_conditions": [
+          "Bullish confirmation candle forms at the setup level."
+        ],
+        "invalidation": [
+          "Bullish setup invalidates if price closes below the latest confirmed swing low."
+        ],
+        "notes": [
+          "One or more required entry conditions remain unmet."
+        ]
+      }
+    ]
+  },
   "trader_analysis": {
     "headline": "EUR/USD is bullish, but the entry is not confirmed yet.",
     "summary": "The higher timeframe remains bullish while the current timeframe is pulling back. The Decision Engine remains wait at 68.0/100 confidence. The bullish pullback continuation setup is waiting for confirmation.",
@@ -205,6 +239,7 @@ The current response contract includes:
 - `multi_timeframe`: an additive v0.3 object containing the two structure views, alignment, unified bias, and explanation.
 - `decision`: an additive v0.4 object containing the weighted recommendation and complete evidence ledger.
 - `setup_plan`: an additive v0.5 object containing setup qualification, entry conditions, invalidation, and risk context.
+- `strategy`: an additive v0.7 object containing ranked broader playbooks and selection evidence.
 - `trader_analysis`: an additive v0.6 object containing the trader-facing narrative and checklist plan.
 
 ### Multi-Timeframe Object
@@ -269,7 +304,18 @@ The current response contract includes:
 | `confidence_interpretation` | Trader-friendly interpretation of Decision Engine confidence. |
 | `next_best_action` | The next condition or review step implied by the current plan. |
 
-The response remains backward-compatible at the field level: every pre-v0.6 field remains present with the same name and type. `multi_timeframe`, `decision`, `setup_plan`, and `trader_analysis` are additive objects. The legacy top-level action and confidence remain derived from the Decision Engine, while the legacy top-level setup mirrors `setup_plan.setup_type`.
+### Strategy Object
+
+| Field | Description |
+| --- | --- |
+| `preferred_strategy` | Highest-scoring aligned playbook or `no_strategy`. |
+| `strategy_alignment` | `aligned_with_decision`, `partially_aligned`, `conflicts_with_decision`, or `no_clear_strategy`. |
+| `human_readable_summary` | Factual ranking summary for downstream explanation. |
+| `candidates` | Ranked strategy candidates with status, direction, score, breakdown, evidence, conditions, invalidation, and notes. |
+
+Candidate scores contain structure fit, timeframe fit, setup fit, risk fit, and indicator confirmation. They compare playbook suitability; they do not replace Decision Engine confidence or Setup Engine quality.
+
+The response remains backward-compatible at the field level: every pre-v0.7 field remains present with the same name and type. `multi_timeframe`, `decision`, `setup_plan`, `strategy`, and `trader_analysis` are additive objects. The legacy top-level action and confidence remain derived from the Decision Engine, while the legacy top-level setup mirrors `setup_plan.setup_type`.
 
 Illustrative entry, stop, and target values are analytical outputs. They are not live orders, financial advice, or guarantees.
 
@@ -290,7 +336,7 @@ Example:
 
 The `/analysis` response now exposes both architectural layers:
 
-- `multi_timeframe`, `decision`, and `setup_plan` preserve detailed internal engine output.
+- `multi_timeframe`, `decision`, `setup_plan`, and `strategy` preserve detailed internal engine output.
 - `trader_analysis` translates those results into a readable narrative and checklist plan.
 
 The trader-facing block does not recalculate action, confidence, setup qualification, or future strategy ranking. Evidence and checklist states remain traceable to typed engine output. Future versions may extend the plan additively as the Strategy and Journal/Backtesting Engines are implemented.

@@ -122,6 +122,8 @@ The Strategy Engine selects broader playbooks and compares possible approaches b
 
 For example, it may compare continuation and reversal playbooks when multiple setup candidates exist, rank valid approaches, or recommend observation when no playbook has sufficient edge. It cannot override a Decision Engine action or make an invalid setup valid.
 
+The v0.7 implementation evaluates trend continuation, pullback continuation, breakout continuation, range reversal, liquidity-sweep reversal, and compression breakout. It returns ranked candidates with structured fit scores and evidence before the Analysis/Explanation Engine produces trader-facing language.
+
 ### 9. Journal/Backtesting Engine
 
 The Journal/Backtesting Engine records market snapshots, engine versions, decisions, setup qualifications, plans, user actions, and outcomes. It applies the same deterministic analytical rules to historical data while guarding against look-ahead bias.
@@ -154,4 +156,4 @@ Backtesting must disclose data quality, fees, slippage, execution assumptions, a
 
 ## Current Platform State
 
-Versions 0.1 through 0.6 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, weighted Decision Engine, Setup Engine, and trader-facing Analysis/Explanation Engine. Versions 0.7 onward add broader strategy playbooks and journal/backtesting workflows.
+Versions 0.1 through 0.7 provide the FastAPI foundation, provider abstraction, typed market structure, two-timeframe alignment, weighted Decision Engine, Setup Engine, trader-facing Analysis/Explanation Engine, and ranked strategy playbooks. Version 0.8 adds journal/backtesting workflows before the platform milestone.

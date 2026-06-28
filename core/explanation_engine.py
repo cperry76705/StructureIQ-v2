@@ -7,6 +7,7 @@ from core.decision_engine import DecisionAction, DecisionResult
 from core.market_structure import MarketStructureResult
 from core.multi_timeframe import MultiTimeframeResult, TimeframeAlignment
 from core.setup_engine import SetupResult, SetupStatus, SetupType
+from core.strategy_engine import StrategyResult, StrategyType
 
 
 TradePlanStatus = Literal["actionable", "developing", "waiting", "avoid", "no_trade"]
@@ -18,6 +19,7 @@ ExplanationSource = Literal[
     "indicators",
     "risk",
 ]
+ExplanationSectionSource = ExplanationSource | Literal["strategy_engine"]
 RiskSeverity = Literal["low", "medium", "high"]
 
 
@@ -27,7 +29,7 @@ class ExplanationSection:
 
     title: str
     message: str
-    source: ExplanationSource
+    source: ExplanationSectionSource
 
 
 @dataclass(frozen=True)
@@ -89,12 +91,13 @@ class ExplanationEngine:
         multi_timeframe: MultiTimeframeResult,
         decision: DecisionResult,
         setup_plan: SetupResult,
+        strategy: StrategyResult | None = None,
     ) -> TraderAnalysis:
         narrative = _market_narrative(market_structure, multi_timeframe)
         plan_status = _trade_plan_status(decision, setup_plan)
         wait_for = _wait_conditions(setup_plan)
         invalidation = _invalidation_notes(setup_plan)
-        notes = _plan_notes(decision, setup_plan, plan_status)
+        notes = _plan_notes(decision, setup_plan, plan_status, strategy)
         trade_plan = TradePlan(
             status=plan_status,
             setup_type=setup_plan.setup_type.value,
@@ -108,7 +111,7 @@ class ExplanationEngine:
             notes=notes,
         )
         sections = _why_sections(
-            market_structure, multi_timeframe, decision, setup_plan
+            market_structure, multi_timeframe, decision, setup_plan, strategy
         )
 
         return TraderAnalysis(
@@ -251,12 +254,13 @@ def _why_sections(
     multi: MultiTimeframeResult,
     decision: DecisionResult,
     setup: SetupResult,
+    strategy: StrategyResult | None,
 ) -> tuple[ExplanationSection, ...]:
     setup_message = (
         setup.human_readable_summary
         or "The Setup Engine did not provide additional setup context."
     )
-    return (
+    sections = [
         ExplanationSection(
             "Market context",
             _market_narrative(structure, multi).context,
@@ -269,7 +273,17 @@ def _why_sections(
             "decision_engine",
         ),
         ExplanationSection("Setup", setup_message, "setup_engine"),
-    )
+    ]
+    if strategy and strategy.preferred_strategy is not StrategyType.NO_STRATEGY:
+        sections.append(
+            ExplanationSection(
+                "Strategy",
+                f"The Strategy Engine ranks "
+                f"{strategy.preferred_strategy.value.replace('_', ' ')} highest.",
+                "strategy_engine",
+            )
+        )
+    return tuple(sections)
 
 
 def _wait_conditions(setup: SetupResult) -> tuple[WaitForCondition, ...]:
@@ -313,10 +327,16 @@ def _plan_notes(
     decision: DecisionResult,
     setup: SetupResult,
     status: TradePlanStatus,
+    strategy: StrategyResult | None,
 ) -> tuple[str, ...]:
     notes = [*setup.warning_notes, *decision.risk_notes]
     if status == "actionable":
         notes.append("A confirmed setup is not a guaranteed outcome.")
+    if strategy and strategy.preferred_strategy is not StrategyType.NO_STRATEGY:
+        notes.append(
+            "Preferred broader playbook: "
+            f"{strategy.preferred_strategy.value.replace('_', ' ')}."
+        )
     if not notes and status in {"waiting", "developing"}:
         notes.append("Do not treat a developing setup as confirmed.")
     return tuple(dict.fromkeys(note for note in notes if note.strip()))

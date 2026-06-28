@@ -90,9 +90,9 @@ Every version must preserve automated tests, stable contracts, explainability, a
 - Ranking among qualified setup candidates.
 - Market-regime-aware strategy recommendations.
 
-**Status:** planned.
+**Status:** implemented.
 
-**Exit criteria:** the engine evaluates playbooks only after setup qualification and cannot override risk, decision, or invalidation gates.
+**Outcome:** all six playbook families are scored and ranked against structure, timeframe, setup, risk, and existing indicator evidence. Selection occurs after setup qualification and cannot override decision, setup, risk, or invalidation gates.
 
 ## Version 0.8 — Journal and Backtesting
 

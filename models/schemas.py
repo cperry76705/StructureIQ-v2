@@ -9,6 +9,7 @@ from core.decision_engine import DecisionResult
 from core.explanation_engine import TraderAnalysis
 from core.multi_timeframe import MultiTimeframeResult
 from core.setup_engine import SetupResult
+from core.strategy_engine import StrategyResult
 
 
 Bias = Literal["bullish", "bearish", "ranging"]
@@ -49,6 +50,7 @@ class AnalysisResponse(BaseModel):
     multi_timeframe: MultiTimeframeResult
     decision: DecisionResult
     setup_plan: SetupResult
+    strategy: StrategyResult
     trader_analysis: TraderAnalysis
 
 

@@ -15,6 +15,7 @@ The v0.6 engine consumes:
 - Multi-Timeframe result and directional context.
 - Decision result, confidence, evidence, and risk notes.
 - Setup plan, status, levels, entry conditions, invalidation rules, evidence, and warnings.
+- Preferred strategy and ranked candidate context when available.
 
 Missing optional levels or risk/reward remain unavailable in the output. The engine uses fallback language rather than inventing values or failing.
 
@@ -78,6 +79,6 @@ Confidence describes evidence quality and agreement. It is not a predicted win r
 - Language is generated from deterministic templates rather than a natural-language model.
 - Risk severity is inferred from existing evidence impacts and warnings.
 - Optional entry, stop, target, and risk/reward fields remain null when upstream engines cannot measure them.
-- The engine currently explains one Setup Engine result; multi-strategy comparison belongs to version 0.7.
+- The engine explains the preferred strategy but does not reproduce the full candidate comparison in the trade plan.
 - It does not personalize plans to account size, risk tolerance, jurisdiction, or experience.
 - It does not place orders, manage brokers, or perform live trading.
