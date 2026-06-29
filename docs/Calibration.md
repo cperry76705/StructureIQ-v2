@@ -225,3 +225,11 @@ Helper functions provide eight illustrative scenarios per asset family: perfect,
 Supported models are `immediate`, `next_bar_open`, `signal_close`, `midpoint_between_entry_and_stop`, `midpoint_between_entry_and_target`, `quarter_pullback_from_entry_to_stop`, `quarter_pullback_from_entry_to_target`, `retest_entry`, and `conservative_limit`.
 
 Results report candidates, fills, misses, outcomes, R metrics, drawdown, average entry improvement, delay, missed-opportunity R, and fallback count. The summary identifies best and worst expectancy, highest fill rate, best expectancy-to-drawdown profile, and the profile with most misses. These are counterfactual findings and cannot alter production entry behavior.
+
+## v2.4 Market Regime Laboratory
+
+Set `market_regime_analysis` to true to return `market_regime_summary`, `strategy_regime_matrix`, and `setup_regime_matrix`. The flag defaults to false and does not rerun or mutate ordinary calibration trades.
+
+Classification uses only existing structure, timeframe, ATR, range, swing, BOS/CHOCH, momentum, and volatility evidence. Regime precedence is transition, compression or expansion, range, volatility extremes, then directional trend strength. This produces one stable label while retaining reasons for the other evidence dimensions.
+
+Every regime row reports records, closed trades, outcomes, expectancy, total R, profit factor, drawdown, duration, MFE/MAE, and best/worst strategy and setup. Matrices provide the same core performance measures for every strategy-regime and setup-regime pair. Recommendations flag negative expectancy, drawdown of at least `3R`, fewer than five closed trades, and sampled dominance or underperformance. These thresholds are reporting rules, not statistical proof or production controls.

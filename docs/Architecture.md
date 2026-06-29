@@ -152,6 +152,12 @@ Version 2.3 inserts an alternative-entry research stage before optional executio
 
 Every profile receives the same cached candles and candidate count. The laboratory tracks adjusted-entry R, delay, misses, production-winning opportunities missed, and structural-level fallbacks. Timing summaries are isolated from ordinary backtest and calibration metrics. OHLC candles cannot establish intrabar touch order, so same-candle ambiguity remains conservative.
 
+#### Market Regime Laboratory
+
+Version 2.4 classifies each analysis in parallel with production engines. It uses existing trend, phase, swing structure, BOS/CHOCH, range contraction or expansion, ATR, recent range behavior, momentum, and timeframe alignment. One exclusive regime, confidence score, reasons, and summary are emitted; no regime label is consumed by production routing.
+
+When requested, calibration groups immutable backtest snapshots by regime and builds strategy and setup cross-matrices. The laboratory reports all regime categories, including empty ones, and treats small samples as insufficient evidence. Recommendations are observations only and cannot tune or suppress a strategy.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -173,6 +179,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | How sensitive is historical performance to fill and cost assumptions? | Execution Realism Engine |
 | Which execution variable causes the largest historical degradation? | Execution Sensitivity Laboratory |
 | Does a better or later entry improve expectancy enough to justify missed trades? | Entry Timing Laboratory |
+| Which setup and strategy historically fit each market condition? | Market Regime Laboratory |
 
 ## Shared Architectural Rules
 
@@ -187,4 +194,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 2.3 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, optional execution realism, execution sensitivity, and entry-timing research. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 2.4 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, and market-regime research. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

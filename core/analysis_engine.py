@@ -7,6 +7,7 @@ from core.market_data import Candle, MarketDataProvider
 from core.market_structure import MarketStructureEngine
 from core.multi_timeframe import MultiTimeframeEngine
 from core.risk import build_numeric_risk_levels, format_risk_levels
+from core.regime import MarketRegimeEngine
 from core.setup_engine import (
     SetupEngine,
     approximate_compression,
@@ -34,6 +35,7 @@ class AnalysisEngine:
         setup_engine: SetupEngine | None = None,
         strategy_engine: StrategyEngine | None = None,
         explanation_engine: ExplanationEngine | None = None,
+        regime_engine: MarketRegimeEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -44,6 +46,7 @@ class AnalysisEngine:
         self._setup_engine = setup_engine or SetupEngine()
         self._strategy_engine = strategy_engine or StrategyEngine()
         self._explanation_engine = explanation_engine or ExplanationEngine()
+        self._regime_engine = regime_engine or MarketRegimeEngine()
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         entry_candles = self._market_data.get_candles(
@@ -63,6 +66,7 @@ class AnalysisEngine:
             self._setup_engine,
             self._strategy_engine,
             self._explanation_engine,
+            self._regime_engine,
         )
 
 
@@ -76,6 +80,7 @@ def _build_analysis(
     setup_engine: SetupEngine,
     strategy_engine: StrategyEngine,
     explanation_engine: ExplanationEngine,
+    regime_engine: MarketRegimeEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -84,6 +89,11 @@ def _build_analysis(
         request.timeframe,
         higher_structure,
         entry_structure,
+    )
+    market_regime = regime_engine.classify(
+        candles=entry_candles,
+        market_structure=entry_structure,
+        multi_timeframe=multi_timeframe,
     )
     entry_highs, entry_lows = find_swings(entry_candles)
     # The public API has historically exposed three bias values. Internally, the
@@ -202,4 +212,5 @@ def _build_analysis(
         setup_plan=setup_plan,
         strategy=strategy,
         trader_analysis=trader_analysis,
+        market_regime=market_regime,
     )

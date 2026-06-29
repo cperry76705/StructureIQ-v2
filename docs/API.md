@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.3.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.4.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -672,6 +672,40 @@ Crypto example:
 ```
 
 `entry_timing_summary` includes profile results and names the best, worst, best-expectancy, highest-fill-rate, best risk-adjusted, and most-missed profiles. Each result reports candidate and fill counts, outcomes, R metrics, entry improvement, delay, missed-opportunity R, and fallback count. Timing runs do not replace production calibration fields.
+
+### Market Regime Laboratory
+
+Every `/analysis` response now includes an additive `market_regime` object:
+
+```json
+{
+  "market_regime": "strong_bear_trend",
+  "regime_confidence": 91.0,
+  "regime_reasons": [
+    "Confirmed swing structure is bearish.",
+    "Multi-timeframe structure is directionally aligned.",
+    "A recent break of structure supports the trend."
+  ],
+  "human_readable_summary": "Market regime is strong bear trend with 91/100 confidence."
+}
+```
+
+Enable regime research during calibration:
+
+```json
+{
+  "symbols": ["BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "market_regime_analysis": true
+}
+```
+
+Enabled responses add `market_regime_summary`, `strategy_regime_matrix`, and `setup_regime_matrix`. The summary includes every regime category, headline rankings, and research recommendations. Matrix rows expose `strategy_type` or `setup_type` plus `performance_by_regime`. When the flag is false, all three optional fields are null and ordinary calibration behavior is unchanged.
 
 Response shape:
 

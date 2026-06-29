@@ -1,7 +1,7 @@
 """Application-level constants and defaults."""
 
 APP_NAME = "StructureIQ v2"
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.4.0"
 APP_DESCRIPTION = (
     "Explainable market-structure intelligence and trader decision support."
 )

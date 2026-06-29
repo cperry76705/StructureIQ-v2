@@ -31,6 +31,7 @@ The platform includes:
 - **Execution Realism Engine** — optional deterministic spread, slippage, commission, delayed-fill, and partial-fill research assumptions.
 - **Execution Sensitivity Laboratory** — compares isolated and combined execution scenarios against a frozen perfect baseline.
 - **Entry Timing Laboratory** — compares immediate, delayed, pullback, momentum, retest, and conservative-limit entries without changing production behavior.
+- **Market Regime Laboratory** — classifies market conditions and cross-tabulates strategy and setup performance without changing routing.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -123,6 +124,8 @@ Calibration also accepts optional `execution_sensitivity_profiles`. StructureIQ 
 
 Optional `entry_timing_profiles` run the same valid candidates through alternative entry methods and return an isolated `entry_timing_summary`. Immediate production timing is always included as the baseline.
 
+Set `market_regime_analysis` to `true` during calibration to return regime performance plus strategy-regime and setup-regime matrices. The default is off, and regime findings never alter production behavior.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -134,7 +137,7 @@ Optional `entry_timing_profiles` run the same valid candidates through alternati
 
 ## Roadmap and Release Information
 
-Version `2.3.0` adds an optional Entry Timing Laboratory. It measures expectancy, fill rate, entry improvement, delay, and missed opportunities while preserving production entries and ordinary calibration results.
+Version `2.4.0` adds deterministic market-regime classification and an optional calibration laboratory for researching strategy and setup performance by market condition.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

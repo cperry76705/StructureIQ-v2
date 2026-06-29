@@ -8,6 +8,7 @@ from app.config import DEFAULT_LOOKBACK, MAX_LOOKBACK, MIN_LOOKBACK, SUPPORTED_T
 from core.decision_engine import DecisionResult
 from core.explanation_engine import TraderAnalysis
 from core.multi_timeframe import MultiTimeframeResult
+from core.regime import RegimeResult
 from core.setup_engine import SetupResult
 from core.strategy_engine import StrategyResult
 
@@ -65,6 +66,7 @@ class AnalysisResponse(BaseModel):
     setup_plan: SetupResult
     strategy: StrategyResult
     trader_analysis: TraderAnalysis
+    market_regime: RegimeResult
 
 
 class HealthResponse(BaseModel):

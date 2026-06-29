@@ -2,6 +2,26 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.4.0 — Market Regime Laboratory — 2026-06-28
+
+### Added
+
+- Deterministic regime classification for trend strength, range, compression, expansion, volatility, transition, and unknown conditions.
+- Additive regime confidence, evidence, and summary on `/analysis` and backtest records.
+- Optional calibration regime summaries with outcomes, R, drawdown, duration, MFE/MAE, and best/worst setup and strategy.
+- Strategy-by-regime and setup-by-regime performance matrices.
+- Research recommendations for weak expectancy, excessive drawdown, sparse samples, dominance, and underperformance.
+
+### Compatibility
+
+- Regime output never feeds Decision, Setup, Strategy, entry, execution, stop, target, threshold, or risk logic.
+- `market_regime_analysis` defaults to false; existing calibration metrics and laboratories are unchanged.
+- No indicators, ML, external dependencies, broker integration, or live trading were added.
+
+### Verification
+
+- 217 automated tests pass together.
+
 ## Version 2.3.0 — Entry Timing Laboratory — 2026-06-28
 
 ### Added

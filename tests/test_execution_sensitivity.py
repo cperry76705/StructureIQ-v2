@@ -176,6 +176,7 @@ def test_calibration_is_unchanged_without_sensitivity_profiles() -> None:
     assert result.aggregate_metrics.average_r == 2.0
     assert result.execution_sensitivity_summary is None
     assert result.entry_timing_summary is None
+    assert result.market_regime_summary is None
 
 
 def test_calibration_adds_isolated_sensitivity_without_mutating_metrics() -> None:

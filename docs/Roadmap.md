@@ -288,6 +288,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can distinguish directional edge from timing fragility and quantify the cost of waiting for a better entry before designing any production experiment.
 
-## Beyond Version 2.3
+## Version 2.4 — Market Regime Laboratory
+
+- Classify every analysis into one deterministic market regime with confidence and reasons.
+- Aggregate expectancy, drawdown, duration, MFE/MAE, and outcomes by regime.
+- Cross-tab strategy and setup performance against all regimes.
+- Identify sparse, weak, dominant, and high-drawdown regime relationships.
+- Keep every production decision and execution rule unchanged.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can study which setups and strategies historically fit specific market conditions without allowing those findings to alter production routing.
+
+## Beyond Version 2.4
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

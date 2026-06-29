@@ -59,6 +59,13 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "setup_plan",
         "strategy",
         "trader_analysis",
+        "market_regime",
+    }
+    assert set(payload["market_regime"]) == {
+        "market_regime",
+        "regime_confidence",
+        "regime_reasons",
+        "human_readable_summary",
     }
     assert set(payload["multi_timeframe"]) == {
         "higher_timeframe",

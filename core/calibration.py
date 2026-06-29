@@ -51,6 +51,12 @@ from core.execution_sensitivity import (
     ensure_perfect_baseline,
 )
 from core.market_data import Candle, MarketDataProvider
+from core.regime_lab import (
+    MarketRegimeSummary,
+    SetupRegimeMatrix,
+    StrategyRegimeMatrix,
+    build_market_regime_analysis,
+)
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from core.symbols import normalize_yahoo_symbol
 
@@ -98,6 +104,7 @@ class CalibrationRequest(BaseModel):
     entry_timing_profiles: list[EntryTimingProfile] | None = Field(
         default=None, max_length=20
     )
+    market_regime_analysis: bool = False
 
     @field_validator("symbols")
     @classmethod
@@ -232,6 +239,9 @@ class CalibrationResult:
     limitations: tuple[str, ...]
     execution_sensitivity_summary: ExecutionSensitivitySummary | None = None
     entry_timing_summary: EntryTimingSummary | None = None
+    market_regime_summary: MarketRegimeSummary | None = None
+    strategy_regime_matrix: tuple[StrategyRegimeMatrix, ...] | None = None
+    setup_regime_matrix: tuple[SetupRegimeMatrix, ...] | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -339,6 +349,16 @@ class CalibrationEngine:
             if request.entry_timing_profiles
             else None
         )
+        if request.market_regime_analysis:
+            (
+                market_regime_summary,
+                strategy_regime_matrix,
+                setup_regime_matrix,
+            ) = build_market_regime_analysis(all_trades)
+        else:
+            market_regime_summary = None
+            strategy_regime_matrix = None
+            setup_regime_matrix = None
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -381,6 +401,9 @@ class CalibrationEngine:
             limitations=calibration_limitations(),
             execution_sensitivity_summary=execution_sensitivity_summary,
             entry_timing_summary=entry_timing_summary,
+            market_regime_summary=market_regime_summary,
+            strategy_regime_matrix=strategy_regime_matrix,
+            setup_regime_matrix=setup_regime_matrix,
         )
 
 
