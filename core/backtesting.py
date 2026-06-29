@@ -29,6 +29,10 @@ from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
 from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
 from core.regime import RegimeResult
+from core.regime_forward_validation import (
+    RegimeForwardValidationObservation,
+    build_forward_validation_observation,
+)
 from core.regime_tuning import RegimeTuningEvidence
 from core.regime_validation import (
     RegimeForwardObservation,
@@ -198,6 +202,9 @@ class BacktestTrade:
     timeframe: str | None = None
     higher_timeframe: str | None = None
     regime_forward_observation: RegimeForwardObservation | None = None
+    regime_forward_validation_observation: Annotated[
+        RegimeForwardValidationObservation | None, Field(exclude=True)
+    ] = None
     # Internal calibration evidence; excluded from /backtest serialization.
     regime_tuning_evidence: Annotated[
         RegimeTuningEvidence | None, Field(exclude=True)
@@ -509,6 +516,10 @@ def build_backtest_trade(
         start_price=signal_close,
         future_candles=future_candles,
     )
+    regime_forward_validation_observation = build_forward_validation_observation(
+        start_price=signal_close,
+        future_candles=future_candles,
+    )
     if plan.status != "actionable" or action not in {"buy", "sell"}:
         code, engine, detail = diagnose_non_actionable_analysis(analysis)
         return _skipped_trade(
@@ -533,6 +544,7 @@ def build_backtest_trade(
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
+            regime_forward_validation_observation=regime_forward_validation_observation,
             regime_tuning_evidence=regime_tuning_evidence,
         )
 
@@ -568,6 +580,7 @@ def build_backtest_trade(
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
+            regime_forward_validation_observation=regime_forward_validation_observation,
             regime_tuning_evidence=regime_tuning_evidence,
         )
 
@@ -602,6 +615,7 @@ def build_backtest_trade(
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
+            regime_forward_validation_observation=regime_forward_validation_observation,
             regime_tuning_evidence=regime_tuning_evidence,
         )
     if plan.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
@@ -635,6 +649,7 @@ def build_backtest_trade(
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
+            regime_forward_validation_observation=regime_forward_validation_observation,
             regime_tuning_evidence=regime_tuning_evidence,
         )
 
@@ -708,6 +723,7 @@ def build_backtest_trade(
                 timeframe=timeframe,
                 higher_timeframe=higher_timeframe,
                 regime_forward_observation=regime_forward_observation,
+                regime_forward_validation_observation=regime_forward_validation_observation,
                 regime_tuning_evidence=regime_tuning_evidence,
             )
         entry = timing_prepared.adjusted_entry
@@ -814,6 +830,7 @@ def build_backtest_trade(
         timeframe=timeframe,
         higher_timeframe=higher_timeframe,
         regime_forward_observation=regime_forward_observation,
+        regime_forward_validation_observation=regime_forward_validation_observation,
         regime_tuning_evidence=regime_tuning_evidence,
     )
 
@@ -1439,6 +1456,7 @@ def _skipped_trade(
     timeframe: str | None = None,
     higher_timeframe: str | None = None,
     regime_forward_observation: RegimeForwardObservation | None = None,
+    regime_forward_validation_observation: RegimeForwardValidationObservation | None = None,
     regime_tuning_evidence: RegimeTuningEvidence | None = None,
 ) -> BacktestTrade:
     return BacktestTrade(
@@ -1468,6 +1486,7 @@ def _skipped_trade(
         timeframe=timeframe,
         higher_timeframe=higher_timeframe,
         regime_forward_observation=regime_forward_observation,
+        regime_forward_validation_observation=regime_forward_validation_observation,
         regime_tuning_evidence=regime_tuning_evidence,
     )
 

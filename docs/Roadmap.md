@@ -336,6 +336,17 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** calibration can measure whether tuned labels reduce transition dominance and restore meaningful trend coverage while every production trading decision remains unchanged.
 
-## Beyond Version 2.7
+## Version 2.8 — Tuned Regime Forward Validation
+
+- Validate legacy and tuned labels over identical 5/10/20-bar windows.
+- Measure directional behavior, excursions, continuation, reversal, volatility, range, and trend persistence.
+- Report class metrics, confusion matrices, confidence reliability, uncertainty, and sample flags.
+- Compare accuracy deltas without changing classifications or trades.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can evaluate whether restored trend coverage is more predictive than legacy transition dominance before considering any classifier promotion.
+
+## Beyond Version 2.8
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

@@ -268,3 +268,13 @@ A negative classification margin means production transition won by precedence e
 The comparison reports transition ratios and reduction, trend counts and increase, changed records and agreement, plus transition-to-trend, range, compression, and expansion counts. Ratios use `0–1`; `changed_percentage` and `agreement_rate` use `0–100` percentages.
 
 The tuned classifier ignores stale CHOCH as current transition pressure, weights directional swing structure first, treats recent directional BOS as confirmation, and uses aligned or directionally consistent mixed higher-timeframe evidence as support. Range, compression, and expansion rules remain intact. Calibration metrics, skips, outcomes, setup/strategy performance, and every production trade decision remain calculated once from the unchanged backtest path.
+
+## v2.8 Tuned Regime Forward Validation
+
+Set `forward_validation` to true together with `regime_classifier_mode: compare`. No validation runs for legacy or tuned mode alone, and false remains the default.
+
+Both classifiers receive the exact same records and available 5-, 10-, and 20-bar future windows. Deterministic proxies distinguish strong/weak bullish and bearish follow-through, range containment, compression, expansion, and mixed transition behavior. Compression is considered useful when compression persists or an expansion follows within the horizon; transition is correct only when behavior remains mixed.
+
+Per-classifier reports include metric sample sizes, standard deviations and approximate confidence intervals where meaningful, confusion matrices, confidence-reliability curves, regime persistence, and horizon-level return, MFE, MAE, continuation, reversal, volatility expansion, range persistence, and trend persistence statistics. Returns and excursions are normalized price-return fractions, not trade R multiples.
+
+`forward_validation_comparison` reports tuned-minus-legacy accuracy deltas, confidence delta, the best sampled classifier, and recommendations. `LOW_SAMPLE`, `HIGH_CONFIDENCE`, and `INSUFFICIENT_DATA` flags make uncertainty explicit. These are proxy outcomes rather than expert-labeled regimes, statistical proof, or profitability evidence.

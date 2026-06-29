@@ -61,6 +61,11 @@ from core.regime_lab import (
     tuned_regime_view,
 )
 from core.regime import RegimeClassifierMode
+from core.regime_forward_validation import (
+    ForwardValidationComparison,
+    RegimeForwardValidationResult,
+    build_matched_forward_validation,
+)
 from core.regime_validation import (
     RegimeValidationSummary,
     build_regime_validation_summary,
@@ -117,6 +122,7 @@ class CalibrationRequest(BaseModel):
     regime_validation_analysis: bool = False
     regime_tuning_analysis: bool = False
     regime_classifier_mode: RegimeClassifierMode = RegimeClassifierMode.LEGACY
+    forward_validation: bool = False
 
     @field_validator("symbols")
     @classmethod
@@ -259,6 +265,9 @@ class CalibrationResult:
     legacy_market_regime_summary: MarketRegimeSummary | None = None
     tuned_market_regime_summary: MarketRegimeSummary | None = None
     regime_classifier_comparison: RegimeClassifierComparison | None = None
+    legacy_forward_validation: RegimeForwardValidationResult | None = None
+    tuned_forward_validation: RegimeForwardValidationResult | None = None
+    forward_validation_comparison: ForwardValidationComparison | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -412,6 +421,19 @@ class CalibrationEngine:
             if request.regime_tuning_analysis
             else None
         )
+        if (
+            request.regime_classifier_mode is RegimeClassifierMode.COMPARE
+            and request.forward_validation
+        ):
+            (
+                legacy_forward_validation,
+                tuned_forward_validation,
+                forward_validation_comparison,
+            ) = build_matched_forward_validation(all_trades)
+        else:
+            legacy_forward_validation = None
+            tuned_forward_validation = None
+            forward_validation_comparison = None
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -462,6 +484,9 @@ class CalibrationEngine:
             legacy_market_regime_summary=legacy_market_regime_summary,
             tuned_market_regime_summary=tuned_market_regime_summary,
             regime_classifier_comparison=regime_classifier_comparison,
+            legacy_forward_validation=legacy_forward_validation,
+            tuned_forward_validation=tuned_forward_validation,
+            forward_validation_comparison=forward_validation_comparison,
         )
 
 

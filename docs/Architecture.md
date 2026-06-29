@@ -176,6 +176,12 @@ Version 2.7 adds a second, research-only classifier beside the unchanged legacy 
 
 Both labels are retained internally on the same analysis and backtest record. Calibration can group immutable records through a legacy view, tuned view, or side-by-side comparison. Neither label is read by Decision, Setup, Strategy, Explanation, entry, execution, or risk code.
 
+#### Tuned Regime Forward Validation
+
+Version 2.8 captures a second non-serialized forward snapshot containing returns, upside/downside excursions, volatility shape, range containment, and a deterministic proxy regime at 5, 10, and 20 bars. Compare-mode calibration evaluates the legacy and tuned labels against that single shared snapshot.
+
+Validation is downstream of completed backtest records. It cannot recalculate analyses, mutate labels, select trades, or replace ordinary metrics. The validation module owns proxy scoring, uncertainty statistics, confusion matrices, reliability curves, persistence, and classifier comparison; its observations remain absent from `/analysis` and `/backtest` contracts.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -201,6 +207,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Are regime labels balanced, persistent, and aligned with forward proxy behavior? | Regime Validation Laboratory |
 | Why does transition dominate, and which controlled tuning hypothesis merits study? | Regime Classifier Tuning Laboratory |
 | How do legacy and tuned labels differ over identical records? | Tuned Regime Classifier comparison |
+| Which classifier better matches shared future-behavior proxies? | Tuned Regime Forward Validation |
 
 ## Shared Architectural Rules
 
@@ -215,4 +222,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 2.7 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, proxy regime validation, classifier tuning simulations, and parallel legacy/tuned regime comparison. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 2.8 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, classifier tuning and comparison, and matched forward validation. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

@@ -35,6 +35,7 @@ The platform includes:
 - **Regime Validation Laboratory** — measures regime balance, persistence, transition exits, and forward proxy behavior without changing classifications.
 - **Regime Classifier Tuning Laboratory** — explains transition dominance and compares threshold and evidence-weight counterfactuals without changing the production classifier.
 - **Tuned Regime Classifier** — provides a parallel research label that prioritizes current swing structure and recent evidence while retaining the legacy classifier.
+- **Tuned Regime Forward Validation** — compares legacy and tuned labels against matched 5/10/20-bar forward-behavior proxies.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -135,6 +136,8 @@ Set `regime_tuning_analysis` to `true` to return the production distribution, co
 
 Set `regime_classifier_mode` to `legacy`, `tuned`, or `compare`. The default is `legacy`. Compare mode returns side-by-side legacy and tuned summaries plus label-change diagnostics over identical backtest records. Classifier mode never changes decisions, trade selection, stops, targets, outcomes, or aggregate calibration metrics.
 
+In compare mode, set `forward_validation` to `true` to validate both classifiers against the exact same future windows. Results include accuracy, class metrics, confusion matrices, confidence reliability, persistence, return and excursion statistics, uncertainty flags, and a direct comparison. Forward regimes are deterministic proxies, not labeled ground truth.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -146,7 +149,7 @@ Set `regime_classifier_mode` to `legacy`, `tuned`, or `compare`. The default is 
 
 ## Roadmap and Release Information
 
-Version `2.7.0` adds a tuned research classifier and a compare mode while preserving legacy classification as the default. Regime labels remain isolated from all trading behavior.
+Version `2.8.0` adds opt-in matched forward validation for the legacy and tuned classifiers. Regime research remains isolated from all trading behavior.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

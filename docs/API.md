@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.7.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.8.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -965,3 +965,27 @@ When the flag is omitted or false, the laboratory does not run and the additive 
 Compare mode adds `legacy_market_regime_summary`, `tuned_market_regime_summary`, and `regime_classifier_comparison`. The comparison includes legacy/tuned transition ratios, transition reduction, trend counts, changed and agreed labels, transition destination counts, a summary, and recommendations.
 
 The `/analysis` request and serialized response are unchanged. Tuned labels are internal research metadata and are excluded from ordinary `/analysis` and `/backtest` payloads. Classifier mode cannot change aggregate calibration metrics or any trade outcome.
+
+## v2.8 Tuned Regime Forward Validation
+
+Forward validation runs only when both conditions are present:
+
+```json
+{
+  "symbols": ["BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "regime_classifier_mode": "compare",
+  "forward_validation": true
+}
+```
+
+The response adds `legacy_forward_validation`, `tuned_forward_validation`, and `forward_validation_comparison`. Classifier results contain accuracy, precision, recall, F1, confidence, directional and per-regime accuracy, full confusion matrices, confidence-reliability buckets, persistence, and statistical summaries for 5/10/20-bar behavior.
+
+Each accuracy metric includes its sample size, standard deviation, and approximate 95% confidence interval. Horizon statistics include directional return, MFE/MAE, continuation, reversal, volatility expansion, range persistence, and trend persistence. Flags may include `LOW_SAMPLE`, `HIGH_CONFIDENCE`, and `INSUFFICIENT_DATA`.
+
+If either condition is absent, the optional fields are null and validation does not run. The future-behavior snapshot is excluded from `/backtest`; `/analysis` and `/backtest` schemas and payloads are unchanged.

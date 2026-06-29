@@ -2,6 +2,28 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.8.0 — Tuned Regime Forward Validation — 2026-06-29
+
+### Added
+
+- Opt-in `forward_validation` for `regime_classifier_mode: compare`.
+- Matched legacy and tuned validation over identical 5/10/20-bar future windows.
+- Directional return, MFE/MAE, continuation, reversal, volatility expansion, range persistence, and trend persistence statistics.
+- Accuracy, macro precision/recall/F1, direction and regime-family accuracy, confusion matrices, confidence reliability, and persistence validation.
+- Sample sizes, dispersion, approximate confidence intervals, and `LOW_SAMPLE`, `HIGH_CONFIDENCE`, and `INSUFFICIENT_DATA` flags.
+- Direct tuned-minus-legacy comparison and research recommendations.
+
+### Compatibility and Safety
+
+- Validation is disabled by default and cannot run outside compare mode.
+- `/analysis` request/output and `/backtest` output remain unchanged.
+- Forward snapshots are internal and excluded from serialization.
+- Classifications, decisions, setups, strategies, trade selection, risk levels, outcomes, and aggregate metrics are unchanged.
+
+### Verification
+
+- 240 automated tests pass together, including matched samples, confusion/reliability/persistence outputs, mode gating, low-sample flags, and metric invariance.
+
 ## Version 2.7.0 — Tuned Regime Classifier — 2026-06-29
 
 ### Added
