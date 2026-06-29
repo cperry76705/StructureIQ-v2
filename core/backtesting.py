@@ -29,6 +29,10 @@ from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
 from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
 from core.regime import RegimeResult
+from core.regime_validation import (
+    RegimeForwardObservation,
+    build_forward_observation,
+)
 from core.setup_engine import (
     MINIMUM_ACCEPTABLE_RISK_REWARD,
     SetupCandidateDiagnostics,
@@ -189,6 +193,9 @@ class BacktestTrade:
     execution_diagnostics: ExecutionDiagnostics | None = None
     entry_timing_diagnostics: EntryTimingDiagnostics | None = None
     market_regime: RegimeResult | None = None
+    timeframe: str | None = None
+    higher_timeframe: str | None = None
+    regime_forward_observation: RegimeForwardObservation | None = None
 
 
 @dataclass(frozen=True)
@@ -404,6 +411,8 @@ class BacktestingEngine:
                     risk_per_trade_percent=request.risk_per_trade_percent,
                     entry_timing_profile=request.entry_timing_profile,
                     signal_close=candles[index].close,
+                    timeframe=request.timeframe,
+                    higher_timeframe=request.higher_timeframe,
                 )
             )
 
@@ -457,6 +466,8 @@ def build_backtest_trade(
     risk_per_trade_percent: float = 1.0,
     entry_timing_profile: EntryTimingProfile | None = None,
     signal_close: float | None = None,
+    timeframe: str | None = None,
+    higher_timeframe: str | None = None,
 ) -> BacktestTrade:
     """Convert one analysis snapshot into a skipped or simulated trade record."""
 
@@ -486,6 +497,10 @@ def build_backtest_trade(
         minimum_required_r=MINIMUM_ACCEPTABLE_RISK_REWARD,
     )
     market_regime = getattr(analysis, "market_regime", None)
+    regime_forward_observation = build_forward_observation(
+        start_price=signal_close,
+        future_candles=future_candles,
+    )
     if plan.status != "actionable" or action not in {"buy", "sell"}:
         code, engine, detail = diagnose_non_actionable_analysis(analysis)
         return _skipped_trade(
@@ -506,6 +521,9 @@ def build_backtest_trade(
             setup_level_diagnostics=setup_level_diagnostics,
             setup_candidate_diagnostics=setup_candidate_diagnostics,
             market_regime=market_regime,
+            timeframe=timeframe,
+            higher_timeframe=higher_timeframe,
+            regime_forward_observation=regime_forward_observation,
         )
 
     entry = parse_price_level(plan.entry_zone, midpoint=True)
@@ -536,6 +554,9 @@ def build_backtest_trade(
             setup_level_diagnostics=setup_level_diagnostics,
             setup_candidate_diagnostics=setup_candidate_diagnostics,
             market_regime=market_regime,
+            timeframe=timeframe,
+            higher_timeframe=higher_timeframe,
+            regime_forward_observation=regime_forward_observation,
         )
 
     if plan.estimated_risk_reward is None:
@@ -565,6 +586,9 @@ def build_backtest_trade(
             setup_level_diagnostics=setup_level_diagnostics,
             setup_candidate_diagnostics=setup_candidate_diagnostics,
             market_regime=market_regime,
+            timeframe=timeframe,
+            higher_timeframe=higher_timeframe,
+            regime_forward_observation=regime_forward_observation,
         )
     if plan.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
         return BacktestTrade(
@@ -593,6 +617,9 @@ def build_backtest_trade(
             setup_level_diagnostics=setup_level_diagnostics,
             setup_candidate_diagnostics=setup_candidate_diagnostics,
             market_regime=market_regime,
+            timeframe=timeframe,
+            higher_timeframe=higher_timeframe,
+            regime_forward_observation=regime_forward_observation,
         )
 
     production_entry = entry
@@ -661,6 +688,9 @@ def build_backtest_trade(
                 setup_candidate_diagnostics=setup_candidate_diagnostics,
                 entry_timing_diagnostics=timing_diagnostics,
                 market_regime=market_regime,
+                timeframe=timeframe,
+                higher_timeframe=higher_timeframe,
+                regime_forward_observation=regime_forward_observation,
             )
         entry = timing_prepared.adjusted_entry
         future_candles = list(timing_prepared.evaluation_candles)
@@ -762,6 +792,9 @@ def build_backtest_trade(
         execution_diagnostics=execution_diagnostics,
         entry_timing_diagnostics=timing_diagnostics,
         market_regime=market_regime,
+        timeframe=timeframe,
+        higher_timeframe=higher_timeframe,
+        regime_forward_observation=regime_forward_observation,
     )
 
 
@@ -1382,6 +1415,9 @@ def _skipped_trade(
     setup_level_diagnostics: SetupLevelDiagnostics | None,
     setup_candidate_diagnostics: tuple[SetupCandidateDiagnostics, ...] = (),
     market_regime: RegimeResult | None = None,
+    timeframe: str | None = None,
+    higher_timeframe: str | None = None,
+    regime_forward_observation: RegimeForwardObservation | None = None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=timestamp,
@@ -1406,6 +1442,9 @@ def _skipped_trade(
         setup_level_diagnostics=setup_level_diagnostics,
         setup_candidate_diagnostics=setup_candidate_diagnostics,
         market_regime=market_regime,
+        timeframe=timeframe,
+        higher_timeframe=higher_timeframe,
+        regime_forward_observation=regime_forward_observation,
     )
 
 

@@ -233,3 +233,13 @@ Set `market_regime_analysis` to true to return `market_regime_summary`, `strateg
 Classification uses only existing structure, timeframe, ATR, range, swing, BOS/CHOCH, momentum, and volatility evidence. Regime precedence is transition, compression or expansion, range, volatility extremes, then directional trend strength. This produces one stable label while retaining reasons for the other evidence dimensions.
 
 Every regime row reports records, closed trades, outcomes, expectancy, total R, profit factor, drawdown, duration, MFE/MAE, and best/worst strategy and setup. Matrices provide the same core performance measures for every strategy-regime and setup-regime pair. Recommendations flag negative expectancy, drawdown of at least `3R`, fewer than five closed trades, and sampled dominance or underperformance. These thresholds are reporting rules, not statistical proof or production controls.
+
+## v2.5 Regime Validation Laboratory
+
+Set `regime_validation_analysis` to true to return `regime_validation_summary`. The flag is independent of `market_regime_analysis`; validation uses regime snapshots already attached to every backtest record and does not modify classifications.
+
+Distribution reports every regime's record share, closed trades, and confidence. Transition is considered overused only when it exceeds 60% of classified records. Persistence is calculated from consecutive labels within each symbol/current-timeframe/higher-timeframe sequence.
+
+Forward validation uses available candles at deterministic 5, 10, and 20-bar horizons. It reports returns, directional follow-through, range behavior, expansion, and compression. A proxy actual bucket is derived from those outcomes for confusion-style counts. Missing horizons remain explicit and may trigger `insufficient_samples`.
+
+Proxy buckets are diagnostic approximations, not labeled ground truth. Recommendations may suggest inspecting transition handling, trend or range detection, confidence, persistence, or sample coverage, but never tune rules automatically.

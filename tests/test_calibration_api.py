@@ -189,3 +189,30 @@ def test_calibrate_endpoint_returns_market_regime_analysis_when_requested() -> N
     assert len(payload["market_regime_summary"]["regimes"]) == 11
     assert payload["strategy_regime_matrix"] is not None
     assert payload["setup_regime_matrix"] is not None
+
+
+def test_calibrate_endpoint_returns_regime_validation_when_requested() -> None:
+    _override_provider()
+    try:
+        response = TestClient(app).post(
+            "/calibrate",
+            json={
+                "symbols": ["BTC-USD"],
+                "timeframes": ["5m"],
+                "higher_timeframes": ["1h"],
+                "lookback": 60,
+                "max_trades_per_run": 5,
+                "risk_per_trade_percent": 1,
+                "starting_balance": 10000,
+                "regime_validation_analysis": True,
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    validation = response.json()["regime_validation_summary"]
+    assert validation is not None
+    assert validation["total_records"] == 5
+    assert len(validation["classification_distribution"]) == 11
+    assert "predicted_vs_actual" in validation["regime_confusion_proxy"]

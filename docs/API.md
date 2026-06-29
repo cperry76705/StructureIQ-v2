@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.4.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.5.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -706,6 +706,35 @@ Enable regime research during calibration:
 ```
 
 Enabled responses add `market_regime_summary`, `strategy_regime_matrix`, and `setup_regime_matrix`. The summary includes every regime category, headline rankings, and research recommendations. Matrix rows expose `strategy_type` or `setup_type` plus `performance_by_regime`. When the flag is false, all three optional fields are null and ordinary calibration behavior is unchanged.
+
+### Regime Validation Laboratory
+
+Regime validation is enabled independently:
+
+```json
+{
+  "symbols": ["BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 200,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "regime_validation_analysis": true
+}
+```
+
+The additive `regime_validation_summary` contains:
+
+- Classification distribution and transition dominance.
+- Average confidence and confidence by regime.
+- Consecutive-label persistence statistics.
+- Forward behavior at 5, 10, and 20 bars.
+- Transition destination counts and average exit time.
+- Predicted-versus-proxy actual counts.
+- Dominant failure modes and recommendations.
+
+Transition is flagged as overused above 60%. Records without enough forward candles are counted in `insufficient_forward_records`; they are never silently dropped from the classification distribution. Forward proxy categories are deterministic approximations and must not be interpreted as labeled regime truth.
 
 Response shape:
 

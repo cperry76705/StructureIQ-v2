@@ -2,6 +2,26 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.5.0 — Regime Validation Laboratory — 2026-06-28
+
+### Added
+
+- Optional proxy validation of classification balance, confidence, persistence, and 5/10/20-bar forward behavior.
+- Documented transition-overuse threshold of greater than 60%.
+- Transition-exit analysis, predicted-versus-forward-proxy confusion counts, and insufficient-sample reporting.
+- Diagnostics for transition overuse, trend underclassification, low-confidence clustering, short-duration noise, forward mismatch, and insufficient samples.
+- Compact forward observations on backtest records using existing cached candles.
+
+### Compatibility
+
+- Existing Regime Engine classifications and all production trading behavior are unchanged.
+- `regime_validation_analysis` defaults to false and does not affect ordinary calibration or regime-analysis output.
+- Forward proxy labels are explicitly diagnostic approximations, not ground truth.
+
+### Verification
+
+- 222 automated tests pass together.
+
 ## Version 2.4.0 — Market Regime Laboratory — 2026-06-28
 
 ### Added

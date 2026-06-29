@@ -32,6 +32,7 @@ The platform includes:
 - **Execution Sensitivity Laboratory** — compares isolated and combined execution scenarios against a frozen perfect baseline.
 - **Entry Timing Laboratory** — compares immediate, delayed, pullback, momentum, retest, and conservative-limit entries without changing production behavior.
 - **Market Regime Laboratory** — classifies market conditions and cross-tabulates strategy and setup performance without changing routing.
+- **Regime Validation Laboratory** — measures regime balance, persistence, transition exits, and forward proxy behavior without changing classifications.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -126,6 +127,8 @@ Optional `entry_timing_profiles` run the same valid candidates through alternati
 
 Set `market_regime_analysis` to `true` during calibration to return regime performance plus strategy-regime and setup-regime matrices. The default is off, and regime findings never alter production behavior.
 
+Set `regime_validation_analysis` to `true` to diagnose classification balance and 5/10/20-bar forward behavior. Transition use above 60% is flagged for inspection. Forward buckets are proxies, not ground truth.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -137,7 +140,7 @@ Set `market_regime_analysis` to `true` during calibration to return regime perfo
 
 ## Roadmap and Release Information
 
-Version `2.4.0` adds deterministic market-regime classification and an optional calibration laboratory for researching strategy and setup performance by market condition.
+Version `2.5.0` adds optional proxy validation for regime distribution, confidence, persistence, transition exits, and forward behavior. Existing regime rules remain unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

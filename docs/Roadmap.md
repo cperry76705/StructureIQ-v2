@@ -300,6 +300,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can study which setups and strategies historically fit specific market conditions without allowing those findings to alter production routing.
 
-## Beyond Version 2.4
+## Version 2.5 — Regime Validation Laboratory
+
+- Measure classification balance and transition dominance.
+- Measure regime persistence and short-duration label noise.
+- Compare predicted regimes with deterministic 5/10/20-bar forward proxies.
+- Analyze transition exits and directional/range/volatility outcomes.
+- Recommend classifier areas for inspection without changing classifications or trades.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can diagnose transition overuse and regime underclassification before considering any controlled classifier threshold experiment.
+
+## Beyond Version 2.5
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

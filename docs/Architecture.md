@@ -158,6 +158,12 @@ Version 2.4 classifies each analysis in parallel with production engines. It use
 
 When requested, calibration groups immutable backtest snapshots by regime and builds strategy and setup cross-matrices. The laboratory reports all regime categories, including empty ones, and treats small samples as insufficient evidence. Recommendations are observations only and cannot tune or suppress a strategy.
 
+#### Regime Validation Laboratory
+
+Version 2.5 validates existing regime labels without changing them. Backtesting captures compact forward observations at 5, 10, and 20 bars from the same cached candle windows. Validation measures distribution, confidence, persistence, transition exits, forward behavior, and predicted-versus-proxy counts.
+
+Forward proxy regimes use deterministic return and range-shape rules. They are not human labels, ground truth, ML targets, or production routing inputs. The validator reports missing horizons and explicitly separates imbalance, label noise, and forward mismatch.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -180,6 +186,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Which execution variable causes the largest historical degradation? | Execution Sensitivity Laboratory |
 | Does a better or later entry improve expectancy enough to justify missed trades? | Entry Timing Laboratory |
 | Which setup and strategy historically fit each market condition? | Market Regime Laboratory |
+| Are regime labels balanced, persistent, and aligned with forward proxy behavior? | Regime Validation Laboratory |
 
 ## Shared Architectural Rules
 
@@ -194,4 +201,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 2.4 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, and market-regime research. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 2.5 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, and proxy regime validation. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
