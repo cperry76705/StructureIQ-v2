@@ -288,3 +288,15 @@ For both classifiers, the report includes reliability buckets from `50–59` thr
 Research simulations compare identity, linear compression, temperature scaling, isotonic approximation, and piecewise calibration. Each simulation recalculates confidence diagnostics only and explicitly guarantees unchanged classification and expected routing. The recommended mapping minimizes sampled ECE with Brier score as a tie-breaker and reports low, moderate, or high research confidence based on sample size.
 
 Isotonic and piecewise mappings can overfit the same sample used for evaluation. Recommendations therefore require separate out-of-sample validation before any future production proposal. Version 2.9 never applies a mapping or changes confidence values.
+
+## v3.0 Out-of-Sample Validation Framework
+
+Set `out_of_sample_validation` to true and choose a deterministic validation method. Chronological mode creates one ordered holdout. Rolling mode slides a fixed training window. Walk-forward and expanding modes grow training history before each validation block. Anchored mode keeps the original training boundary while advancing independent validation blocks. No method shuffles candles.
+
+Each fold receives bounded raw candle lists and a newly instantiated production backtester. Validation receives up to 49 preceding raw candles as warm-up context so the first unseen bar can be analyzed normally, but no training analysis, decision, setup, strategy, or outcome object is reused.
+
+Training, validation, and full-sample measurements include outcomes, R metrics, drawdown, expectancy, excursion and duration, skipped records, confidence/setup/strategy/regime distributions, execution degradation, and trade-management sensitivity. Symbol and timeframe summaries use the combinations requested by the caller, including BTC, ETH, EURUSD, GBPUSD, 5m, and 15m when supplied.
+
+Generalization metrics quantify performance, win-rate, and expectancy decay; drawdown and profit-factor changes; confidence, strategy, setup, regime, execution, and trade-frequency drift; calibration and fold stability; variance; and coefficient of variation. Overfitting flags cover collapse, component instability, fold variance, and market/symbol/timeframe dependence.
+
+Scores are descriptive research diagnostics, not statistical proof. Expanding folds can overlap, low trade counts can dominate percentage changes, and historical validation cannot reproduce live liquidity or eliminate regime selection bias. No result tunes or routes the production system.

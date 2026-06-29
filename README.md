@@ -37,6 +37,7 @@ The platform includes:
 - **Tuned Regime Classifier** — provides a parallel research label that prioritizes current swing structure and recent evidence while retaining the legacy classifier.
 - **Tuned Regime Forward Validation** — compares legacy and tuned labels against matched 5/10/20-bar forward-behavior proxies.
 - **Regime Confidence Calibration Laboratory** — measures confidence reliability and simulates non-production calibration mappings.
+- **Out-of-Sample Validation Laboratory** — rebuilds the complete production pipeline across deterministic unseen-data folds and measures generalization.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -141,6 +142,8 @@ In compare mode, set `forward_validation` to `true` to validate both classifiers
 
 Add `regime_confidence_analysis: true` to the compare-mode forward-validation request to measure ECE, MCE, Brier score, confidence distributions, reliability, and overconfidence for both classifiers. Mapping simulations never alter stored confidence, labels, routing, or trades.
 
+Set `out_of_sample_validation` to `true` to run chronological, rolling, walk-forward, expanding, or anchored research folds. Training and validation pipelines are instantiated independently from bounded raw candle data; no decision or setup is reused across the split.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -152,7 +155,7 @@ Add `regime_confidence_analysis: true` to the compare-mode forward-validation re
 
 ## Roadmap and Release Information
 
-Version `2.9.0` adds opt-in regime-confidence calibration diagnostics and research-only mapping simulations. Production confidence remains unchanged.
+Version `3.0.0` adds deterministic out-of-sample validation for measuring whether sampled performance survives unseen chronological data. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

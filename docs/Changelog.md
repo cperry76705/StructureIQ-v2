@@ -2,6 +2,29 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.0.0 — Out-of-Sample Validation Framework — 2026-06-29
+
+### Added
+
+- Opt-in chronological, rolling-window, walk-forward, expanding-window, and anchored validation methods.
+- Fresh bounded market-data providers and production backtesters for every training and validation segment.
+- Fold, aggregate, symbol, and timeframe measurements covering performance, confidence, setup, strategy, regime, execution, and management behavior.
+- Generalization score, decay, drift, stability, variance, coefficient-of-variation, and trade-frequency diagnostics.
+- Automatic collapse, instability, variance, risk, market, symbol, and timeframe dependency detection with LOW/MEDIUM/HIGH/OVERFIT_RISK levels.
+- Additive out-of-sample summaries, fold results, overfitting and stability reports, and research recommendations.
+
+### Compatibility and Safety
+
+- Candles remain chronological and are never shuffled.
+- Each fold reruns production engines from raw candles without cached training decisions.
+- Warm-up context contains candles only; no analysis or trade object crosses the split.
+- `/analysis`, `/backtest`, production classifiers, decisions, setups, strategies, thresholds, risk, execution, timing, and management are unchanged.
+- Ordinary calibration metrics are identical with validation enabled or disabled.
+
+### Verification
+
+- 250 automated tests pass together, including every split family, deterministic folds, generalization and overfit diagnostics, additive API behavior, and production regression protection.
+
 ## Version 2.9.0 — Regime Confidence Calibration Laboratory — 2026-06-29
 
 ### Added

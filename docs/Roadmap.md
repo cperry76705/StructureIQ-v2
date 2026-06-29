@@ -359,6 +359,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can separate improved tuned classification accuracy from unreliable confidence magnitudes before proposing any production confidence changes.
 
-## Beyond Version 2.9
+## Version 3.0 — Out-of-Sample Validation Framework
+
+- Split raw history chronologically through holdout, rolling, walk-forward, expanding, and anchored methods.
+- Rebuild the complete production pipeline independently for every fold.
+- Measure training, validation, full-sample, symbol, and timeframe behavior.
+- Quantify generalization decay, drift, stability, variance, and dependency.
+- Detect overfit risk without changing production behavior.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can test whether historical performance survives unseen market periods without changing a single production trade.
+
+## Beyond Version 3.0
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

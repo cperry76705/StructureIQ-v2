@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.9.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -1012,3 +1012,30 @@ Confidence analysis requires compare-mode forward validation:
 The additive `regime_confidence_summary` contains legacy and tuned reliability buckets, ECE and MCE in percentage points, Brier scores on `0–1` probabilities, reliability curves, confidence histograms and percentiles, over/underconfidence flags, five deterministic mapping simulations, a tuned mapping recommendation, and legacy-versus-tuned calibration deltas.
 
 Every mapping reports `classification_unchanged: true` and `expected_routing_unchanged: true`. Mappings are fitted and scored diagnostically on the supplied sample; none is applied to analysis output or any engine. If confidence analysis is omitted, false, or requested without compare-mode forward data, the summary remains null.
+
+## v3.0 Out-of-Sample Validation Framework
+
+```json
+{
+  "symbols": ["BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"],
+  "timeframes": ["5m", "15m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "starting_balance": 10000,
+  "risk_per_trade_percent": 1.0,
+  "out_of_sample_validation": true,
+  "validation_method": "walk_forward",
+  "training_percent": 70,
+  "validation_percent": 30,
+  "validation_folds": 5
+}
+```
+
+`validation_method` accepts `chronological`, `rolling_window`, `walk_forward`, `expanding_window`, or `anchored`. Percentages must be positive and cannot total more than 100; folds range from 1 to 20. Candles are never shuffled.
+
+When enabled, `/calibrate` adds `out_of_sample_summary`, `validation_fold_results`, `generalization_summary`, `overfitting_summary`, `stability_summary`, `symbol_validation_summary`, `timeframe_validation_summary`, and `research_recommendations`.
+
+Each fold reports separate training and validation measurements for trades, win rate, R, profit factor, drawdown, expectancy, MFE/MAE, duration, skips, confidence, setup, strategy, regime, execution degradation, and trade-management sensitivity. The generalization report adds decay, drift, variance, stability, and overfit risk. When disabled, all additive fields remain null and ordinary calibration follows its established path.
+
+Validation segments use prior raw candles only as indicator/structure warm-up context. Every fold creates a fresh backtester and reruns the complete production pipeline; no cached decision, setup, or trade state crosses the split.

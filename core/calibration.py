@@ -51,6 +51,17 @@ from core.execution_sensitivity import (
     ensure_perfect_baseline,
 )
 from core.market_data import Candle, MarketDataProvider
+from core.out_of_sample import (
+    GeneralizationSummary,
+    OutOfSampleRequest,
+    OutOfSampleSummary,
+    OutOfSampleValidationEngine,
+    OverfittingSummary,
+    SegmentValidationSummary,
+    StabilitySummary,
+    ValidationFoldResult,
+    ValidationMethod,
+)
 from core.regime_lab import (
     MarketRegimeSummary,
     RegimeClassifierComparison,
@@ -128,6 +139,11 @@ class CalibrationRequest(BaseModel):
     regime_classifier_mode: RegimeClassifierMode = RegimeClassifierMode.LEGACY
     forward_validation: bool = False
     regime_confidence_analysis: bool = False
+    out_of_sample_validation: bool = False
+    validation_method: ValidationMethod = ValidationMethod.CHRONOLOGICAL
+    training_percent: float = Field(default=70.0, gt=0, lt=100)
+    validation_percent: float = Field(default=30.0, gt=0, lt=100)
+    validation_folds: int = Field(default=5, ge=1, le=20)
 
     @field_validator("symbols")
     @classmethod
@@ -156,6 +172,10 @@ class CalibrationRequest(BaseModel):
         )
         if combinations > 100:
             raise ValueError("calibration is limited to 100 run combinations")
+        if self.training_percent + self.validation_percent > 100:
+            raise ValueError(
+                "training_percent plus validation_percent cannot exceed 100"
+            )
         return self
 
 
@@ -274,6 +294,14 @@ class CalibrationResult:
     tuned_forward_validation: RegimeForwardValidationResult | None = None
     forward_validation_comparison: ForwardValidationComparison | None = None
     regime_confidence_summary: RegimeConfidenceSummary | None = None
+    out_of_sample_summary: OutOfSampleSummary | None = None
+    validation_fold_results: tuple[ValidationFoldResult, ...] | None = None
+    generalization_summary: GeneralizationSummary | None = None
+    overfitting_summary: OverfittingSummary | None = None
+    stability_summary: StabilitySummary | None = None
+    symbol_validation_summary: tuple[SegmentValidationSummary, ...] | None = None
+    timeframe_validation_summary: tuple[SegmentValidationSummary, ...] | None = None
+    research_recommendations: tuple[str, ...] | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -311,7 +339,9 @@ class CalibrationEngine:
         backtesting_engine_factory: BacktestingEngineFactory | None = None,
     ) -> None:
         factory = backtesting_engine_factory or BacktestingEngine
-        self._backtester = factory(_CalibrationDataCache(market_data))
+        self._market_data = _CalibrationDataCache(market_data)
+        self._backtester_factory = factory
+        self._backtester = factory(self._market_data)
 
     def run(self, request: CalibrationRequest) -> CalibrationResult:
         runs: list[CalibrationRun] = []
@@ -451,6 +481,44 @@ class CalibrationEngine:
             and tuned_forward_validation.statistical_summary.evaluated_predictions > 0
             else None
         )
+        if request.out_of_sample_validation:
+            out_of_sample = OutOfSampleValidationEngine(
+                self._market_data,
+                self._backtester_factory,
+            ).run(
+                OutOfSampleRequest(
+                    symbols=tuple(request.symbols),
+                    timeframes=tuple(request.timeframes),
+                    higher_timeframes=tuple(request.higher_timeframes),
+                    lookback=request.lookback,
+                    starting_balance=request.starting_balance,
+                    risk_per_trade_percent=request.risk_per_trade_percent,
+                    max_trades=request.max_trades_per_run,
+                    method=request.validation_method,
+                    training_percent=request.training_percent,
+                    validation_percent=request.validation_percent,
+                    folds=request.validation_folds,
+                    execution_profile=request.execution_profile,
+                ),
+                entire_sample_trades=all_trades,
+            )
+            out_of_sample_summary = out_of_sample.out_of_sample_summary
+            validation_fold_results = out_of_sample.validation_fold_results
+            generalization_summary = out_of_sample.generalization_summary
+            overfitting_summary = out_of_sample.overfitting_summary
+            stability_summary = out_of_sample.stability_summary
+            symbol_validation_summary = out_of_sample.symbol_validation_summary
+            timeframe_validation_summary = out_of_sample.timeframe_validation_summary
+            research_recommendations = out_of_sample.research_recommendations
+        else:
+            out_of_sample_summary = None
+            validation_fold_results = None
+            generalization_summary = None
+            overfitting_summary = None
+            stability_summary = None
+            symbol_validation_summary = None
+            timeframe_validation_summary = None
+            research_recommendations = None
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -505,6 +573,14 @@ class CalibrationEngine:
             tuned_forward_validation=tuned_forward_validation,
             forward_validation_comparison=forward_validation_comparison,
             regime_confidence_summary=regime_confidence_summary,
+            out_of_sample_summary=out_of_sample_summary,
+            validation_fold_results=validation_fold_results,
+            generalization_summary=generalization_summary,
+            overfitting_summary=overfitting_summary,
+            stability_summary=stability_summary,
+            symbol_validation_summary=symbol_validation_summary,
+            timeframe_validation_summary=timeframe_validation_summary,
+            research_recommendations=research_recommendations,
         )
 
 
