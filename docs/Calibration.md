@@ -243,3 +243,16 @@ Distribution reports every regime's record share, closed trades, and confidence.
 Forward validation uses available candles at deterministic 5, 10, and 20-bar horizons. It reports returns, directional follow-through, range behavior, expansion, and compression. A proxy actual bucket is derived from those outcomes for confusion-style counts. Missing horizons remain explicit and may trigger `insufficient_samples`.
 
 Proxy buckets are diagnostic approximations, not labeled ground truth. Recommendations may suggest inspecting transition handling, trend or range detection, confidence, persistence, or sample coverage, but never tune rules automatically.
+
+## v2.6 Regime Classifier Tuning Laboratory
+
+Set `regime_tuning_analysis` to true to return `regime_tuning_summary`. The opt-in report uses immutable production labels and hidden research evidence already captured for each calibration record. It can run independently of `market_regime_analysis` and `regime_validation_analysis`.
+
+The summary reports the current distribution, transition dominance and normalized overuse score, trend underclassification score, average competing evidence scores, transition-win reasons, runner-up and classification margins, stale transitions, transitions lacking recent BOS or CHOCH, directional structures labeled transition, timeframe conflicts, confidence by regime, confidence histogram, and 5/10/20-bar forward stability.
+
+Two deterministic counterfactual groups are included:
+
+- Transition thresholds `60`, `65`, `70`, `75`, and `80`, each with its simulated distribution, transition share, trend count, and transition reduction.
+- Isolated boosts for BOS, CHOCH, swing structure, and higher-timeframe alignment evidence, each with the expected distribution and transition reduction.
+
+A negative classification margin means production transition won by precedence even though the laboratory's strongest non-transition evidence score was higher. Counterfactual distributions diagnose sensitivity only: they are not proposed defaults, profitability studies, or automatic tuning. Production classifications and all trade records remain unchanged.

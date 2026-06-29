@@ -312,6 +312,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can diagnose transition overuse and regime underclassification before considering any controlled classifier threshold experiment.
 
-## Beyond Version 2.5
+## Version 2.6 — Regime Classifier Tuning Laboratory
 
-Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
+- Explain transition dominance using competing evidence scores and event recency.
+- Report confidence distributions, classification margins, and forward stability.
+- Simulate transition thresholds from 60 through 80 without changing production rules.
+- Isolate stronger BOS, CHOCH, swing-structure, and higher-timeframe alignment evidence.
+- Preserve all production regime labels, analysis behavior, and trade execution.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can distinguish stale transition precedence, evidence conflict, and insufficient trend weighting, then choose a controlled future experiment without silently tuning the classifier.
+
+## Beyond Version 2.6
+
+Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

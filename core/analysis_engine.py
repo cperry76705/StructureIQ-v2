@@ -8,6 +8,7 @@ from core.market_structure import MarketStructureEngine
 from core.multi_timeframe import MultiTimeframeEngine
 from core.risk import build_numeric_risk_levels, format_risk_levels
 from core.regime import MarketRegimeEngine
+from core.regime_tuning import build_regime_tuning_evidence
 from core.setup_engine import (
     SetupEngine,
     approximate_compression,
@@ -94,6 +95,12 @@ def _build_analysis(
         candles=entry_candles,
         market_structure=entry_structure,
         multi_timeframe=multi_timeframe,
+    )
+    regime_tuning_evidence = build_regime_tuning_evidence(
+        candles=entry_candles,
+        market_structure=entry_structure,
+        multi_timeframe=multi_timeframe,
+        production_regime=market_regime,
     )
     entry_highs, entry_lows = find_swings(entry_candles)
     # The public API has historically exposed three bias values. Internally, the
@@ -213,4 +220,5 @@ def _build_analysis(
         strategy=strategy,
         trader_analysis=trader_analysis,
         market_regime=market_regime,
+        regime_tuning_evidence=regime_tuning_evidence,
     )

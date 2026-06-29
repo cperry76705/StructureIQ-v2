@@ -2,6 +2,28 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.6.0 — Regime Classifier Tuning Laboratory — 2026-06-28
+
+### Added
+
+- Optional `regime_tuning_analysis` calibration flag and additive `regime_tuning_summary`.
+- Competing trend, range, transition, compression, and expansion evidence scores retained as non-serialized research snapshots.
+- Diagnostics for transition reasons, stale CHOCH, absent recent BOS/CHOCH, directional structure hidden by transition, conflicts, confidence, and classification margins.
+- Deterministic forward stability at 5, 10, and 20 bars.
+- Counterfactual transition thresholds at 60, 65, 70, 75, and 80.
+- Isolated stronger-BOS, CHOCH, swing-structure, and higher-timeframe-alignment simulations.
+
+### Compatibility
+
+- The production Regime Engine is unchanged; simulations operate only on copied research scores.
+- `/analysis` request and response contracts are unchanged, and `/backtest` does not serialize internal tuning evidence.
+- Decision, setup, strategy, timing, stops, targets, thresholds, and execution behavior are unchanged.
+- Existing regime analysis and validation flags remain independent and functional.
+
+### Verification
+
+- 227 automated tests pass together, including focused tuning, counterfactual immutability, opt-in API, and legacy contract tests.
+
 ## Version 2.5.0 — Regime Validation Laboratory — 2026-06-28
 
 ### Added

@@ -164,6 +164,12 @@ Version 2.5 validates existing regime labels without changing them. Backtesting 
 
 Forward proxy regimes use deterministic return and range-shape rules. They are not human labels, ground truth, ML targets, or production routing inputs. The validator reports missing horizons and explicitly separates imbalance, label noise, and forward mismatch.
 
+#### Regime Classifier Tuning Laboratory
+
+Version 2.6 records a non-serialized evidence snapshot beside each historical regime result. The snapshot captures competing trend, range, transition, compression, and expansion scores; BOS/CHOCH existence and recency; swing direction; timeframe alignment; conflict; and production confidence. It is available only to backtesting and calibration research and is excluded from `/analysis` and `/backtest` response payloads.
+
+The tuning laboratory explains transition precedence, classification margins, confidence clustering, stale transition evidence, and forward-proxy stability. It then reclassifies copied scores under transition thresholds `60`, `65`, `70`, `75`, and `80`, plus isolated BOS, CHOCH, swing-structure, and higher-timeframe alignment weight boosts. These counterfactual labels never replace the immutable production label or feed any trading engine.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -187,6 +193,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Does a better or later entry improve expectancy enough to justify missed trades? | Entry Timing Laboratory |
 | Which setup and strategy historically fit each market condition? | Market Regime Laboratory |
 | Are regime labels balanced, persistent, and aligned with forward proxy behavior? | Regime Validation Laboratory |
+| Why does transition dominate, and which controlled tuning hypothesis merits study? | Regime Classifier Tuning Laboratory |
 
 ## Shared Architectural Rules
 
@@ -201,4 +208,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 2.5 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, and proxy regime validation. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 2.6 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, proxy regime validation, and opt-in classifier tuning simulations. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

@@ -61,6 +61,7 @@ from core.regime_validation import (
     RegimeValidationSummary,
     build_regime_validation_summary,
 )
+from core.regime_tuning import RegimeTuningSummary, build_regime_tuning_summary
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from core.symbols import normalize_yahoo_symbol
 
@@ -110,6 +111,7 @@ class CalibrationRequest(BaseModel):
     )
     market_regime_analysis: bool = False
     regime_validation_analysis: bool = False
+    regime_tuning_analysis: bool = False
 
     @field_validator("symbols")
     @classmethod
@@ -248,6 +250,7 @@ class CalibrationResult:
     strategy_regime_matrix: tuple[StrategyRegimeMatrix, ...] | None = None
     setup_regime_matrix: tuple[SetupRegimeMatrix, ...] | None = None
     regime_validation_summary: RegimeValidationSummary | None = None
+    regime_tuning_summary: RegimeTuningSummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -370,6 +373,11 @@ class CalibrationEngine:
             if request.regime_validation_analysis
             else None
         )
+        regime_tuning_summary = (
+            build_regime_tuning_summary(all_trades)
+            if request.regime_tuning_analysis
+            else None
+        )
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -416,6 +424,7 @@ class CalibrationEngine:
             strategy_regime_matrix=strategy_regime_matrix,
             setup_regime_matrix=setup_regime_matrix,
             regime_validation_summary=regime_validation_summary,
+            regime_tuning_summary=regime_tuning_summary,
         )
 
 

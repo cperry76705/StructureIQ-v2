@@ -5,7 +5,7 @@ from collections import Counter
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from statistics import median
-from typing import Callable, Literal, Protocol
+from typing import Annotated, Callable, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -29,6 +29,7 @@ from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
 from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
 from core.regime import RegimeResult
+from core.regime_tuning import RegimeTuningEvidence
 from core.regime_validation import (
     RegimeForwardObservation,
     build_forward_observation,
@@ -196,6 +197,10 @@ class BacktestTrade:
     timeframe: str | None = None
     higher_timeframe: str | None = None
     regime_forward_observation: RegimeForwardObservation | None = None
+    # Internal calibration evidence; excluded from /backtest serialization.
+    regime_tuning_evidence: Annotated[
+        RegimeTuningEvidence | None, Field(exclude=True)
+    ] = None
 
 
 @dataclass(frozen=True)
@@ -497,6 +502,7 @@ def build_backtest_trade(
         minimum_required_r=MINIMUM_ACCEPTABLE_RISK_REWARD,
     )
     market_regime = getattr(analysis, "market_regime", None)
+    regime_tuning_evidence = getattr(analysis, "regime_tuning_evidence", None)
     regime_forward_observation = build_forward_observation(
         start_price=signal_close,
         future_candles=future_candles,
@@ -524,6 +530,7 @@ def build_backtest_trade(
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
+            regime_tuning_evidence=regime_tuning_evidence,
         )
 
     entry = parse_price_level(plan.entry_zone, midpoint=True)
@@ -557,6 +564,7 @@ def build_backtest_trade(
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
+            regime_tuning_evidence=regime_tuning_evidence,
         )
 
     if plan.estimated_risk_reward is None:
@@ -589,6 +597,7 @@ def build_backtest_trade(
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
+            regime_tuning_evidence=regime_tuning_evidence,
         )
     if plan.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
         return BacktestTrade(
@@ -620,6 +629,7 @@ def build_backtest_trade(
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
+            regime_tuning_evidence=regime_tuning_evidence,
         )
 
     production_entry = entry
@@ -691,6 +701,7 @@ def build_backtest_trade(
                 timeframe=timeframe,
                 higher_timeframe=higher_timeframe,
                 regime_forward_observation=regime_forward_observation,
+                regime_tuning_evidence=regime_tuning_evidence,
             )
         entry = timing_prepared.adjusted_entry
         future_candles = list(timing_prepared.evaluation_candles)
@@ -795,6 +806,7 @@ def build_backtest_trade(
         timeframe=timeframe,
         higher_timeframe=higher_timeframe,
         regime_forward_observation=regime_forward_observation,
+        regime_tuning_evidence=regime_tuning_evidence,
     )
 
 
@@ -1418,6 +1430,7 @@ def _skipped_trade(
     timeframe: str | None = None,
     higher_timeframe: str | None = None,
     regime_forward_observation: RegimeForwardObservation | None = None,
+    regime_tuning_evidence: RegimeTuningEvidence | None = None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=timestamp,
@@ -1445,6 +1458,7 @@ def _skipped_trade(
         timeframe=timeframe,
         higher_timeframe=higher_timeframe,
         regime_forward_observation=regime_forward_observation,
+        regime_tuning_evidence=regime_tuning_evidence,
     )
 
 

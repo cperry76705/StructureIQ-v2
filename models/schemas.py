@@ -1,6 +1,6 @@
 """Validated request and response shapes exposed by the API."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -9,6 +9,7 @@ from core.decision_engine import DecisionResult
 from core.explanation_engine import TraderAnalysis
 from core.multi_timeframe import MultiTimeframeResult
 from core.regime import RegimeResult
+from core.regime_tuning import RegimeTuningEvidence
 from core.setup_engine import SetupResult
 from core.strategy_engine import StrategyResult
 
@@ -67,6 +68,11 @@ class AnalysisResponse(BaseModel):
     strategy: StrategyResult
     trader_analysis: TraderAnalysis
     market_regime: RegimeResult
+    # Research metadata is carried into historical calibration but deliberately
+    # excluded from the public /analysis response contract.
+    regime_tuning_evidence: Annotated[
+        RegimeTuningEvidence | None, Field(exclude=True)
+    ] = None
 
 
 class HealthResponse(BaseModel):

@@ -33,6 +33,7 @@ The platform includes:
 - **Entry Timing Laboratory** — compares immediate, delayed, pullback, momentum, retest, and conservative-limit entries without changing production behavior.
 - **Market Regime Laboratory** — classifies market conditions and cross-tabulates strategy and setup performance without changing routing.
 - **Regime Validation Laboratory** — measures regime balance, persistence, transition exits, and forward proxy behavior without changing classifications.
+- **Regime Classifier Tuning Laboratory** — explains transition dominance and compares threshold and evidence-weight counterfactuals without changing the production classifier.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -129,6 +130,8 @@ Set `market_regime_analysis` to `true` during calibration to return regime perfo
 
 Set `regime_validation_analysis` to `true` to diagnose classification balance and 5/10/20-bar forward behavior. Transition use above 60% is flagged for inspection. Forward buckets are proxies, not ground truth.
 
+Set `regime_tuning_analysis` to `true` to return the production distribution, competing evidence scores, transition staleness and conflict diagnostics, confidence and margin distributions, forward stability, transition-threshold simulations at 60–80, and isolated trend-evidence simulations. These are research counterfactuals; they do not replace any production regime label.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -140,7 +143,7 @@ Set `regime_validation_analysis` to `true` to diagnose classification balance an
 
 ## Roadmap and Release Information
 
-Version `2.5.0` adds optional proxy validation for regime distribution, confidence, persistence, transition exits, and forward behavior. Existing regime rules remain unchanged.
+Version `2.6.0` adds an opt-in classifier tuning laboratory for diagnosing transition dominance and simulating controlled alternatives. Existing regime rules remain unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)
