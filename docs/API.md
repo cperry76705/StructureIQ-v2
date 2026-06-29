@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.2.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.3.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -601,6 +601,77 @@ Crypto scenarios use instrument price units rather than Forex values:
 ```
 
 `execution_sensitivity_summary` contains `profiles`, `best_profile`, `worst_profile`, `largest_expectancy_drop_profile`, `most_sensitive_cost_component`, a readable summary, and recommendations. Every profile result includes outcomes, expectancy, R metrics, drawdown, and average costs. Scenario runs never replace `aggregate_metrics` or `aggregate_execution_summary`.
+
+### Entry Timing Laboratory
+
+Add `entry_timing_profiles` to compare alternative entries over the same already-valid candidate set. Immediate production timing is inserted automatically.
+
+Forex example:
+
+```json
+{
+  "symbols": ["EUR-USD", "GBP-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "entry_timing_profiles": [
+    {
+      "name": "forex_next_bar",
+      "description": "Enter at the next candle open.",
+      "entry_model": "next_bar_open",
+      "allow_missed_entries": false,
+      "max_wait_bars": 3,
+      "require_touch": false
+    },
+    {
+      "name": "forex_quarter_pullback",
+      "description": "Wait 25% toward the original stop.",
+      "entry_model": "quarter_pullback_from_entry_to_stop",
+      "allow_missed_entries": true,
+      "max_wait_bars": 5,
+      "require_touch": true
+    }
+  ]
+}
+```
+
+Crypto example:
+
+```json
+{
+  "symbols": ["BTC-USD", "ETH-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "entry_timing_profiles": [
+    {
+      "name": "crypto_signal_close",
+      "description": "Use the signal candle close.",
+      "entry_model": "signal_close",
+      "allow_missed_entries": false,
+      "max_wait_bars": 3,
+      "require_touch": false
+    },
+    {
+      "name": "crypto_conservative_limit",
+      "description": "Prefer an improved limit and allow misses.",
+      "entry_model": "conservative_limit",
+      "allow_missed_entries": true,
+      "max_wait_bars": 8,
+      "require_touch": true,
+      "random_seed": 42
+    }
+  ]
+}
+```
+
+`entry_timing_summary` includes profile results and names the best, worst, best-expectancy, highest-fill-rate, best risk-adjusted, and most-missed profiles. Each result reports candidate and fill counts, outcomes, R metrics, entry improvement, delay, missed-opportunity R, and fallback count. Timing runs do not replace production calibration fields.
 
 Response shape:
 

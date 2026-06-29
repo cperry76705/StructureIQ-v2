@@ -32,7 +32,18 @@ from core.backtesting import (
     parse_price_level,
 )
 from core.journal import TradeOutcome
-from core.execution import ExecutionProfile, ExecutionSummary, calculate_execution_summary
+from core.execution import (
+    ExecutionProfile,
+    ExecutionSummary,
+    FillModel,
+    calculate_execution_summary,
+)
+from core.entry_timing import EntryTimingProfile
+from core.entry_timing_lab import (
+    EntryTimingSummary,
+    build_entry_timing_summary,
+    ensure_immediate_baseline,
+)
 from core.execution_sensitivity import (
     ExecutionSensitivityProfile,
     ExecutionSensitivitySummary,
@@ -82,6 +93,9 @@ class CalibrationRequest(BaseModel):
     starting_balance: float = Field(default=10_000.0, gt=0)
     execution_profile: ExecutionProfile | None = None
     execution_sensitivity_profiles: list[ExecutionSensitivityProfile] | None = Field(
+        default=None, max_length=20
+    )
+    entry_timing_profiles: list[EntryTimingProfile] | None = Field(
         default=None, max_length=20
     )
 
@@ -217,6 +231,7 @@ class CalibrationResult:
     human_readable_summary: str
     limitations: tuple[str, ...]
     execution_sensitivity_summary: ExecutionSensitivitySummary | None = None
+    entry_timing_summary: EntryTimingSummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -319,6 +334,11 @@ class CalibrationEngine:
             if request.execution_sensitivity_profiles
             else None
         )
+        entry_timing_summary = (
+            _run_entry_timing_lab(self._backtester, request)
+            if request.entry_timing_profiles
+            else None
+        )
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -360,6 +380,7 @@ class CalibrationEngine:
             human_readable_summary=summary,
             limitations=calibration_limitations(),
             execution_sensitivity_summary=execution_sensitivity_summary,
+            entry_timing_summary=entry_timing_summary,
         )
 
 
@@ -389,6 +410,40 @@ def _run_execution_sensitivity(
                     trades.extend(result.trades)
         profile_runs.append((profile, trades))
     return build_execution_sensitivity_summary(profile_runs)
+
+
+def _run_entry_timing_lab(
+    backtester: _BacktestRunner,
+    request: CalibrationRequest,
+) -> EntryTimingSummary:
+    profiles = ensure_immediate_baseline(request.entry_timing_profiles or [])
+    execution_profile = request.execution_profile
+    if execution_profile is not None:
+        execution_profile = execution_profile.model_copy(
+            update={"fill_model": FillModel.IMMEDIATE}
+        )
+    profile_runs: list[tuple[EntryTimingProfile, list[BacktestTrade]]] = []
+    for profile in profiles:
+        trades: list[BacktestTrade] = []
+        for symbol in request.symbols:
+            for timeframe in request.timeframes:
+                for higher_timeframe in request.higher_timeframes:
+                    result = backtester.run(
+                        BacktestRequest(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            higher_timeframe=higher_timeframe,
+                            lookback=request.lookback,
+                            starting_balance=request.starting_balance,
+                            risk_per_trade_percent=request.risk_per_trade_percent,
+                            max_trades=request.max_trades_per_run,
+                            execution_profile=execution_profile,
+                            entry_timing_profile=profile,
+                        )
+                    )
+                    trades.extend(result.trades)
+        profile_runs.append((profile, trades))
+    return build_entry_timing_summary(profile_runs)
 
 
 def _aggregate_metrics(

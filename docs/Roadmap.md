@@ -276,6 +276,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can identify which execution assumption dominates historical degradation before validating costs against venue-specific evidence.
 
-## Beyond Version 2.2
+## Version 2.3 — Entry Timing Laboratory
+
+- Compare immediate, delayed, signal-close, pullback, momentum, retest, and conservative-limit entries.
+- Preserve one identical valid candidate set across every timing profile.
+- Recalculate R from adjusted entry with unchanged stop and target.
+- Measure fill rate, delay, entry improvement, missed entries, and missed winning opportunities.
+- Keep production entry behavior and calibration metrics unchanged.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can distinguish directional edge from timing fragility and quantify the cost of waiting for a better entry before designing any production experiment.
+
+## Beyond Version 2.3
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

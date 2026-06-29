@@ -217,3 +217,11 @@ Helper functions provide eight illustrative scenarios per asset family: perfect,
 | `crypto_mild_realistic` | `2.0` spread, random `1.0` slippage, `0.02%` commission |
 | `crypto_moderate_realistic` | `5.0`, `2.5`, `0.05%`, next-bar fill |
 | `crypto_harsh_realistic` | `10.0`, `5.0`, `0.1%`, next-bar fill |
+
+## v2.3 Entry Timing Laboratory
+
+`CalibrationRequest.entry_timing_profiles` adds a separate `entry_timing_summary`; omission leaves it null and preserves the existing calibration path. The laboratory automatically prepends immediate production timing and rejects comparisons whose profiles do not receive the same valid candidate count.
+
+Supported models are `immediate`, `next_bar_open`, `signal_close`, `midpoint_between_entry_and_stop`, `midpoint_between_entry_and_target`, `quarter_pullback_from_entry_to_stop`, `quarter_pullback_from_entry_to_target`, `retest_entry`, and `conservative_limit`.
+
+Results report candidates, fills, misses, outcomes, R metrics, drawdown, average entry improvement, delay, missed-opportunity R, and fallback count. The summary identifies best and worst expectancy, highest fill rate, best expectancy-to-drawdown profile, and the profile with most misses. These are counterfactual findings and cannot alter production entry behavior.

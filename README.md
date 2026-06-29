@@ -30,6 +30,7 @@ The platform includes:
 - **Journal/Backtesting Engine** — local journaling and simplified deterministic historical evaluation.
 - **Execution Realism Engine** — optional deterministic spread, slippage, commission, delayed-fill, and partial-fill research assumptions.
 - **Execution Sensitivity Laboratory** — compares isolated and combined execution scenarios against a frozen perfect baseline.
+- **Entry Timing Laboratory** — compares immediate, delayed, pullback, momentum, retest, and conservative-limit entries without changing production behavior.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -120,6 +121,8 @@ Remove `execution_profile` to retain the original perfect-execution baseline.
 
 Calibration also accepts optional `execution_sensitivity_profiles`. StructureIQ automatically adds perfect execution, freezes candle inputs across scenarios, and returns a separate `execution_sensitivity_summary`; see the API reference for Forex and Crypto examples.
 
+Optional `entry_timing_profiles` run the same valid candidates through alternative entry methods and return an isolated `entry_timing_summary`. Immediate production timing is always included as the baseline.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -131,7 +134,7 @@ Calibration also accepts optional `execution_sensitivity_profiles`. StructureIQ 
 
 ## Roadmap and Release Information
 
-Version `2.2.0` adds an optional execution-sensitivity laboratory to calibration. It compares perfect, isolated-cost, delayed-fill, and combined profiles without changing ordinary calibration or production analysis.
+Version `2.3.0` adds an optional Entry Timing Laboratory. It measures expectancy, fill rate, entry improvement, delay, and missed opportunities while preserving production entries and ordinary calibration results.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

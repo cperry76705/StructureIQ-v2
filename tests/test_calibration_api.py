@@ -126,3 +126,39 @@ def test_calibrate_endpoint_returns_execution_sensitivity_when_requested() -> No
         "perfect",
         "spread_only",
     ]
+
+
+def test_calibrate_endpoint_returns_entry_timing_when_requested() -> None:
+    _override_provider()
+    try:
+        response = TestClient(app).post(
+            "/calibrate",
+            json={
+                "symbols": ["EUR-USD"],
+                "timeframes": ["5m"],
+                "higher_timeframes": ["1h"],
+                "lookback": 60,
+                "max_trades_per_run": 1,
+                "risk_per_trade_percent": 1,
+                "starting_balance": 10000,
+                "entry_timing_profiles": [
+                    {
+                        "name": "next_bar_study",
+                        "description": "Next-bar timing scenario.",
+                        "entry_model": "next_bar_open",
+                        "allow_missed_entries": False,
+                        "max_wait_bars": 3,
+                        "require_touch": False
+                    }
+                ]
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    summary = response.json()["entry_timing_summary"]
+    assert [item["profile_name"] for item in summary["profiles"]] == [
+        "immediate",
+        "next_bar_study",
+    ]

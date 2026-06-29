@@ -164,6 +164,14 @@ Calibration may supply `execution_sensitivity_profiles`. The laboratory automati
 
 Sensitivity trades are isolated from ordinary calibration trades. They cannot change the normal aggregate metrics, setup or strategy performance, skip diagnostics, recommendations, or production execution profile. Seeded slippage remains reproducible. Combined scenarios are labeled separately so a large combined drop is not falsely attributed to one cost.
 
+## v2.3 Entry Timing Laboratory
+
+Calibration timing profiles replay only already-valid actionable candidates. Immediate uses production entry; next-bar uses the next open; signal-close uses the stored signal close; pullback and momentum models interpolate between entry and the unchanged stop or target; retest uses the nearest relevant structural level; conservative limit prefers a price improvement inside the original risk range.
+
+When `require_touch` is true, the adjusted entry must occur inside a candle within `max_wait_bars`. An allowed miss is counted and records the R of a production winner that was missed. If misses are disallowed, the profile deterministically falls back to production entry and marks the fallback. Filled trades recalculate R from adjusted entry while retaining the original stop and target.
+
+Profiles operate over identical cached candles and candidate counts. Same-candle stop/target ambiguity remains a conservative loss, and OHLC data cannot prove whether a limit touch preceded another intrabar event.
+
 ## Limitations
 
 - This is a simplified deterministic backtest, not a production execution simulator.

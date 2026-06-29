@@ -12,6 +12,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.config import SUPPORTED_TIMEFRAMES
 from core.analysis_engine import AnalysisEngine
 from core.decision_engine import DecisionDiagnostics
+from core.entry_timing import (
+    EntryTimingDiagnostics,
+    EntryTimingEngine,
+    EntryTimingProfile,
+)
 from core.execution import (
     ExecutionDiagnostics,
     ExecutionEngine,
@@ -110,6 +115,7 @@ class BacktestRequest(BaseModel):
     risk_per_trade_percent: float = Field(default=1.0, gt=0, le=100)
     max_trades: int = Field(default=100, ge=1, le=1000)
     execution_profile: ExecutionProfile | None = None
+    entry_timing_profile: EntryTimingProfile | None = Field(default=None, exclude=True)
 
     @field_validator("symbol")
     @classmethod
@@ -180,6 +186,7 @@ class BacktestTrade:
     outcome_diagnostics: TradeOutcomeDiagnostics | None = None
     setup_candidate_diagnostics: tuple[SetupCandidateDiagnostics, ...] = ()
     execution_diagnostics: ExecutionDiagnostics | None = None
+    entry_timing_diagnostics: EntryTimingDiagnostics | None = None
 
 
 @dataclass(frozen=True)
@@ -393,6 +400,8 @@ class BacktestingEngine:
                     execution_profile=request.execution_profile,
                     starting_balance=request.starting_balance,
                     risk_per_trade_percent=request.risk_per_trade_percent,
+                    entry_timing_profile=request.entry_timing_profile,
+                    signal_close=candles[index].close,
                 )
             )
 
@@ -444,6 +453,8 @@ def build_backtest_trade(
     execution_profile: ExecutionProfile | None = None,
     starting_balance: float = 10_000.0,
     risk_per_trade_percent: float = 1.0,
+    entry_timing_profile: EntryTimingProfile | None = None,
+    signal_close: float | None = None,
 ) -> BacktestTrade:
     """Convert one analysis snapshot into a skipped or simulated trade record."""
 
@@ -577,6 +588,78 @@ def build_backtest_trade(
             setup_candidate_diagnostics=setup_candidate_diagnostics,
         )
 
+    production_entry = entry
+    production_outcome, production_r, _ = simulate_trade_outcome(
+        action=action,
+        entry=production_entry,
+        stop_loss=stop,
+        target=target,
+        future_candles=future_candles,
+        estimated_risk_reward=plan.estimated_risk_reward,
+    )
+    timing_prepared = None
+    if entry_timing_profile is not None:
+        timing_prepared = EntryTimingEngine(entry_timing_profile).prepare(
+            action=action,
+            production_entry=production_entry,
+            stop_loss=stop,
+            target=target,
+            signal_close=signal_close,
+            nearest_support=(
+                setup_level_diagnostics.nearest_support
+                if setup_level_diagnostics is not None else None
+            ),
+            nearest_resistance=(
+                setup_level_diagnostics.nearest_resistance
+                if setup_level_diagnostics is not None else None
+            ),
+            future_candles=future_candles,
+        )
+        if timing_prepared.adjusted_entry is None:
+            missed_opportunity = (
+                production_r
+                if production_outcome is TradeOutcome.WIN and production_r is not None
+                else 0.0
+            )
+            timing_diagnostics = EntryTimingDiagnostics(
+                profile_name=entry_timing_profile.name,
+                production_entry=production_entry,
+                adjusted_entry=None,
+                filled=False,
+                missed=True,
+                delay_bars=timing_prepared.delay_bars,
+                entry_improvement_r=0.0,
+                missed_opportunity_r=round(missed_opportunity, 6),
+                fallback_used=timing_prepared.fallback_used,
+                human_readable_summary=timing_prepared.human_readable_summary,
+            )
+            return BacktestTrade(
+                timestamp=timestamp,
+                symbol=symbol,
+                action=action,
+                setup_type=setup_type,
+                strategy_type=strategy_type,
+                entry=None,
+                stop_loss=stop,
+                target=target,
+                estimated_risk_reward=plan.estimated_risk_reward,
+                outcome=TradeOutcome.SKIPPED,
+                realized_r=None,
+                reason="Entry timing profile did not fill within its wait window.",
+                actionability_status="actionable",
+                decision_diagnostics=decision_diagnostics,
+                execution_readiness=execution_readiness,
+                risk_reward_diagnostics=risk_reward_diagnostics,
+                setup_level_diagnostics=setup_level_diagnostics,
+                setup_candidate_diagnostics=setup_candidate_diagnostics,
+                entry_timing_diagnostics=timing_diagnostics,
+            )
+        entry = timing_prepared.adjusted_entry
+        future_candles = list(timing_prepared.evaluation_candles)
+        timing_risk_reward = _risk_reward_for_entry(action, entry, stop, target)
+    else:
+        timing_risk_reward = plan.estimated_risk_reward
+
     actual_entry = entry
     evaluation_candles = future_candles
     execution_diagnostics: ExecutionDiagnostics | None = None
@@ -587,7 +670,7 @@ def build_backtest_trade(
             stop_loss=stop,
             target=target,
             future_candles=future_candles,
-            estimated_risk_reward=plan.estimated_risk_reward,
+            estimated_risk_reward=timing_risk_reward,
         )
     else:
         (
@@ -603,7 +686,7 @@ def build_backtest_trade(
             stop_loss=stop,
             target=target,
             future_candles=future_candles,
-            estimated_risk_reward=plan.estimated_risk_reward,
+            estimated_risk_reward=timing_risk_reward,
             execution_profile=execution_profile,
             symbol=symbol,
             timestamp=timestamp,
@@ -628,6 +711,26 @@ def build_backtest_trade(
         if actual_entry is not None
         else None
     )
+    timing_diagnostics = None
+    if timing_prepared is not None:
+        original_risk = abs(production_entry - stop)
+        improvement = (
+            ((production_entry - entry) if action == "buy" else (entry - production_entry))
+            / original_risk
+            if original_risk else 0.0
+        )
+        timing_diagnostics = EntryTimingDiagnostics(
+            profile_name=entry_timing_profile.name,
+            production_entry=production_entry,
+            adjusted_entry=entry,
+            filled=True,
+            missed=False,
+            delay_bars=timing_prepared.delay_bars,
+            entry_improvement_r=round(improvement, 6),
+            missed_opportunity_r=0.0,
+            fallback_used=timing_prepared.fallback_used,
+            human_readable_summary=timing_prepared.human_readable_summary,
+        )
     return BacktestTrade(
         timestamp=timestamp,
         symbol=symbol,
@@ -649,6 +752,7 @@ def build_backtest_trade(
         outcome_diagnostics=outcome_diagnostics,
         setup_candidate_diagnostics=setup_candidate_diagnostics,
         execution_diagnostics=execution_diagnostics,
+        entry_timing_diagnostics=timing_diagnostics,
     )
 
 
@@ -1348,6 +1452,16 @@ def simulate_trade_outcome(
     return TradeOutcome.OPEN, None, "Neither stop nor target was reached in the available data."
 
 
+def _risk_reward_for_entry(
+    action: str, entry: float, stop_loss: float, target: float
+) -> float | None:
+    if action == "buy" and stop_loss < entry < target:
+        return round((target - entry) / (entry - stop_loss), 6)
+    if action == "sell" and target < entry < stop_loss:
+        return round((entry - target) / (stop_loss - entry), 6)
+    return None
+
+
 def simulate_execution_adjusted_outcome(
     *,
     action: str,
@@ -1355,7 +1469,7 @@ def simulate_execution_adjusted_outcome(
     stop_loss: float,
     target: float,
     future_candles: list[Candle],
-    estimated_risk_reward: float,
+    estimated_risk_reward: float | None,
     execution_profile: ExecutionProfile,
     symbol: str,
     timestamp: int,

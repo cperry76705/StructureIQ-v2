@@ -2,6 +2,25 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.3.0 — Entry Timing Laboratory — 2026-06-28
+
+### Added
+
+- Optional `entry_timing_profiles` on calibration with an automatic immediate-entry baseline.
+- Nine deterministic timing models covering market timing, pullbacks, momentum entries, retests, and conservative limits.
+- Fill, miss, fallback, delay, entry-improvement, and missed-opportunity diagnostics over identical valid candidates.
+- Entry-timing summaries ranking expectancy, fill rate, risk-adjusted performance, and missed entries.
+
+### Compatibility
+
+- Timing scenarios are isolated from production calibration metrics and ordinary backtest metrics.
+- Production entry, decisions, setups, strategies, thresholds, stops, and targets are unchanged.
+- Existing requests without timing profiles follow the previous code path.
+
+### Verification
+
+- 212 automated tests pass together.
+
 ## Version 2.2.0 — Execution Sensitivity Laboratory — 2026-06-28
 
 ### Added
