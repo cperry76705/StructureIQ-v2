@@ -2,6 +2,27 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.9.0 — Regime Confidence Calibration Laboratory — 2026-06-29
+
+### Added
+
+- Opt-in `regime_confidence_analysis` gated by compare-mode forward validation.
+- Legacy and tuned confidence reliability buckets, ECE, MCE, Brier score, curves, distributions, and calibration-state flags.
+- Deterministic identity, linear compression, temperature scaling, isotonic approximation, and piecewise mapping simulations.
+- Mapping recommendation with expected ECE/confidence reduction, improvement, and sample-based research confidence.
+- Legacy-versus-tuned ECE, MCE, Brier, confidence, and overconfidence comparison.
+
+### Compatibility and Safety
+
+- Production regime labels and confidence values remain unchanged.
+- No mapping is applied to analysis, routing, backtesting, or trading behavior.
+- `/analysis` and `/backtest` contracts remain unchanged.
+- Ordinary calibration metrics and trade outcomes are identical with confidence analysis enabled or disabled.
+
+### Verification
+
+- 245 automated tests pass together, including exact ECE/MCE/Brier fixtures, reliability and distribution checks, deterministic mappings, recommendation selection, request gating, and metric invariance.
+
 ## Version 2.8.0 — Tuned Regime Forward Validation — 2026-06-29
 
 ### Added

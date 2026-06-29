@@ -61,6 +61,10 @@ from core.regime_lab import (
     tuned_regime_view,
 )
 from core.regime import RegimeClassifierMode
+from core.regime_confidence import (
+    RegimeConfidenceSummary,
+    build_regime_confidence_summary,
+)
 from core.regime_forward_validation import (
     ForwardValidationComparison,
     RegimeForwardValidationResult,
@@ -123,6 +127,7 @@ class CalibrationRequest(BaseModel):
     regime_tuning_analysis: bool = False
     regime_classifier_mode: RegimeClassifierMode = RegimeClassifierMode.LEGACY
     forward_validation: bool = False
+    regime_confidence_analysis: bool = False
 
     @field_validator("symbols")
     @classmethod
@@ -268,6 +273,7 @@ class CalibrationResult:
     legacy_forward_validation: RegimeForwardValidationResult | None = None
     tuned_forward_validation: RegimeForwardValidationResult | None = None
     forward_validation_comparison: ForwardValidationComparison | None = None
+    regime_confidence_summary: RegimeConfidenceSummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -434,6 +440,17 @@ class CalibrationEngine:
             legacy_forward_validation = None
             tuned_forward_validation = None
             forward_validation_comparison = None
+        regime_confidence_summary = (
+            build_regime_confidence_summary(all_trades)
+            if request.regime_confidence_analysis
+            and request.regime_classifier_mode is RegimeClassifierMode.COMPARE
+            and request.forward_validation
+            and legacy_forward_validation is not None
+            and tuned_forward_validation is not None
+            and legacy_forward_validation.statistical_summary.evaluated_predictions > 0
+            and tuned_forward_validation.statistical_summary.evaluated_predictions > 0
+            else None
+        )
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -487,6 +504,7 @@ class CalibrationEngine:
             legacy_forward_validation=legacy_forward_validation,
             tuned_forward_validation=tuned_forward_validation,
             forward_validation_comparison=forward_validation_comparison,
+            regime_confidence_summary=regime_confidence_summary,
         )
 
 

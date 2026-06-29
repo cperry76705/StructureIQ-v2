@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.8.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.9.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -989,3 +989,26 @@ The response adds `legacy_forward_validation`, `tuned_forward_validation`, and `
 Each accuracy metric includes its sample size, standard deviation, and approximate 95% confidence interval. Horizon statistics include directional return, MFE/MAE, continuation, reversal, volatility expansion, range persistence, and trend persistence. Flags may include `LOW_SAMPLE`, `HIGH_CONFIDENCE`, and `INSUFFICIENT_DATA`.
 
 If either condition is absent, the optional fields are null and validation does not run. The future-behavior snapshot is excluded from `/backtest`; `/analysis` and `/backtest` schemas and payloads are unchanged.
+
+## v2.9 Regime Confidence Calibration Laboratory
+
+Confidence analysis requires compare-mode forward validation:
+
+```json
+{
+  "symbols": ["BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "regime_classifier_mode": "compare",
+  "forward_validation": true,
+  "regime_confidence_analysis": true
+}
+```
+
+The additive `regime_confidence_summary` contains legacy and tuned reliability buckets, ECE and MCE in percentage points, Brier scores on `0–1` probabilities, reliability curves, confidence histograms and percentiles, over/underconfidence flags, five deterministic mapping simulations, a tuned mapping recommendation, and legacy-versus-tuned calibration deltas.
+
+Every mapping reports `classification_unchanged: true` and `expected_routing_unchanged: true`. Mappings are fitted and scored diagnostically on the supplied sample; none is applied to analysis output or any engine. If confidence analysis is omitted, false, or requested without compare-mode forward data, the summary remains null.

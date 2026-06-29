@@ -483,6 +483,15 @@ def _is_correct(
     return predicted is actual
 
 
+def is_forward_prediction_correct(
+    predicted: MarketRegime,
+    forward: ForwardBehaviorHorizon,
+) -> bool:
+    """Expose the v2.8 proxy scoring rule to confidence calibration research."""
+
+    return _is_correct(predicted, forward.proxy_actual_regime, forward)
+
+
 def _confusion_matrix(evaluations: list[_Evaluation]) -> dict[str, dict[str, int]]:
     matrix: dict[str, dict[str, int]] = {
         predicted.value: {actual.value: 0 for actual in MarketRegime}

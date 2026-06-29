@@ -278,3 +278,13 @@ Both classifiers receive the exact same records and available 5-, 10-, and 20-ba
 Per-classifier reports include metric sample sizes, standard deviations and approximate confidence intervals where meaningful, confusion matrices, confidence-reliability curves, regime persistence, and horizon-level return, MFE, MAE, continuation, reversal, volatility expansion, range persistence, and trend persistence statistics. Returns and excursions are normalized price-return fractions, not trade R multiples.
 
 `forward_validation_comparison` reports tuned-minus-legacy accuracy deltas, confidence delta, the best sampled classifier, and recommendations. `LOW_SAMPLE`, `HIGH_CONFIDENCE`, and `INSUFFICIENT_DATA` flags make uncertainty explicit. These are proxy outcomes rather than expert-labeled regimes, statistical proof, or profitability evidence.
+
+## v2.9 Regime Confidence Calibration Laboratory
+
+Set `regime_confidence_analysis` to true alongside compare mode and forward validation. The laboratory uses the same record-horizon correctness outcomes as v2.8; it does not define a second proxy target.
+
+For both classifiers, the report includes reliability buckets from `50–59` through `90–100`, ECE, MCE, Brier score, reliability points, confidence histogram and percentiles, and systematic overconfidence/underconfidence/well-calibrated flags. ECE and MCE are percentage-point gaps; Brier score uses probabilities from zero to one.
+
+Research simulations compare identity, linear compression, temperature scaling, isotonic approximation, and piecewise calibration. Each simulation recalculates confidence diagnostics only and explicitly guarantees unchanged classification and expected routing. The recommended mapping minimizes sampled ECE with Brier score as a tie-breaker and reports low, moderate, or high research confidence based on sample size.
+
+Isotonic and piecewise mappings can overfit the same sample used for evaluation. Recommendations therefore require separate out-of-sample validation before any future production proposal. Version 2.9 never applies a mapping or changes confidence values.

@@ -182,6 +182,12 @@ Version 2.8 captures a second non-serialized forward snapshot containing returns
 
 Validation is downstream of completed backtest records. It cannot recalculate analyses, mutate labels, select trades, or replace ordinary metrics. The validation module owns proxy scoring, uncertainty statistics, confusion matrices, reliability curves, persistence, and classifier comparison; its observations remain absent from `/analysis` and `/backtest` contracts.
 
+#### Regime Confidence Calibration Laboratory
+
+Version 2.9 consumes the matched correctness outcomes produced by forward validation and compares them with the original legacy and tuned confidence values. It owns reliability buckets, ECE, MCE, Brier score, confidence distributions, overconfidence diagnosis, and research-only mapping simulations.
+
+Calibration mappings operate on copied numeric confidence arrays after classifications and trades are complete. They cannot update `RegimeResult`, analysis responses, backtest records, routing inputs, or trading metrics. This separation keeps confidence calibration observational even when a simulated mapping appears materially better.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -208,6 +214,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Why does transition dominate, and which controlled tuning hypothesis merits study? | Regime Classifier Tuning Laboratory |
 | How do legacy and tuned labels differ over identical records? | Tuned Regime Classifier comparison |
 | Which classifier better matches shared future-behavior proxies? | Tuned Regime Forward Validation |
+| Are regime confidence values reliable, and which mapping merits further research? | Regime Confidence Calibration Laboratory |
 
 ## Shared Architectural Rules
 
@@ -222,4 +229,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 2.8 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, classifier tuning and comparison, and matched forward validation. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 2.9 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, classifier tuning and comparison, matched forward validation, and confidence-calibration research. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

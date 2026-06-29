@@ -347,6 +347,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can evaluate whether restored trend coverage is more predictive than legacy transition dominance before considering any classifier promotion.
 
-## Beyond Version 2.8
+## Version 2.9 — Regime Confidence Calibration Laboratory
+
+- Measure reliability, ECE, MCE, Brier score, distributions, and overconfidence.
+- Compare legacy and tuned confidence calibration over shared forward outcomes.
+- Simulate five deterministic calibration mappings without applying them.
+- Recommend one mapping for further out-of-sample research.
+- Preserve all production labels, confidence values, routing, and trades.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can separate improved tuned classification accuracy from unreliable confidence magnitudes before proposing any production confidence changes.
+
+## Beyond Version 2.9
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
