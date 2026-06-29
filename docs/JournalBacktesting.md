@@ -158,6 +158,12 @@ Buys add spread and slippage to entry; sells subtract them. Commissions are conv
 
 Every modeled fill includes `execution_diagnostics`. `execution_summary` reports average costs and degradation plus perfect baseline and realistic expectancy. Partial fills are an explicit 50% research approximation, not a broker fill simulator.
 
+## v2.2 Execution Sensitivity Laboratory
+
+Calibration may supply `execution_sensitivity_profiles`. The laboratory automatically prepends perfect execution and replays the same cached symbol/timeframe candles for each scenario. It reports profile outcomes, R metrics, drawdown, costs, baseline and realistic expectancy, reduction, and the most sensitive component.
+
+Sensitivity trades are isolated from ordinary calibration trades. They cannot change the normal aggregate metrics, setup or strategy performance, skip diagnostics, recommendations, or production execution profile. Seeded slippage remains reproducible. Combined scenarios are labeled separately so a large combined drop is not falsely attributed to one cost.
+
 ## Limitations
 
 - This is a simplified deterministic backtest, not a production execution simulator.

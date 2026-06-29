@@ -29,6 +29,7 @@ The platform includes:
 - **Analysis/Explanation Engine** — translates internal outputs into a trader-facing narrative and plan.
 - **Journal/Backtesting Engine** — local journaling and simplified deterministic historical evaluation.
 - **Execution Realism Engine** — optional deterministic spread, slippage, commission, delayed-fill, and partial-fill research assumptions.
+- **Execution Sensitivity Laboratory** — compares isolated and combined execution scenarios against a frozen perfect baseline.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -117,6 +118,8 @@ Remove `execution_profile` to retain the original perfect-execution baseline.
 }
 ```
 
+Calibration also accepts optional `execution_sensitivity_profiles`. StructureIQ automatically adds perfect execution, freezes candle inputs across scenarios, and returns a separate `execution_sensitivity_summary`; see the API reference for Forex and Crypto examples.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -128,7 +131,7 @@ Remove `execution_profile` to retain the original perfect-execution baseline.
 
 ## Roadmap and Release Information
 
-Version `2.1.0` adds optional deterministic execution-cost and fill modeling for backtesting and calibration. Perfect execution remains the default, and no execution assumption affects production analysis.
+Version `2.2.0` adds an optional execution-sensitivity laboratory to calibration. It compares perfect, isolated-cost, delayed-fill, and combined profiles without changing ordinary calibration or production analysis.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

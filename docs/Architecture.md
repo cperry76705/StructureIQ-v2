@@ -140,6 +140,12 @@ Version 2.1 adds a backtesting-only execution boundary after an actionable plan 
 
 Each modeled fill retains the perfect-execution result as a comparator. Execution diagnostics and summaries report requested versus actual entry and expectancy degradation. Seeded random slippage is reproducible; OHLC ordering, latency, order-book depth, and market impact remain explicit limitations.
 
+#### Execution Sensitivity Laboratory
+
+Version 2.2 runs isolated and combined execution profiles over a frozen calibration candle snapshot. A perfect profile is always the baseline. Laboratory results are stored separately from ordinary calibration runs, metrics, setup/strategy performance, and recommendations, so scenario analysis cannot mutate the production research result.
+
+The laboratory ranks profile expectancy and drawdown, measures reductions from perfect execution, and classifies profile settings as spread, slippage, commission, fill model, or combined costs. Profile names are descriptive only; attribution comes from typed settings. Default Forex and Crypto helpers are illustrative scenario generators rather than market-cost assertions.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -159,6 +165,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | How should the result be explained and presented as a plan? | Analysis/Explanation Engine |
 | How did the analysis and outcome perform over time? | Journal/Backtesting Engine |
 | How sensitive is historical performance to fill and cost assumptions? | Execution Realism Engine |
+| Which execution variable causes the largest historical degradation? | Execution Sensitivity Laboratory |
 
 ## Shared Architectural Rules
 
@@ -173,4 +180,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 0.9 provide the FastAPI foundation, provider abstraction and symbol normalization, typed market structure, two-timeframe alignment, weighted Decision Engine, Setup Engine, trader-facing Analysis/Explanation Engine, ranked strategy playbooks, local journaling, deterministic historical evaluation, and calibration diagnostics. The remaining milestone is packaging these capabilities into the cohesive version 1.0 platform.
+Versions 0.1 through 2.2 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, optional execution realism, and side-by-side execution sensitivity. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

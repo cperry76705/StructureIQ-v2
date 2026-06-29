@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.1.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.2.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -526,6 +526,81 @@ Request:
 ```
 
 Calibration passes an optional execution profile to every run and returns `aggregate_execution_summary`. Existing requests without the field remain valid and report zero modeled fills.
+
+### Execution Sensitivity Laboratory
+
+Add `execution_sensitivity_profiles` to compare scenarios without changing the ordinary calibration result. Perfect execution is inserted automatically, so callers should send only the scenarios they want to compare:
+
+```json
+{
+  "symbols": ["EUR-USD", "GBP-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "execution_sensitivity_profiles": [
+    {
+      "name": "forex_spread_only_mild",
+      "description": "Illustrative one-pip spread-only scenario.",
+      "execution_profile": {"spread": 0.0001}
+    },
+    {
+      "name": "forex_mild_realistic",
+      "description": "Illustrative mild combined Forex scenario.",
+      "execution_profile": {
+        "spread": 0.0001,
+        "slippage": 0.00005,
+        "slippage_type": "random",
+        "commission_per_trade": 2.0,
+        "commission_type": "fixed",
+        "random_seed": 42
+      }
+    }
+  ]
+}
+```
+
+Crypto scenarios use instrument price units rather than Forex values:
+
+```json
+{
+  "symbols": ["BTC-USD", "ETH-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "execution_sensitivity_profiles": [
+    {
+      "name": "crypto_slippage_only_mild",
+      "description": "Illustrative seeded slippage-only scenario.",
+      "execution_profile": {
+        "slippage": 1.0,
+        "slippage_type": "random",
+        "random_seed": 42
+      }
+    },
+    {
+      "name": "crypto_moderate_realistic",
+      "description": "Illustrative moderate combined Crypto scenario.",
+      "execution_profile": {
+        "spread": 5.0,
+        "slippage": 2.5,
+        "slippage_type": "random",
+        "commission_per_trade": 0.05,
+        "commission_type": "percent",
+        "fill_model": "next_bar",
+        "random_seed": 42
+      }
+    }
+  ]
+}
+```
+
+`execution_sensitivity_summary` contains `profiles`, `best_profile`, `worst_profile`, `largest_expectancy_drop_profile`, `most_sensitive_cost_component`, a readable summary, and recommendations. Every profile result includes outcomes, expectancy, R metrics, drawdown, and average costs. Scenario runs never replace `aggregate_metrics` or `aggregate_execution_summary`.
 
 Response shape:
 

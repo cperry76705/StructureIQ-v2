@@ -191,3 +191,29 @@ Calibration now states whether `bearish_bos_retest` produced closed production t
 Calibration accepts the same optional `execution_profile` and passes it unchanged into every backtest run. `aggregate_execution_summary` combines modeled fills and reports average spread, slippage, commission, degradation, perfect baseline expectancy, realistic expectancy, and expectancy reduction.
 
 The comparison is observational. It does not recalibrate confidence, setups, strategies, stops, targets, or the `1.5R` admission gate. Random slippage remains deterministic for the same seed, symbol, and timestamp.
+
+## v2.2 Execution Sensitivity Laboratory
+
+`CalibrationRequest.execution_sensitivity_profiles` accepts named descriptions and typed execution profiles. When supplied, calibration adds `execution_sensitivity_summary` and automatically includes canonical perfect execution. When omitted, the existing calibration path runs once and the optional summary is null.
+
+Each result reports outcomes, R metrics, profit factor, drawdown, perfect baseline expectancy, modeled expectancy, expectancy reduction, and average execution costs. The summary names the best, worst, and largest-drop profiles, attributes the dominant component from settings, and returns inspection recommendations. Ordinary calibration metrics are never replaced.
+
+Helper functions provide eight illustrative scenarios per asset family: perfect, mild spread only, mild slippage only, mild commission only, next-bar only, and mild, moderate, and harsh combined profiles. Forex examples use five-decimal price units; Crypto examples use whole price units and percentage commissions. All values must be replaced or validated against the intended venue and instrument before interpreting results.
+
+| Helper profile | Example assumptions |
+| --- | --- |
+| `perfect` | No costs; immediate fill |
+| `forex_spread_only_mild` | `0.0001` spread |
+| `forex_slippage_only_mild` | Random slippage up to `0.00005` |
+| `forex_commission_only_mild` | `2.00` fixed commission |
+| `forex_next_bar_only` | Next-bar-open fill |
+| `forex_mild_realistic` | `0.0001` spread, random `0.00005` slippage, `2.00` fixed commission |
+| `forex_moderate_realistic` | `0.0002`, `0.0001`, `5.00`, next-bar fill |
+| `forex_harsh_realistic` | `0.0004`, `0.0002`, `10.00`, next-bar fill |
+| `crypto_spread_only_mild` | `2.0` price-unit spread |
+| `crypto_slippage_only_mild` | Random slippage up to `1.0` price unit |
+| `crypto_commission_only_mild` | `0.02%` notional commission |
+| `crypto_next_bar_only` | Next-bar-open fill |
+| `crypto_mild_realistic` | `2.0` spread, random `1.0` slippage, `0.02%` commission |
+| `crypto_moderate_realistic` | `5.0`, `2.5`, `0.05%`, next-bar fill |
+| `crypto_harsh_realistic` | `10.0`, `5.0`, `0.1%`, next-bar fill |

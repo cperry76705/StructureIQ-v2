@@ -264,6 +264,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** historical results can quantify execution-cost sensitivity without implying broker connectivity or changing trade recommendations.
 
-## Beyond Version 2.1
+## Version 2.2 — Execution Sensitivity Laboratory
+
+- Compare perfect, isolated-cost, delayed-fill, and combined execution scenarios.
+- Freeze calibration candle inputs across every profile.
+- Rank best, worst, and largest expectancy-drop profiles.
+- Attribute degradation to spread, slippage, commission, fill model, or combined costs.
+- Keep ordinary calibration and production trading logic unchanged.
+
+**Status:** implemented.
+
+**Outcome:** maintainers can identify which execution assumption dominates historical degradation before validating costs against venue-specific evidence.
+
+## Beyond Version 2.2
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

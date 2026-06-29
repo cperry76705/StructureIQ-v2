@@ -33,7 +33,13 @@ from core.backtesting import (
 )
 from core.journal import TradeOutcome
 from core.execution import ExecutionProfile, ExecutionSummary, calculate_execution_summary
-from core.market_data import MarketDataProvider
+from core.execution_sensitivity import (
+    ExecutionSensitivityProfile,
+    ExecutionSensitivitySummary,
+    build_execution_sensitivity_summary,
+    ensure_perfect_baseline,
+)
+from core.market_data import Candle, MarketDataProvider
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from core.symbols import normalize_yahoo_symbol
 
@@ -75,6 +81,9 @@ class CalibrationRequest(BaseModel):
     risk_per_trade_percent: float = Field(default=1.0, gt=0, le=100)
     starting_balance: float = Field(default=10_000.0, gt=0)
     execution_profile: ExecutionProfile | None = None
+    execution_sensitivity_profiles: list[ExecutionSensitivityProfile] | None = Field(
+        default=None, max_length=20
+    )
 
     @field_validator("symbols")
     @classmethod
@@ -207,6 +216,7 @@ class CalibrationResult:
     recommendations: tuple[CalibrationRecommendation, ...]
     human_readable_summary: str
     limitations: tuple[str, ...]
+    execution_sensitivity_summary: ExecutionSensitivitySummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -215,6 +225,24 @@ class _BacktestRunner(Protocol):
 
 
 BacktestingEngineFactory = Callable[[MarketDataProvider], _BacktestRunner]
+
+
+class _CalibrationDataCache:
+    """Freeze provider candles so every sensitivity profile sees identical data."""
+
+    def __init__(self, source: MarketDataProvider) -> None:
+        self._source = source
+        self._cache: dict[tuple[str, str, int], tuple[Candle, ...]] = {}
+
+    def get_candles(
+        self, symbol: str, timeframe: str, lookback: int
+    ) -> list[Candle]:
+        key = (symbol, timeframe, lookback)
+        if key not in self._cache:
+            self._cache[key] = tuple(
+                self._source.get_candles(symbol, timeframe, lookback)
+            )
+        return list(self._cache[key])
 
 
 class CalibrationEngine:
@@ -226,7 +254,7 @@ class CalibrationEngine:
         backtesting_engine_factory: BacktestingEngineFactory | None = None,
     ) -> None:
         factory = backtesting_engine_factory or BacktestingEngine
-        self._backtester = factory(market_data)
+        self._backtester = factory(_CalibrationDataCache(market_data))
 
     def run(self, request: CalibrationRequest) -> CalibrationResult:
         runs: list[CalibrationRun] = []
@@ -286,6 +314,11 @@ class CalibrationEngine:
         aggregate_execution_summary = calculate_execution_summary(
             [trade.execution_diagnostics for trade in all_trades if trade.execution_diagnostics]
         )
+        execution_sensitivity_summary = (
+            _run_execution_sensitivity(self._backtester, request)
+            if request.execution_sensitivity_profiles
+            else None
+        )
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -326,7 +359,36 @@ class CalibrationEngine:
             recommendations=recommendations,
             human_readable_summary=summary,
             limitations=calibration_limitations(),
+            execution_sensitivity_summary=execution_sensitivity_summary,
         )
+
+
+def _run_execution_sensitivity(
+    backtester: _BacktestRunner,
+    request: CalibrationRequest,
+) -> ExecutionSensitivitySummary:
+    profiles = ensure_perfect_baseline(request.execution_sensitivity_profiles or [])
+    profile_runs: list[tuple[ExecutionSensitivityProfile, list[BacktestTrade]]] = []
+    for profile in profiles:
+        trades: list[BacktestTrade] = []
+        for symbol in request.symbols:
+            for timeframe in request.timeframes:
+                for higher_timeframe in request.higher_timeframes:
+                    result = backtester.run(
+                        BacktestRequest(
+                            symbol=symbol,
+                            timeframe=timeframe,
+                            higher_timeframe=higher_timeframe,
+                            lookback=request.lookback,
+                            starting_balance=request.starting_balance,
+                            risk_per_trade_percent=request.risk_per_trade_percent,
+                            max_trades=request.max_trades_per_run,
+                            execution_profile=profile.execution_profile,
+                        )
+                    )
+                    trades.extend(result.trades)
+        profile_runs.append((profile, trades))
+    return build_execution_sensitivity_summary(profile_runs)
 
 
 def _aggregate_metrics(

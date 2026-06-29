@@ -93,3 +93,36 @@ def test_backtest_endpoint_still_works_after_calibration() -> None:
     assert response.json()["request"]["symbol"] == "EUR-USD"
     assert response.json()["setup_coverage_summary"]["total_records"] == 1
     assert response.json()["execution_summary"]["modeled_trades"] == 0
+
+
+def test_calibrate_endpoint_returns_execution_sensitivity_when_requested() -> None:
+    _override_provider()
+    try:
+        response = TestClient(app).post(
+            "/calibrate",
+            json={
+                "symbols": ["EUR-USD"],
+                "timeframes": ["5m"],
+                "higher_timeframes": ["1h"],
+                "lookback": 60,
+                "max_trades_per_run": 1,
+                "risk_per_trade_percent": 1,
+                "starting_balance": 10000,
+                "execution_sensitivity_profiles": [
+                    {
+                        "name": "spread_only",
+                        "description": "Synthetic spread-only scenario.",
+                        "execution_profile": {"spread": 0.0001},
+                    }
+                ],
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    summary = response.json()["execution_sensitivity_summary"]
+    assert [item["profile_name"] for item in summary["profiles"]] == [
+        "perfect",
+        "spread_only",
+    ]

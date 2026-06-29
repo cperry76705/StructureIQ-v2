@@ -2,6 +2,26 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.2.0 — Execution Sensitivity Laboratory — 2026-06-28
+
+### Added
+
+- Optional `execution_sensitivity_profiles` on calibration requests with an automatically included perfect baseline.
+- Side-by-side performance, cost, drawdown, and expectancy comparison without mutating production calibration metrics.
+- Deterministic attribution to spread, slippage, commission, fill model, or combined costs.
+- Documented eight-profile Forex and Crypto helper sets ranging from perfect through harsh illustrative scenarios.
+- A calibration data cache ensuring every profile receives the same candle snapshot.
+
+### Compatibility
+
+- Omitting sensitivity profiles preserves the existing calibration call path and metrics.
+- Analysis, decisions, setups, strategies, thresholds, stops, targets, and ordinary execution profiles are unchanged.
+- Scenario defaults are examples, not broker or exchange cost claims.
+
+### Verification
+
+- 204 automated tests pass together.
+
 ## Version 2.1.0 — Execution Realism Engine — 2026-06-28
 
 ### Added
