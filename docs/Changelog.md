@@ -2,6 +2,28 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.7.0 — Tuned Regime Classifier — 2026-06-29
+
+### Added
+
+- Parallel `TunedMarketRegimeEngine` that prioritizes current directional swing structure and recent event evidence.
+- Optional `regime_classifier_mode` with `legacy`, `tuned`, and `compare`; legacy remains the default.
+- Side-by-side legacy and tuned regime summaries over identical calibration records.
+- Classifier comparison covering transition reduction, trend restoration, changed labels, agreement, and transition destinations.
+- Internal tuned labels on analysis/backtest records, excluded from public serialization.
+
+### Compatibility and Safety
+
+- The legacy `MarketRegimeEngine` is unchanged.
+- `/analysis` request and response contracts are unchanged.
+- Decision, setup, strategy, entry, stop, target, risk, execution, and backtest trade-selection logic are unchanged.
+- Calibration computes trading metrics once; classifier modes only regroup the same immutable records for regime research.
+- Existing market-regime, validation, and tuning laboratories continue to use their established behavior.
+
+### Verification
+
+- 235 automated tests pass together, including legacy defaults, stale-CHOCH handling, preserved range/compression/expansion behavior, BOS and higher-timeframe evidence, compare mode, and metric invariance.
+
 ## Version 2.6.0 — Regime Classifier Tuning Laboratory — 2026-06-28
 
 ### Added

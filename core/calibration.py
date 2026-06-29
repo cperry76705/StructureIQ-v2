@@ -53,10 +53,14 @@ from core.execution_sensitivity import (
 from core.market_data import Candle, MarketDataProvider
 from core.regime_lab import (
     MarketRegimeSummary,
+    RegimeClassifierComparison,
     SetupRegimeMatrix,
     StrategyRegimeMatrix,
+    build_regime_classifier_comparison,
     build_market_regime_analysis,
+    tuned_regime_view,
 )
+from core.regime import RegimeClassifierMode
 from core.regime_validation import (
     RegimeValidationSummary,
     build_regime_validation_summary,
@@ -112,6 +116,7 @@ class CalibrationRequest(BaseModel):
     market_regime_analysis: bool = False
     regime_validation_analysis: bool = False
     regime_tuning_analysis: bool = False
+    regime_classifier_mode: RegimeClassifierMode = RegimeClassifierMode.LEGACY
 
     @field_validator("symbols")
     @classmethod
@@ -251,6 +256,9 @@ class CalibrationResult:
     setup_regime_matrix: tuple[SetupRegimeMatrix, ...] | None = None
     regime_validation_summary: RegimeValidationSummary | None = None
     regime_tuning_summary: RegimeTuningSummary | None = None
+    legacy_market_regime_summary: MarketRegimeSummary | None = None
+    tuned_market_regime_summary: MarketRegimeSummary | None = None
+    regime_classifier_comparison: RegimeClassifierComparison | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -358,7 +366,33 @@ class CalibrationEngine:
             if request.entry_timing_profiles
             else None
         )
-        if request.market_regime_analysis:
+        legacy_market_regime_summary = None
+        tuned_market_regime_summary = None
+        regime_classifier_comparison = None
+        if request.regime_classifier_mode is RegimeClassifierMode.COMPARE:
+            (
+                legacy_market_regime_summary,
+                tuned_market_regime_summary,
+                regime_classifier_comparison,
+            ) = build_regime_classifier_comparison(all_trades)
+            if request.market_regime_analysis:
+                (
+                    market_regime_summary,
+                    strategy_regime_matrix,
+                    setup_regime_matrix,
+                ) = build_market_regime_analysis(all_trades)
+            else:
+                market_regime_summary = None
+                strategy_regime_matrix = None
+                setup_regime_matrix = None
+        elif request.regime_classifier_mode is RegimeClassifierMode.TUNED:
+            (
+                market_regime_summary,
+                strategy_regime_matrix,
+                setup_regime_matrix,
+            ) = build_market_regime_analysis(tuned_regime_view(all_trades))
+            tuned_market_regime_summary = market_regime_summary
+        elif request.market_regime_analysis:
             (
                 market_regime_summary,
                 strategy_regime_matrix,
@@ -425,6 +459,9 @@ class CalibrationEngine:
             setup_regime_matrix=setup_regime_matrix,
             regime_validation_summary=regime_validation_summary,
             regime_tuning_summary=regime_tuning_summary,
+            legacy_market_regime_summary=legacy_market_regime_summary,
+            tuned_market_regime_summary=tuned_market_regime_summary,
+            regime_classifier_comparison=regime_classifier_comparison,
         )
 
 

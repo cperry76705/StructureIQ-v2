@@ -34,6 +34,7 @@ The platform includes:
 - **Market Regime Laboratory** — classifies market conditions and cross-tabulates strategy and setup performance without changing routing.
 - **Regime Validation Laboratory** — measures regime balance, persistence, transition exits, and forward proxy behavior without changing classifications.
 - **Regime Classifier Tuning Laboratory** — explains transition dominance and compares threshold and evidence-weight counterfactuals without changing the production classifier.
+- **Tuned Regime Classifier** — provides a parallel research label that prioritizes current swing structure and recent evidence while retaining the legacy classifier.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -132,6 +133,8 @@ Set `regime_validation_analysis` to `true` to diagnose classification balance an
 
 Set `regime_tuning_analysis` to `true` to return the production distribution, competing evidence scores, transition staleness and conflict diagnostics, confidence and margin distributions, forward stability, transition-threshold simulations at 60–80, and isolated trend-evidence simulations. These are research counterfactuals; they do not replace any production regime label.
 
+Set `regime_classifier_mode` to `legacy`, `tuned`, or `compare`. The default is `legacy`. Compare mode returns side-by-side legacy and tuned summaries plus label-change diagnostics over identical backtest records. Classifier mode never changes decisions, trade selection, stops, targets, outcomes, or aggregate calibration metrics.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -143,7 +146,7 @@ Set `regime_tuning_analysis` to `true` to return the production distribution, co
 
 ## Roadmap and Release Information
 
-Version `2.6.0` adds an opt-in classifier tuning laboratory for diagnosing transition dominance and simulating controlled alternatives. Existing regime rules remain unchanged.
+Version `2.7.0` adds a tuned research classifier and a compare mode while preserving legacy classification as the default. Regime labels remain isolated from all trading behavior.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

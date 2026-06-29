@@ -170,6 +170,12 @@ Version 2.6 records a non-serialized evidence snapshot beside each historical re
 
 The tuning laboratory explains transition precedence, classification margins, confidence clustering, stale transition evidence, and forward-proxy stability. It then reclassifies copied scores under transition thresholds `60`, `65`, `70`, `75`, and `80`, plus isolated BOS, CHOCH, swing-structure, and higher-timeframe alignment weight boosts. These counterfactual labels never replace the immutable production label or feed any trading engine.
 
+#### Tuned Regime Classifier
+
+Version 2.7 adds a second, research-only classifier beside the unchanged legacy classifier. The tuned classifier preserves compression, expansion, and range rules, then gives current directional swing structure primary weight. Only recent BOS/CHOCH events are eligible for confirmation or transition pressure; old CHOCH observations cannot preempt a current directional sequence. Higher-timeframe alignment and directionally consistent mixed context strengthen trend evidence.
+
+Both labels are retained internally on the same analysis and backtest record. Calibration can group immutable records through a legacy view, tuned view, or side-by-side comparison. Neither label is read by Decision, Setup, Strategy, Explanation, entry, execution, or risk code.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -194,6 +200,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Which setup and strategy historically fit each market condition? | Market Regime Laboratory |
 | Are regime labels balanced, persistent, and aligned with forward proxy behavior? | Regime Validation Laboratory |
 | Why does transition dominate, and which controlled tuning hypothesis merits study? | Regime Classifier Tuning Laboratory |
+| How do legacy and tuned labels differ over identical records? | Tuned Regime Classifier comparison |
 
 ## Shared Architectural Rules
 
@@ -208,4 +215,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 2.6 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, proxy regime validation, and opt-in classifier tuning simulations. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 2.7 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, proxy regime validation, classifier tuning simulations, and parallel legacy/tuned regime comparison. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

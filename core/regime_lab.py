@@ -1,7 +1,7 @@
 """Aggregate strategy and setup behavior by deterministic market regime."""
 
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from core.backtesting import BacktestTrade, calculate_backtest_metrics
 from core.journal import TradeOutcome
@@ -69,6 +69,175 @@ class MarketRegimeSummary:
     largest_sample_regime: str | None
     human_readable_summary: str
     recommendations: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RegimeClassifierComparison:
+    legacy_transition_ratio: float
+    tuned_transition_ratio: float
+    transition_reduction: float
+    legacy_trend_count: int
+    tuned_trend_count: int
+    trend_count_increase: int
+    records_changed: int
+    changed_percentage: float
+    agreement_rate: float
+    changed_from_transition_to_trend: int
+    changed_from_transition_to_range: int
+    changed_from_transition_to_compression: int
+    changed_from_transition_to_expansion: int
+    human_readable_summary: str
+    recommendations: tuple[str, ...]
+
+
+def build_regime_classifier_comparison(
+    trades: list[BacktestTrade],
+) -> tuple[MarketRegimeSummary, MarketRegimeSummary, RegimeClassifierComparison]:
+    """Compare immutable legacy and tuned labels over identical trade records."""
+
+    comparable = [
+        trade for trade in trades
+        if trade.market_regime is not None and trade.tuned_market_regime is not None
+    ]
+    tuned_view = [
+        replace(trade, market_regime=trade.tuned_market_regime)
+        for trade in trades
+    ]
+    legacy_summary = build_market_regime_analysis(trades)[0]
+    tuned_summary = build_market_regime_analysis(tuned_view)[0]
+    total = len(comparable)
+    legacy_transition = sum(
+        trade.market_regime.market_regime is MarketRegime.TRANSITION
+        for trade in comparable
+    )
+    tuned_transition = sum(
+        trade.tuned_market_regime.market_regime is MarketRegime.TRANSITION
+        for trade in comparable
+    )
+    legacy_trends = sum(
+        _is_trend(trade.market_regime.market_regime) for trade in comparable
+    )
+    tuned_trends = sum(
+        _is_trend(trade.tuned_market_regime.market_regime) for trade in comparable
+    )
+    changed = [
+        trade for trade in comparable
+        if trade.market_regime.market_regime is not trade.tuned_market_regime.market_regime
+    ]
+    transition_changes = [
+        trade for trade in changed
+        if trade.market_regime.market_regime is MarketRegime.TRANSITION
+    ]
+    legacy_ratio = legacy_transition / total if total else 0.0
+    tuned_ratio = tuned_transition / total if total else 0.0
+    changed_percentage = 100.0 * len(changed) / total if total else 0.0
+    agreement = 100.0 * (total - len(changed)) / total if total else 0.0
+    comparison = RegimeClassifierComparison(
+        legacy_transition_ratio=round(legacy_ratio, 6),
+        tuned_transition_ratio=round(tuned_ratio, 6),
+        transition_reduction=round(legacy_ratio - tuned_ratio, 6),
+        legacy_trend_count=legacy_trends,
+        tuned_trend_count=tuned_trends,
+        trend_count_increase=tuned_trends - legacy_trends,
+        records_changed=len(changed),
+        changed_percentage=round(changed_percentage, 3),
+        agreement_rate=round(agreement, 3),
+        changed_from_transition_to_trend=sum(
+            _is_trend(trade.tuned_market_regime.market_regime)
+            for trade in transition_changes
+        ),
+        changed_from_transition_to_range=_transition_target_count(
+            transition_changes, MarketRegime.RANGE
+        ),
+        changed_from_transition_to_compression=_transition_target_count(
+            transition_changes, MarketRegime.COMPRESSION
+        ),
+        changed_from_transition_to_expansion=_transition_target_count(
+            transition_changes, MarketRegime.EXPANSION
+        ),
+        human_readable_summary=(
+            f"Across {total} identical records, tuned classification reduced "
+            f"transition from {legacy_ratio:.1%} to {tuned_ratio:.1%} and "
+            f"increased trend labels from {legacy_trends} to {tuned_trends}. "
+            "Trade outcomes and calibration metrics were not recalculated."
+        ),
+        recommendations=_comparison_recommendations(
+            total=total,
+            legacy_ratio=legacy_ratio,
+            tuned_ratio=tuned_ratio,
+            changed_percentage=changed_percentage,
+            tuned_trends=tuned_trends,
+        ),
+    )
+    return legacy_summary, tuned_summary, comparison
+
+
+def tuned_regime_view(trades: list[BacktestTrade]) -> list[BacktestTrade]:
+    """Return research copies grouped by tuned labels, leaving originals untouched."""
+
+    return [
+        replace(
+            trade,
+            market_regime=trade.tuned_market_regime or trade.market_regime,
+        )
+        for trade in trades
+    ]
+
+
+def _is_trend(regime: MarketRegime) -> bool:
+    return regime in {
+        MarketRegime.STRONG_BULL_TREND,
+        MarketRegime.WEAK_BULL_TREND,
+        MarketRegime.STRONG_BEAR_TREND,
+        MarketRegime.WEAK_BEAR_TREND,
+    }
+
+
+def _transition_target_count(
+    trades: list[BacktestTrade], target: MarketRegime
+) -> int:
+    return sum(
+        trade.tuned_market_regime.market_regime is target for trade in trades
+    )
+
+
+def _comparison_recommendations(
+    *,
+    total: int,
+    legacy_ratio: float,
+    tuned_ratio: float,
+    changed_percentage: float,
+    tuned_trends: int,
+) -> tuple[str, ...]:
+    messages: list[str] = []
+    if not total:
+        return (
+            "Collect comparable legacy and tuned classifications before interpretation.",
+        )
+    if tuned_ratio < legacy_ratio:
+        messages.append(
+            "The tuned classifier reduces transition dominance; validate the new "
+            "trend labels against forward behavior before any production adoption."
+        )
+    if tuned_ratio > 0.60:
+        messages.append(
+            "Transition remains above 60% under tuned rules; inspect recent-event "
+            "and conflict evidence further."
+        )
+    if changed_percentage > 50.0:
+        messages.append(
+            "More than half of labels changed; require out-of-sample validation "
+            "because this is a material classifier shift."
+        )
+    if tuned_trends == 0:
+        messages.append(
+            "Tuned rules still produce no trend labels; inspect swing-structure "
+            "inputs and event recency."
+        )
+    messages.append(
+        "Classifier comparison is research-only and must not be used to infer changed trade performance."
+    )
+    return tuple(messages)
 
 
 def build_market_regime_analysis(

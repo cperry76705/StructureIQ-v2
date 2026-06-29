@@ -7,7 +7,7 @@ from core.market_data import Candle, MarketDataProvider
 from core.market_structure import MarketStructureEngine
 from core.multi_timeframe import MultiTimeframeEngine
 from core.risk import build_numeric_risk_levels, format_risk_levels
-from core.regime import MarketRegimeEngine
+from core.regime import MarketRegimeEngine, TunedMarketRegimeEngine
 from core.regime_tuning import build_regime_tuning_evidence
 from core.setup_engine import (
     SetupEngine,
@@ -37,6 +37,7 @@ class AnalysisEngine:
         strategy_engine: StrategyEngine | None = None,
         explanation_engine: ExplanationEngine | None = None,
         regime_engine: MarketRegimeEngine | None = None,
+        tuned_regime_engine: TunedMarketRegimeEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -48,6 +49,7 @@ class AnalysisEngine:
         self._strategy_engine = strategy_engine or StrategyEngine()
         self._explanation_engine = explanation_engine or ExplanationEngine()
         self._regime_engine = regime_engine or MarketRegimeEngine()
+        self._tuned_regime_engine = tuned_regime_engine or TunedMarketRegimeEngine()
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         entry_candles = self._market_data.get_candles(
@@ -68,6 +70,7 @@ class AnalysisEngine:
             self._strategy_engine,
             self._explanation_engine,
             self._regime_engine,
+            self._tuned_regime_engine,
         )
 
 
@@ -82,6 +85,7 @@ def _build_analysis(
     strategy_engine: StrategyEngine,
     explanation_engine: ExplanationEngine,
     regime_engine: MarketRegimeEngine,
+    tuned_regime_engine: TunedMarketRegimeEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -92,6 +96,11 @@ def _build_analysis(
         entry_structure,
     )
     market_regime = regime_engine.classify(
+        candles=entry_candles,
+        market_structure=entry_structure,
+        multi_timeframe=multi_timeframe,
+    )
+    tuned_market_regime = tuned_regime_engine.classify(
         candles=entry_candles,
         market_structure=entry_structure,
         multi_timeframe=multi_timeframe,
@@ -220,5 +229,6 @@ def _build_analysis(
         strategy=strategy,
         trader_analysis=trader_analysis,
         market_regime=market_regime,
+        tuned_market_regime=tuned_market_regime,
         regime_tuning_evidence=regime_tuning_evidence,
     )

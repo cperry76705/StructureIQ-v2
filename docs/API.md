@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.6.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.7.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -944,3 +944,24 @@ Add the optional calibration flag without changing any other request field:
 When enabled, `/calibrate` adds `regime_tuning_summary`. It contains current distribution and dominance, normalized overuse and underclassification scores, evidence score averages, transition reasons and staleness counts, confidence and margin summaries, forward stability, five transition-threshold simulations, four isolated trend-evidence simulations, plain-English findings, and recommendations.
 
 When the flag is omitted or false, the laboratory does not run and the additive optional summary is null. `/analysis` has no new request or response fields: its internal tuning evidence is explicitly excluded from serialization. No simulated classification changes a production label, trade, metric, or existing laboratory result.
+
+## v2.7 Regime Classifier Modes
+
+`POST /calibrate` accepts the optional field `regime_classifier_mode` with values `legacy`, `tuned`, or `compare`. Its default is `legacy`.
+
+```json
+{
+  "symbols": ["BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"],
+  "timeframes": ["5m"],
+  "higher_timeframes": ["1h"],
+  "lookback": 300,
+  "max_trades_per_run": 50,
+  "risk_per_trade_percent": 1.0,
+  "starting_balance": 10000,
+  "regime_classifier_mode": "compare"
+}
+```
+
+Compare mode adds `legacy_market_regime_summary`, `tuned_market_regime_summary`, and `regime_classifier_comparison`. The comparison includes legacy/tuned transition ratios, transition reduction, trend counts, changed and agreed labels, transition destination counts, a summary, and recommendations.
+
+The `/analysis` request and serialized response are unchanged. Tuned labels are internal research metadata and are excluded from ordinary `/analysis` and `/backtest` payloads. Classifier mode cannot change aggregate calibration metrics or any trade outcome.

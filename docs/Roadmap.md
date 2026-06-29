@@ -324,6 +324,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** maintainers can distinguish stale transition precedence, evidence conflict, and insufficient trend weighting, then choose a controlled future experiment without silently tuning the classifier.
 
-## Beyond Version 2.6
+## Version 2.7 — Tuned Regime Classifier
+
+- Preserve the legacy classifier as the default.
+- Add tuned classification that prioritizes current directional swing structure.
+- Use recent BOS and higher-timeframe alignment as trend confirmation.
+- Prevent stale CHOCH from dominating current structure.
+- Compare legacy and tuned summaries over identical records without changing trades.
+
+**Status:** implemented.
+
+**Outcome:** calibration can measure whether tuned labels reduce transition dominance and restore meaningful trend coverage while every production trading decision remains unchanged.
+
+## Beyond Version 2.7
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

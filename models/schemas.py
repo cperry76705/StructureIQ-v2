@@ -68,6 +68,7 @@ class AnalysisResponse(BaseModel):
     strategy: StrategyResult
     trader_analysis: TraderAnalysis
     market_regime: RegimeResult
+    tuned_market_regime: Annotated[RegimeResult | None, Field(exclude=True)] = None
     # Research metadata is carried into historical calibration but deliberately
     # excluded from the public /analysis response contract.
     regime_tuning_evidence: Annotated[

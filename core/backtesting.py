@@ -194,6 +194,7 @@ class BacktestTrade:
     execution_diagnostics: ExecutionDiagnostics | None = None
     entry_timing_diagnostics: EntryTimingDiagnostics | None = None
     market_regime: RegimeResult | None = None
+    tuned_market_regime: Annotated[RegimeResult | None, Field(exclude=True)] = None
     timeframe: str | None = None
     higher_timeframe: str | None = None
     regime_forward_observation: RegimeForwardObservation | None = None
@@ -502,6 +503,7 @@ def build_backtest_trade(
         minimum_required_r=MINIMUM_ACCEPTABLE_RISK_REWARD,
     )
     market_regime = getattr(analysis, "market_regime", None)
+    tuned_market_regime = getattr(analysis, "tuned_market_regime", None)
     regime_tuning_evidence = getattr(analysis, "regime_tuning_evidence", None)
     regime_forward_observation = build_forward_observation(
         start_price=signal_close,
@@ -527,6 +529,7 @@ def build_backtest_trade(
             setup_level_diagnostics=setup_level_diagnostics,
             setup_candidate_diagnostics=setup_candidate_diagnostics,
             market_regime=market_regime,
+            tuned_market_regime=tuned_market_regime,
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
@@ -561,6 +564,7 @@ def build_backtest_trade(
             setup_level_diagnostics=setup_level_diagnostics,
             setup_candidate_diagnostics=setup_candidate_diagnostics,
             market_regime=market_regime,
+            tuned_market_regime=tuned_market_regime,
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
@@ -594,6 +598,7 @@ def build_backtest_trade(
             setup_level_diagnostics=setup_level_diagnostics,
             setup_candidate_diagnostics=setup_candidate_diagnostics,
             market_regime=market_regime,
+            tuned_market_regime=tuned_market_regime,
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
@@ -626,6 +631,7 @@ def build_backtest_trade(
             setup_level_diagnostics=setup_level_diagnostics,
             setup_candidate_diagnostics=setup_candidate_diagnostics,
             market_regime=market_regime,
+            tuned_market_regime=tuned_market_regime,
             timeframe=timeframe,
             higher_timeframe=higher_timeframe,
             regime_forward_observation=regime_forward_observation,
@@ -698,6 +704,7 @@ def build_backtest_trade(
                 setup_candidate_diagnostics=setup_candidate_diagnostics,
                 entry_timing_diagnostics=timing_diagnostics,
                 market_regime=market_regime,
+                tuned_market_regime=tuned_market_regime,
                 timeframe=timeframe,
                 higher_timeframe=higher_timeframe,
                 regime_forward_observation=regime_forward_observation,
@@ -803,6 +810,7 @@ def build_backtest_trade(
         execution_diagnostics=execution_diagnostics,
         entry_timing_diagnostics=timing_diagnostics,
         market_regime=market_regime,
+        tuned_market_regime=tuned_market_regime,
         timeframe=timeframe,
         higher_timeframe=higher_timeframe,
         regime_forward_observation=regime_forward_observation,
@@ -1427,6 +1435,7 @@ def _skipped_trade(
     setup_level_diagnostics: SetupLevelDiagnostics | None,
     setup_candidate_diagnostics: tuple[SetupCandidateDiagnostics, ...] = (),
     market_regime: RegimeResult | None = None,
+    tuned_market_regime: RegimeResult | None = None,
     timeframe: str | None = None,
     higher_timeframe: str | None = None,
     regime_forward_observation: RegimeForwardObservation | None = None,
@@ -1455,6 +1464,7 @@ def _skipped_trade(
         setup_level_diagnostics=setup_level_diagnostics,
         setup_candidate_diagnostics=setup_candidate_diagnostics,
         market_regime=market_regime,
+        tuned_market_regime=tuned_market_regime,
         timeframe=timeframe,
         higher_timeframe=higher_timeframe,
         regime_forward_observation=regime_forward_observation,

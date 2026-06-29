@@ -256,3 +256,15 @@ Two deterministic counterfactual groups are included:
 - Isolated boosts for BOS, CHOCH, swing structure, and higher-timeframe alignment evidence, each with the expected distribution and transition reduction.
 
 A negative classification margin means production transition won by precedence even though the laboratory's strongest non-transition evidence score was higher. Counterfactual distributions diagnose sensitivity only: they are not proposed defaults, profitability studies, or automatic tuning. Production classifications and all trade records remain unchanged.
+
+## v2.7 Tuned Regime Classifier
+
+`regime_classifier_mode` accepts `legacy`, `tuned`, or `compare` and defaults to `legacy`.
+
+- `legacy` preserves all v2.6 behavior. `market_regime_analysis` groups records by the original classifier.
+- `tuned` groups regime research by the tuned label and returns `tuned_market_regime_summary` without replacing the stored legacy label.
+- `compare` returns `legacy_market_regime_summary`, `tuned_market_regime_summary`, and `regime_classifier_comparison` over the same records.
+
+The comparison reports transition ratios and reduction, trend counts and increase, changed records and agreement, plus transition-to-trend, range, compression, and expansion counts. Ratios use `0–1`; `changed_percentage` and `agreement_rate` use `0–100` percentages.
+
+The tuned classifier ignores stale CHOCH as current transition pressure, weights directional swing structure first, treats recent directional BOS as confirmation, and uses aligned or directionally consistent mixed higher-timeframe evidence as support. Range, compression, and expansion rules remain intact. Calibration metrics, skips, outcomes, setup/strategy performance, and every production trade decision remain calculated once from the unchanged backtest path.
