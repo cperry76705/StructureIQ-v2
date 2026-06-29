@@ -150,11 +150,19 @@ Known forex symbols are normalized only when the Yahoo provider is queried. Back
 
 Version 1.9 adds candidate snapshots to each backtest record and `setup_coverage_summary` to each result. Coverage includes skipped records and groups candidate availability, selection, executable quality, missed executable opportunities, average R, and blockers by setup family. These fields never participate in execution.
 
+## v2.1 Execution Realism
+
+`BacktestRequest.execution_profile` is optional. If omitted, the original perfect-execution simulation runs unchanged. Profiles can specify price-unit spread, fixed or seeded-random adverse slippage, fixed-currency or percentage-of-notional commission, deterministic 50% partial-fill studies, and `immediate`, `next_bar`, or `touch` fill models.
+
+Buys add spread and slippage to entry; sells subtract them. Commissions are converted into R using starting balance and risk percentage, then deducted from closed results. Next-bar fills use the next candle open; touch fills wait for a candle containing the requested entry. OHLC outcome ordering remains conservative.
+
+Every modeled fill includes `execution_diagnostics`. `execution_summary` reports average costs and degradation plus perfect baseline and realistic expectancy. Partial fills are an explicit 50% research approximation, not a broker fill simulator.
+
 ## Limitations
 
 - This is a simplified deterministic backtest, not a production execution simulator.
 - OHLC candles do not expose intrabar event ordering.
-- Fees, spread, slippage, latency, partial fills, and market impact are not modeled.
+- Optional profiles approximate fees, spread, slippage, delayed fills, and partial fills. Latency, order-book depth, and market impact remain unmodeled.
 - Starting balance and risk percentage are recorded but position sizing and equity balances are not yet simulated.
 - Entry, stop, target, and risk/reward inherit approximate upstream levels.
 - Overlapping historical analysis windows may describe closely related opportunities.

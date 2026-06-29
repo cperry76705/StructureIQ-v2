@@ -28,6 +28,7 @@ The platform includes:
 - **Strategy Engine** — compares broader playbooks without overriding the decision or setup.
 - **Analysis/Explanation Engine** — translates internal outputs into a trader-facing narrative and plan.
 - **Journal/Backtesting Engine** — local journaling and simplified deterministic historical evaluation.
+- **Execution Realism Engine** — optional deterministic spread, slippage, commission, delayed-fill, and partial-fill research assumptions.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -88,9 +89,19 @@ The response preserves established top-level fields and adds typed internal bloc
   "lookback": 300,
   "starting_balance": 10000,
   "risk_per_trade_percent": 1.0,
-  "max_trades": 25
+  "max_trades": 25,
+  "execution_profile": {
+    "spread": 0.5,
+    "slippage": 0.25,
+    "slippage_type": "fixed",
+    "commission_per_trade": 2.0,
+    "commission_type": "fixed",
+    "fill_model": "next_bar"
+  }
 }
 ```
+
+Remove `execution_profile` to retain the original perfect-execution baseline.
 
 ### Calibration Request
 
@@ -110,14 +121,14 @@ The response preserves established top-level fields and adds typed internal bloc
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
 - The default Yahoo adapter depends on external data availability, quality, and interval limits.
-- Backtests use simplified fills and do not model fees, slippage, spread, latency, partial fills, or portfolio exposure.
+- Backtests optionally approximate fees, spread, slippage, delayed fills, and 50% partial fills. They do not model latency, order-book depth, market impact, or portfolio exposure.
 - Calibration observes historical behavior; it does not prove profitability or change production thresholds automatically.
 - The local JSONL journal is intended for a single local process, not concurrent or multi-user deployment.
 - There is no dashboard, broker integration, order execution, alerting, or live-trading loop.
 
 ## Roadmap and Release Information
 
-Version `1.8.0` adds a read-only stop-management and profit-protection sensitivity study over executed trades. Seven deterministic rules are compared with the unchanged production baseline; no rule is applied to production automatically.
+Version `2.1.0` adds optional deterministic execution-cost and fill modeling for backtesting and calibration. Perfect execution remains the default, and no execution assumption affects production analysis.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

@@ -134,6 +134,12 @@ Backtesting must disclose data quality, fees, slippage, execution assumptions, a
 
 The v0.8 implementation stores journal records in a local append-only JSONL file and provides a deterministic historical candle-window runner. Non-actionable analyses are retained as skipped records, while actionable plans use first-touch stop/target simulation and R-based metrics. The implementation explicitly reports its execution-model limitations.
 
+#### Execution Realism Engine
+
+Version 2.1 adds a backtesting-only execution boundary after an actionable plan is produced. An optional `ExecutionProfile` models adverse spread and slippage, commissions, immediate/next-bar/touch fills, and deterministic partial-fill studies. It never feeds results back into analysis, decision confidence, setup selection, strategy ranking, stops, or targets.
+
+Each modeled fill retains the perfect-execution result as a comparator. Execution diagnostics and summaries report requested versus actual entry and expectancy degradation. Seeded random slippage is reproducible; OHLC ordering, latency, order-book depth, and market impact remain explicit limitations.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -152,6 +158,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Which broader playbook is most appropriate? | Strategy Engine |
 | How should the result be explained and presented as a plan? | Analysis/Explanation Engine |
 | How did the analysis and outcome perform over time? | Journal/Backtesting Engine |
+| How sensitive is historical performance to fill and cost assumptions? | Execution Realism Engine |
 
 ## Shared Architectural Rules
 

@@ -12,6 +12,14 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from app.config import SUPPORTED_TIMEFRAMES
 from core.analysis_engine import AnalysisEngine
 from core.decision_engine import DecisionDiagnostics
+from core.execution import (
+    ExecutionDiagnostics,
+    ExecutionEngine,
+    ExecutionProfile,
+    ExecutionSummary,
+    build_execution_diagnostics,
+    calculate_execution_summary,
+)
 from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
 from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
@@ -101,6 +109,7 @@ class BacktestRequest(BaseModel):
     starting_balance: float = Field(default=10_000.0, gt=0)
     risk_per_trade_percent: float = Field(default=1.0, gt=0, le=100)
     max_trades: int = Field(default=100, ge=1, le=1000)
+    execution_profile: ExecutionProfile | None = None
 
     @field_validator("symbol")
     @classmethod
@@ -170,6 +179,7 @@ class BacktestTrade:
     setup_level_diagnostics: SetupLevelDiagnostics | None = None
     outcome_diagnostics: TradeOutcomeDiagnostics | None = None
     setup_candidate_diagnostics: tuple[SetupCandidateDiagnostics, ...] = ()
+    execution_diagnostics: ExecutionDiagnostics | None = None
 
 
 @dataclass(frozen=True)
@@ -318,6 +328,9 @@ class BacktestResult:
     setup_coverage_summary: SetupCoverageSummary = field(
         default_factory=lambda: _empty_setup_coverage_summary()
     )
+    execution_summary: ExecutionSummary = field(
+        default_factory=lambda: calculate_execution_summary([])
+    )
 
 
 class _AnalysisRunner(Protocol):
@@ -377,6 +390,9 @@ class BacktestingEngine:
                     timestamp=candles[index].timestamp,
                     symbol=request.symbol,
                     future_candles=candles[index + 1 :],
+                    execution_profile=request.execution_profile,
+                    starting_balance=request.starting_balance,
+                    risk_per_trade_percent=request.risk_per_trade_percent,
                 )
             )
 
@@ -392,6 +408,9 @@ class BacktestingEngine:
             trades
         )
         setup_coverage_summary = calculate_setup_coverage_summary(trades)
+        execution_summary = calculate_execution_summary(
+            [trade.execution_diagnostics for trade in trades if trade.execution_diagnostics]
+        )
         limitations = backtest_limitations()
         summary = (
             f"Backtest evaluated {len(trades)} analysis windows and produced "
@@ -412,6 +431,7 @@ class BacktestingEngine:
             outcome_diagnostics_summary=outcome_diagnostics_summary,
             trade_management_sensitivity=trade_management_sensitivity,
             setup_coverage_summary=setup_coverage_summary,
+            execution_summary=execution_summary,
         )
 
 
@@ -421,6 +441,9 @@ def build_backtest_trade(
     timestamp: int,
     symbol: str,
     future_candles: list[Candle],
+    execution_profile: ExecutionProfile | None = None,
+    starting_balance: float = 10_000.0,
+    risk_per_trade_percent: float = 1.0,
 ) -> BacktestTrade:
     """Convert one analysis snapshot into a skipped or simulated trade record."""
 
@@ -554,27 +577,56 @@ def build_backtest_trade(
             setup_candidate_diagnostics=setup_candidate_diagnostics,
         )
 
-    outcome, realized_r, reason = simulate_trade_outcome(
-        action=action,
-        entry=entry,
-        stop_loss=stop,
-        target=target,
-        future_candles=future_candles,
-        estimated_risk_reward=plan.estimated_risk_reward,
-    )
+    actual_entry = entry
+    evaluation_candles = future_candles
+    execution_diagnostics: ExecutionDiagnostics | None = None
+    if execution_profile is None:
+        outcome, realized_r, reason = simulate_trade_outcome(
+            action=action,
+            entry=entry,
+            stop_loss=stop,
+            target=target,
+            future_candles=future_candles,
+            estimated_risk_reward=plan.estimated_risk_reward,
+        )
+    else:
+        (
+            outcome,
+            realized_r,
+            reason,
+            execution_diagnostics,
+            actual_entry,
+            evaluation_candles,
+        ) = simulate_execution_adjusted_outcome(
+            action=action,
+            entry=entry,
+            stop_loss=stop,
+            target=target,
+            future_candles=future_candles,
+            estimated_risk_reward=plan.estimated_risk_reward,
+            execution_profile=execution_profile,
+            symbol=symbol,
+            timestamp=timestamp,
+            starting_balance=starting_balance,
+            risk_per_trade_percent=risk_per_trade_percent,
+        )
     confirmation_was_weak = any(
         "confirmation" in condition.condition.lower() and not condition.is_met
         for condition in getattr(analysis.setup_plan, "entry_conditions", ())
     )
-    outcome_diagnostics = diagnose_trade_outcome(
-        action=action,
-        entry=entry,
-        stop_loss=stop,
-        target=target,
-        future_candles=future_candles,
-        outcome=outcome,
-        realized_r=realized_r,
-        confirmation_was_weak=confirmation_was_weak,
+    outcome_diagnostics = (
+        diagnose_trade_outcome(
+            action=action,
+            entry=actual_entry,
+            stop_loss=stop,
+            target=target,
+            future_candles=evaluation_candles,
+            outcome=outcome,
+            realized_r=realized_r,
+            confirmation_was_weak=confirmation_was_weak,
+        )
+        if actual_entry is not None
+        else None
     )
     return BacktestTrade(
         timestamp=timestamp,
@@ -582,7 +634,7 @@ def build_backtest_trade(
         action=action,
         setup_type=setup_type,
         strategy_type=strategy_type,
-        entry=entry,
+        entry=actual_entry,
         stop_loss=stop,
         target=target,
         estimated_risk_reward=plan.estimated_risk_reward,
@@ -596,6 +648,7 @@ def build_backtest_trade(
         setup_level_diagnostics=setup_level_diagnostics,
         outcome_diagnostics=outcome_diagnostics,
         setup_candidate_diagnostics=setup_candidate_diagnostics,
+        execution_diagnostics=execution_diagnostics,
     )
 
 
@@ -1295,6 +1348,133 @@ def simulate_trade_outcome(
     return TradeOutcome.OPEN, None, "Neither stop nor target was reached in the available data."
 
 
+def simulate_execution_adjusted_outcome(
+    *,
+    action: str,
+    entry: float,
+    stop_loss: float,
+    target: float,
+    future_candles: list[Candle],
+    estimated_risk_reward: float,
+    execution_profile: ExecutionProfile,
+    symbol: str,
+    timestamp: int,
+    starting_balance: float,
+    risk_per_trade_percent: float,
+) -> tuple[
+    TradeOutcome,
+    float | None,
+    str,
+    ExecutionDiagnostics,
+    float | None,
+    list[Candle],
+]:
+    """Apply fill and cost assumptions while retaining the baseline comparator."""
+
+    baseline_outcome, baseline_r, _ = simulate_trade_outcome(
+        action=action,
+        entry=entry,
+        stop_loss=stop_loss,
+        target=target,
+        future_candles=future_candles,
+        estimated_risk_reward=estimated_risk_reward,
+    )
+    prepared = ExecutionEngine(execution_profile).prepare(
+        action=action,
+        requested_entry=entry,
+        stop_loss=stop_loss,
+        future_candles=future_candles,
+        symbol=symbol,
+        timestamp=timestamp,
+        starting_balance=starting_balance,
+        risk_per_trade_percent=risk_per_trade_percent,
+    )
+    if prepared.actual_entry is None:
+        diagnostics = build_execution_diagnostics(
+            prepared=prepared,
+            requested_entry=entry,
+            baseline_realized_r=baseline_r,
+            realistic_realized_r=None,
+        )
+        return (
+            TradeOutcome.OPEN,
+            None,
+            "The configured execution model did not fill the requested entry.",
+            diagnostics,
+            None,
+            [],
+        )
+
+    evaluation = list(prepared.evaluation_candles)
+    outcome, _, reason = simulate_trade_outcome(
+        action=action,
+        entry=prepared.actual_entry,
+        stop_loss=stop_loss,
+        target=target,
+        future_candles=evaluation,
+        estimated_risk_reward=None,
+    )
+    perfect_fill = (
+        prepared.actual_entry == entry
+        and prepared.fill_fraction == 1.0
+        and prepared.commission_cost_r == 0.0
+        and prepared.fill_model_used == "immediate"
+    )
+    if perfect_fill:
+        outcome, realistic_r = baseline_outcome, baseline_r
+    else:
+        planned_risk = abs(entry - stop_loss)
+        realistic_r = _realized_r_on_planned_risk(
+            outcome=outcome,
+            action=action,
+            actual_entry=prepared.actual_entry,
+            stop_loss=stop_loss,
+            target=target,
+            planned_risk=planned_risk,
+        )
+        if realistic_r is not None:
+            realistic_r = round(
+                realistic_r * prepared.fill_fraction - prepared.commission_cost_r,
+                6,
+            )
+    diagnostics = build_execution_diagnostics(
+        prepared=prepared,
+        requested_entry=entry,
+        baseline_realized_r=baseline_r,
+        realistic_realized_r=realistic_r,
+    )
+    return (
+        outcome,
+        realistic_r,
+        f"{reason} Execution assumptions were applied.",
+        diagnostics,
+        prepared.actual_entry,
+        evaluation,
+    )
+
+
+def _realized_r_on_planned_risk(
+    *,
+    outcome: TradeOutcome,
+    action: str,
+    actual_entry: float,
+    stop_loss: float,
+    target: float,
+    planned_risk: float,
+) -> float | None:
+    if planned_risk <= 0:
+        return None
+    if outcome is TradeOutcome.WIN:
+        reward = target - actual_entry if action == "buy" else actual_entry - target
+        return reward / planned_risk
+    if outcome is TradeOutcome.LOSS:
+        risk = actual_entry - stop_loss if action == "buy" else stop_loss - actual_entry
+        return -risk / planned_risk
+    if outcome is TradeOutcome.BREAKEVEN:
+        return 0.0
+    return None
+
+
 def diagnose_trade_outcome(
     *,
     action: str,
@@ -1456,7 +1636,8 @@ def backtest_limitations() -> tuple[str, ...]:
         "This is a simplified deterministic backtest, not a production execution simulator.",
         "OHLC candles do not reveal intrabar order; same-candle stop and target "
         "touches are treated as losses.",
-        "Fees, spread, slippage, latency, partial fills, and market impact are not modeled.",
+        "Optional profiles approximate spread, slippage, commissions, delayed fills, "
+        "and partial fills; latency, order-book depth, and market impact are not modeled.",
         "Entry, stop, and target levels inherit the current engines' approximate "
         "structural levels.",
         "Starting balance and risk percentage are recorded but position sizing is "

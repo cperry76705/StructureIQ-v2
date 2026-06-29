@@ -132,6 +132,17 @@ def test_calibration_runs_multiple_symbol_timeframe_combinations() -> None:
     assert any(run.normalized_symbol == "EURUSD=X" for run in result.runs)
 
 
+def test_calibration_passes_execution_profile_to_backtests() -> None:
+    runner = _Runner(lambda request: [_trade(TradeOutcome.SKIPPED, None)])
+    _engine(runner).run(
+        _request(execution_profile={"spread": 0.1, "fill_model": "next_bar"})
+    )
+
+    assert runner.requests[0].execution_profile is not None
+    assert runner.requests[0].execution_profile.spread == 0.1
+    assert runner.requests[0].execution_profile.fill_model.value == "next_bar"
+
+
 def test_calibration_aggregates_setup_candidate_coverage() -> None:
     candidate = SetupCandidateDiagnostics(
         candidate_setup_type="bullish_pullback_continuation",

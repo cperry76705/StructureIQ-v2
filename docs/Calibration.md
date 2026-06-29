@@ -185,3 +185,9 @@ If only one family produces executable candidates, the summary names it. Recomme
 ## v2.0 Bearish BOS Contribution
 
 Calibration now states whether `bearish_bos_retest` produced closed production trades, only executable candidates, or neither. Compare its selection count, outcomes, total R, missed candidates, and blockers with `liquidity_sweep_reversal_short`; contribution alone does not justify further expansion.
+
+## v2.1 Aggregate Execution Summary
+
+Calibration accepts the same optional `execution_profile` and passes it unchanged into every backtest run. `aggregate_execution_summary` combines modeled fills and reports average spread, slippage, commission, degradation, perfect baseline expectancy, realistic expectancy, and expectancy reduction.
+
+The comparison is observational. It does not recalibrate confidence, setups, strategies, stops, targets, or the `1.5R` admission gate. Random slippage remains deterministic for the same seed, symbol, and timestamp.

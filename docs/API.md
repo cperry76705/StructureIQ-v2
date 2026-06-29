@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `2.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `2.1.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -443,9 +443,22 @@ Request:
   "lookback": 500,
   "starting_balance": 10000,
   "risk_per_trade_percent": 1,
-  "max_trades": 100
+  "max_trades": 100,
+  "execution_profile": {
+    "spread": 0.5,
+    "slippage": 0.25,
+    "slippage_type": "fixed",
+    "commission_per_trade": 2.0,
+    "commission_type": "fixed",
+    "allow_partial_fill": false,
+    "partial_fill_probability": 0.0,
+    "fill_model": "next_bar",
+    "random_seed": 42
+  }
 }
 ```
+
+`execution_profile` is optional. Omitting it uses the original perfect-execution simulator. Slippage types are `none`, `fixed`, and seeded `random`; fill models are `immediate`, `next_bar`, and `touch`. Spread and slippage use price units. Fixed commissions use account-currency units; percentage commissions apply to estimated filled notional. Commission diagnostics report the resulting R deduction.
 
 The response contains the validated request, simulated or skipped trade records, aggregate metrics, skip diagnostics, a summary, and explicit limitations. `max_trades` caps returned analysis-window records, including skipped records.
 
@@ -460,6 +473,8 @@ Version 1.5 adds per-record `risk_reward_diagnostics` and `setup_level_diagnosti
 Version 1.7 adds `outcome_diagnostics` to executed backtest records and `outcome_diagnostics_summary` to the result. Skipped records expose `null` because no trade path exists. First-touch and excursion fields are derived from the same candles used by the unchanged simulator.
 
 Version 1.8 adds `trade_management_sensitivity` to `/backtest`. It always includes `none`, break-even at `1R` and `1.5R`, partial profit at `1R` and `1.5R`, and trailing after `1R` and `1.5R`. Results are counterfactual and never replace production metrics.
+
+Version 2.1 adds per-trade `execution_diagnostics` and result-level `execution_summary`. Diagnostics contain requested and actual entry, spread, slippage, commission, quality, fill model, baseline R, realistic R, and degradation. The summary reports average costs, degradation, baseline expectancy, realistic expectancy, and expectancy reduction.
 
 ```json
 {
@@ -481,7 +496,7 @@ Version 1.8 adds `trade_management_sensitivity` to `/backtest`. It always includ
 
 `BacktestMetrics.total_trades` counts closed wins, losses, and breakeven trades; skipped and open records remain visible in `trades` but are excluded from closed-trade metrics. Profit factor is `null` when no losing R exists.
 
-This endpoint is synchronous and research-oriented. It does not model live execution or guarantee profitability.
+This endpoint is synchronous and research-oriented. Execution profiles are deterministic approximations, not live execution or a profitability guarantee.
 
 ## `POST /calibrate`
 
@@ -497,9 +512,20 @@ Request:
   "lookback": 300,
   "max_trades_per_run": 25,
   "risk_per_trade_percent": 1.0,
-  "starting_balance": 10000
+  "starting_balance": 10000,
+  "execution_profile": {
+    "spread": 0.0001,
+    "slippage": 0.00005,
+    "slippage_type": "random",
+    "commission_per_trade": 0.01,
+    "commission_type": "percent",
+    "fill_model": "touch",
+    "random_seed": 42
+  }
 }
 ```
+
+Calibration passes an optional execution profile to every run and returns `aggregate_execution_summary`. Existing requests without the field remain valid and report zero modeled fills.
 
 Response shape:
 

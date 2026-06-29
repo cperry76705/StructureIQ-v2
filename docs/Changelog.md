@@ -2,6 +2,25 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 2.1.0 — Execution Realism Engine — 2026-06-28
+
+### Added
+
+- Optional typed execution profiles for spread, fixed or seeded-random slippage, fixed or percentage commissions, partial-fill studies, and immediate, next-bar, or touch fills.
+- Per-trade execution diagnostics with requested and actual entry, costs, fill model, quality, baseline R, realistic R, and degradation.
+- Backtest and calibration execution summaries comparing perfect and modeled expectancy.
+- Deterministic execution tests for bullish and bearish spread, slippage, commissions, delayed fills, diagnostics, aggregation, and perfect-execution compatibility.
+
+### Compatibility
+
+- Omitting `execution_profile` retains the existing perfect-execution path.
+- Analysis, decisions, setup selection, thresholds, and stop/target rules are unchanged.
+- Execution realism applies only to historical backtesting and calibration.
+
+### Verification
+
+- 196 automated tests pass together.
+
 ## Version 2.0.0 — Bearish BOS Retest Expansion — 2026-06-28
 
 ### Added

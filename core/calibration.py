@@ -32,6 +32,7 @@ from core.backtesting import (
     parse_price_level,
 )
 from core.journal import TradeOutcome
+from core.execution import ExecutionProfile, ExecutionSummary, calculate_execution_summary
 from core.market_data import MarketDataProvider
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from core.symbols import normalize_yahoo_symbol
@@ -73,6 +74,7 @@ class CalibrationRequest(BaseModel):
     max_trades_per_run: int = Field(default=25, ge=1, le=1000)
     risk_per_trade_percent: float = Field(default=1.0, gt=0, le=100)
     starting_balance: float = Field(default=10_000.0, gt=0)
+    execution_profile: ExecutionProfile | None = None
 
     @field_validator("symbols")
     @classmethod
@@ -199,6 +201,7 @@ class CalibrationResult:
         TradeManagementSensitivityResult, ...
     ]
     aggregate_setup_coverage_summary: SetupCoverageSummary
+    aggregate_execution_summary: ExecutionSummary
     setup_performance: tuple[SetupPerformance, ...]
     strategy_performance: tuple[StrategyPerformance, ...]
     recommendations: tuple[CalibrationRecommendation, ...]
@@ -240,6 +243,7 @@ class CalibrationEngine:
                         starting_balance=request.starting_balance,
                         risk_per_trade_percent=request.risk_per_trade_percent,
                         max_trades=request.max_trades_per_run,
+                        execution_profile=request.execution_profile,
                     )
                     result = self._backtester.run(backtest_request)
                     all_trades.extend(result.trades)
@@ -279,6 +283,9 @@ class CalibrationEngine:
             calculate_trade_management_sensitivity(all_trades)
         )
         aggregate_setup_coverage_summary = calculate_setup_coverage_summary(all_trades)
+        aggregate_execution_summary = calculate_execution_summary(
+            [trade.execution_diagnostics for trade in all_trades if trade.execution_diagnostics]
+        )
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -313,6 +320,7 @@ class CalibrationEngine:
                 aggregate_trade_management_sensitivity
             ),
             aggregate_setup_coverage_summary=aggregate_setup_coverage_summary,
+            aggregate_execution_summary=aggregate_execution_summary,
             setup_performance=setup_performance,
             strategy_performance=strategy_performance,
             recommendations=recommendations,

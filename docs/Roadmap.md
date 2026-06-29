@@ -253,6 +253,17 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** bearish BOS retests can become production-selected when continuation evidence is strongest, without relaxing confidence, confirmation, risk, strategy, or execution gates.
 
-## Beyond Version 2.0
+## Version 2.1 — Execution Realism Engine
+
+- Add optional spread, slippage, commission, fill-delay, and partial-fill assumptions.
+- Preserve perfect execution as the default baseline.
+- Compare baseline expectancy with modeled expectancy in backtesting and calibration.
+- Keep all production analysis, selection, threshold, and risk rules unchanged.
+
+**Status:** implemented.
+
+**Outcome:** historical results can quantify execution-cost sensitivity without implying broker connectivity or changing trade recommendations.
+
+## Beyond Version 2.1
 
 Future work may add score histograms, distance-to-threshold buckets, per-condition setup diagnostics, and controlled counterfactual sensitivity experiments before any gate changes. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
