@@ -38,6 +38,7 @@ The platform includes:
 - **Tuned Regime Forward Validation** — compares legacy and tuned labels against matched 5/10/20-bar forward-behavior proxies.
 - **Regime Confidence Calibration Laboratory** — measures confidence reliability and simulates non-production calibration mappings.
 - **Out-of-Sample Validation Laboratory** — rebuilds the complete production pipeline across deterministic unseen-data folds and measures generalization.
+- **Statistical Research Laboratory** — automatically ranks symbols, timeframes, setups, strategies, regimes, timing, execution, and cross-dimensional performance after every calibration.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -144,6 +145,8 @@ Add `regime_confidence_analysis: true` to the compare-mode forward-validation re
 
 Set `out_of_sample_validation` to `true` to run chronological, rolling, walk-forward, expanding, or anchored research folds. Training and validation pipelines are instantiated independently from bounded raw candle data; no decision or setup is reused across the split.
 
+Every completed calibration now returns `research_lab_summary`, `research_rankings`, `performance_matrices`, `research_statistics`, and `research_recommendations`. Standard research categories remain visible even with zero samples, while future observed categories are included automatically.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -155,7 +158,7 @@ Set `out_of_sample_validation` to `true` to run chronological, rolling, walk-for
 
 ## Roadmap and Release Information
 
-Version `3.0.1` hardens v3.0 response reporting and adds an exact OOS OpenAPI request example. Production behavior remains unchanged.
+Version `3.1.0` adds automatic statistical research, cross-dimensional matrices, rankings, uncertainty, and executive findings. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

@@ -2,6 +2,28 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.1.0 — Statistical Research Laboratory — 2026-06-29
+
+### Added
+
+- Automatic post-calibration research across symbols, timeframes, setup families, strategies, regimes, confidence buckets, UTC hours and weekdays, and trade duration.
+- Consistent performance rows with outcomes, expectancy, risk/excursion measures, confidence intervals, significance, sample quality, and recommendations.
+- Existing stop-management, entry-timing, and execution-profile comparison ingestion.
+- Regime/strategy, setup/regime, symbol/setup, and timeframe/setup matrices.
+- Top and bottom ten combination rankings plus headline expectancy, profit factor, drawdown, significance, and sample-size leaders.
+- Executive summary, overfitting concentration checks, insufficient-sample warnings, promising under-tested findings, and statistically insignificant findings.
+
+### Compatibility and Safety
+
+- Research executes only after calibration records and optional laboratories are complete.
+- No production decision, setup, strategy, confidence, entry, stop, target, risk, execution, or management rule reads research output.
+- Existing aggregate calibration metrics remain unchanged.
+- All response fields are additive.
+
+### Verification
+
+- 254 automated tests pass together, including deterministic statistics, confidence intervals, standard and future categories, time/duration grouping, matrices, rankings, automatic API output, and metric invariance.
+
 ## Version 3.0.1 — OOS Response Reporting Hardening — 2026-06-29
 
 ### Fixed

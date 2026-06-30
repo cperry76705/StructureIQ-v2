@@ -194,6 +194,12 @@ Version 3.0 adds a research orchestrator above the unchanged Backtesting Engine.
 
 Validation segments may read prior raw candles for the same 49-bar warm-up required by production analysis, but never reuse training decisions, setup plans, confidence results, or trades. Generalization, stability, dependency, and overfitting diagnostics are downstream reports and have no path back into production engines.
 
+#### Statistical Research Laboratory
+
+Version 3.1 adds an automatic terminal aggregation stage after ordinary calibration and all requested optional laboratories complete. It reads immutable backtest records and existing management, entry-timing, and execution-profile summaries; it never initiates or modifies a production engine.
+
+The laboratory owns category normalization, uncertainty estimates, sample-quality rules, time buckets, cross-dimensional matrices, rankings, concentration checks, and executive research language. Empty standard categories and future observed categories share the same typed contracts, keeping coverage explicit and extensible.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -222,6 +228,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Which classifier better matches shared future-behavior proxies? | Tuned Regime Forward Validation |
 | Are regime confidence values reliable, and which mapping merits further research? | Regime Confidence Calibration Laboratory |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
+| Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 
 ## Shared Architectural Rules
 
@@ -236,4 +243,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 3.0 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, confidence calibration, and independent out-of-sample validation. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 3.1 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, independent validation, and automatic statistical research. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

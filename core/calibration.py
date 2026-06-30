@@ -86,6 +86,13 @@ from core.regime_validation import (
     build_regime_validation_summary,
 )
 from core.regime_tuning import RegimeTuningSummary, build_regime_tuning_summary
+from core.research_lab import (
+    PerformanceMatrices,
+    ResearchLabSummary,
+    ResearchRankings,
+    ResearchStatistics,
+    build_research_lab,
+)
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from core.symbols import normalize_yahoo_symbol
 
@@ -316,6 +323,10 @@ class CalibrationResult:
     symbol_validation_summary: tuple[SegmentValidationSummary, ...] | None = None
     timeframe_validation_summary: tuple[SegmentValidationSummary, ...] | None = None
     research_recommendations: tuple[str, ...] | None = None
+    research_lab_summary: ResearchLabSummary | None = None
+    research_rankings: ResearchRankings | None = None
+    performance_matrices: PerformanceMatrices | None = None
+    research_statistics: ResearchStatistics | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -523,7 +534,7 @@ class CalibrationEngine:
             stability_summary = out_of_sample.stability_summary
             symbol_validation_summary = out_of_sample.symbol_validation_summary
             timeframe_validation_summary = out_of_sample.timeframe_validation_summary
-            research_recommendations = out_of_sample.research_recommendations
+            oos_research_recommendations = out_of_sample.research_recommendations
         else:
             out_of_sample_summary = None
             validation_fold_results = None
@@ -532,7 +543,7 @@ class CalibrationEngine:
             stability_summary = None
             symbol_validation_summary = None
             timeframe_validation_summary = None
-            research_recommendations = None
+            oos_research_recommendations = ()
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -553,6 +564,20 @@ class CalibrationEngine:
             f"Calibration completed {aggregate.total_runs} runs with "
             f"{aggregate.total_trades} closed trades, {aggregate.total_skipped} "
             f"skipped records, and {aggregate.total_r:.2f}R aggregate performance."
+        )
+        research_lab = build_research_lab(
+            all_trades,
+            management_results=aggregate_trade_management_sensitivity,
+            entry_timing_summary=entry_timing_summary,
+            execution_sensitivity_summary=execution_sensitivity_summary,
+        )
+        research_recommendations = tuple(
+            dict.fromkeys(
+                (
+                    *research_lab.research_recommendations,
+                    *oos_research_recommendations,
+                )
+            )
         )
         result = CalibrationResult(
             runs=tuple(runs),
@@ -595,6 +620,10 @@ class CalibrationEngine:
             symbol_validation_summary=symbol_validation_summary,
             timeframe_validation_summary=timeframe_validation_summary,
             research_recommendations=research_recommendations,
+            research_lab_summary=research_lab.research_lab_summary,
+            research_rankings=research_lab.research_rankings,
+            performance_matrices=research_lab.performance_matrices,
+            research_statistics=research_lab.research_statistics,
         )
         _assert_out_of_sample_result(request, result)
         return result

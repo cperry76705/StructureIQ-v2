@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.0.1` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.1.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -1041,3 +1041,19 @@ Each fold reports separate training and validation measurements for trades, win 
 Validation segments use prior raw candles only as indicator/structure warm-up context. Every fold creates a fresh backtester and reruns the complete production pipeline; no cached decision, setup, or trade state crosses the split.
 
 Version 3.0.1 also exposes this OOS request as a first-class OpenAPI example. When `out_of_sample_validation` is true, calibration now enforces a response invariant: all eight OOS sections must be populated rather than failing silently. Clients running an older long-lived application process must restart it to load the v3.0.1 schema and implementation.
+
+## v3.1 Statistical Research Laboratory
+
+The research laboratory runs automatically after every successful `POST /calibrate`; no request flag is required. It adds:
+
+- `research_lab_summary`
+- `research_rankings`
+- `performance_matrices`
+- `research_statistics`
+- `research_recommendations`
+
+The summary reports symbol, timeframe, setup, strategy, regime, confidence bucket, UTC hour, UTC day, trade duration, stop-management, entry-model, and execution-profile performance. Entry and execution comparisons reflect profiles supplied to their existing optional laboratories; stop-management rules use the existing automatic sensitivity results.
+
+Every performance row includes records, closed outcomes, win rate, R and expectancy, profit factor, drawdown, MFE/MAE, duration, confidence, a 95% interval for average R, deterministic significance score, sample quality, and a research recommendation. Empty requested standard categories remain visible with zero samples, and observed future categories are added automatically.
+
+Matrices cover regime/strategy, setup/regime, symbol/setup, and timeframe/setup. Rankings identify the top and bottom ten observed combinations plus headline expectancy, profit factor, drawdown, significance, and sample-size leaders. Research output is downstream-only and cannot alter any calibration or production metric.

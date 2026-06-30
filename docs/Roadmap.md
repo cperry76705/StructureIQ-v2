@@ -371,6 +371,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can test whether historical performance survives unseen market periods without changing a single production trade.
 
-## Beyond Version 3.0
+## Version 3.1 — Statistical Research Laboratory
+
+- Analyze every completed calibration across symbols, timeframes, setups, strategies, regimes, confidence, time, and duration.
+- Compare existing management, entry-timing, and execution-profile research.
+- Build four cross-dimensional performance matrices.
+- Rank strongest and weakest combinations with uncertainty and sample-quality warnings.
+- Generate an executive summary without changing production behavior.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ explains where historical performance comes from, where it fails, and where evidence remains too weak to justify changes.
+
+## Beyond Version 3.1
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

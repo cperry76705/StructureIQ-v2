@@ -300,3 +300,15 @@ Training, validation, and full-sample measurements include outcomes, R metrics, 
 Generalization metrics quantify performance, win-rate, and expectancy decay; drawdown and profit-factor changes; confidence, strategy, setup, regime, execution, and trade-frequency drift; calibration and fold stability; variance; and coefficient of variation. Overfitting flags cover collapse, component instability, fold variance, and market/symbol/timeframe dependence.
 
 Scores are descriptive research diagnostics, not statistical proof. Expanding folds can overlap, low trade counts can dominate percentage changes, and historical validation cannot reproduce live liquidity or eliminate regime selection bias. No result tunes or routes the production system.
+
+## v3.1 Statistical Research Laboratory
+
+Every completed calibration is automatically grouped by symbol, timeframe, normalized setup family, strategy, legacy market regime, decision-confidence bucket, UTC hour, UTC weekday, and completed-trade duration. Standard categories are emitted even when empty; any new observed category is appended automatically.
+
+`ResearchPerformance` combines record and trade counts, outcomes, win rate, average and total R, expectancy, profit factor, drawdown, MFE/MAE, duration, confidence, a normal-approximation 95% interval for average R, deterministic significance score, sample quality, and a recommendation. Sample quality is insufficient below 5 closed trades, low below 20, moderate below 50, and high at 50 or more.
+
+Cross-matrices evaluate regime plus strategy, setup plus regime, symbol plus setup, and timeframe plus setup. Rankings operate on observed executable combinations and identify the strongest and weakest ten plus leaders for expectancy, profit factor, drawdown, significance, and sample size.
+
+The executive summary names current strengths, weaknesses, under-tested positive expectancy, insignificant evidence, and categories that should not drive changes. High expectancy with fewer than ten trades is explicitly warned. Concentration of at least 70% of absolute R in one symbol, timeframe, setup, or strategy is reported as possible overfitting.
+
+Entry-timing and execution-profile research is included when those existing laboratories were requested. The Statistical Research Laboratory never launches alternative production paths itself and never writes scores back to Decision, Setup, Strategy, risk, execution, or trade management.
