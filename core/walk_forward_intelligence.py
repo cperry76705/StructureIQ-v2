@@ -17,6 +17,10 @@ from core.monte_carlo_reporting import (
     MonteCarloReportingResult,
     monte_carlo_blocks_readiness,
 )
+from core.statistical_validation import (
+    StatisticalValidationResult,
+    statistical_validation_blocks_readiness,
+)
 
 
 class PromotionReadiness(str, Enum):
@@ -84,6 +88,9 @@ class PromotionReadinessSummary:
     monte_carlo_readiness_blocked: bool
     monte_carlo_report_status: str | None
     monte_carlo_failure_reasons: tuple[str, ...]
+    statistical_validation_status: str | None
+    statistical_validation_readiness_blocked: bool
+    statistical_weakness_flags: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -102,13 +109,17 @@ def build_walk_forward_intelligence(
     stability: StabilitySummary,
     monte_carlo_risk_summary: MonteCarloRiskSummary | None = None,
     monte_carlo_reporting: MonteCarloReportingResult | None = None,
+    statistical_validation: StatisticalValidationResult | None = None,
 ) -> WalkForwardIntelligenceResult:
     """Evaluate immutable training/validation results without changing trades."""
 
-    rankings = _apply_monte_carlo_risk(
-        _build_rankings(folds, overfitting),
-        monte_carlo_risk_summary,
-        monte_carlo_reporting,
+    rankings = _apply_statistical_validation(
+        _apply_monte_carlo_risk(
+            _build_rankings(folds, overfitting),
+            monte_carlo_risk_summary,
+            monte_carlo_reporting,
+        ),
+        statistical_validation,
     )
     ordered = tuple(
         sorted(
@@ -154,6 +165,7 @@ def build_walk_forward_intelligence(
         overfitting,
         monte_carlo_risk_summary,
         monte_carlo_reporting,
+        statistical_validation,
     )
     return WalkForwardIntelligenceResult(
         summary=summary,
@@ -431,13 +443,21 @@ def _drawdown_stability(folds) -> float:
 
 
 def _promotion_summary(
-    rankings, oos, overfitting, monte_carlo_risk, monte_carlo_reporting
+    rankings,
+    oos,
+    overfitting,
+    monte_carlo_risk,
+    monte_carlo_reporting,
+    statistical_validation,
 ):
     counts = {status: 0 for status in PromotionReadiness}
     for row in rankings:
         counts[row.promotion_readiness] += 1
     monte_carlo_blocked = _monte_carlo_blocks_readiness(
         monte_carlo_risk, monte_carlo_reporting
+    )
+    statistical_blocked = statistical_validation_blocks_readiness(
+        statistical_validation
     )
     if counts[PromotionReadiness.READY_FOR_PAPER_TRADING] and not monte_carlo_blocked:
         overall = PromotionReadiness.READY_FOR_PAPER_TRADING
@@ -468,6 +488,10 @@ def _promotion_summary(
         reasons.append(
             "Monte Carlo sequence risk exceeds the paper-trading readiness limit."
         )
+    if statistical_blocked:
+        reasons.append(
+            "Advanced statistical validation detected a severe hidden weakness."
+        )
     return PromotionReadinessSummary(
         overall_status=overall,
         acceptable_validation_trades=100,
@@ -492,6 +516,15 @@ def _promotion_summary(
             monte_carlo_reporting.failure_reasons
             if monte_carlo_reporting else ()
         ),
+        statistical_validation_status=(
+            statistical_validation.statistical_validation_summary.overall_status
+            if statistical_validation else None
+        ),
+        statistical_validation_readiness_blocked=statistical_blocked,
+        statistical_weakness_flags=(
+            statistical_validation.weakness_detection_summary.weakness_flags
+            if statistical_validation else ()
+        ),
     )
 
 
@@ -515,6 +548,34 @@ def _apply_monte_carlo_risk(rankings, risk, reporting):
                 row.human_readable_summary.replace(
                     f"readiness is {row.promotion_readiness.value}.",
                     "readiness is NOT_READY because Monte Carlo tail risk "
+                    "blocks promotion.",
+                )
+            ),
+        )
+        for row in rankings
+    ]
+
+
+def _apply_statistical_validation(rankings, validation):
+    if not statistical_validation_blocks_readiness(validation):
+        return rankings
+    return [
+        replace(
+            row,
+            robustness_score=max(0.0, round(row.robustness_score - 20.0, 3)),
+            promotion_readiness=(
+                PromotionReadiness.NOT_READY
+                if row.promotion_readiness
+                in {
+                    PromotionReadiness.READY_FOR_PAPER_TRADING,
+                    PromotionReadiness.READY_FOR_REVIEW,
+                }
+                else row.promotion_readiness
+            ),
+            human_readable_summary=(
+                row.human_readable_summary.replace(
+                    f"readiness is {row.promotion_readiness.value}.",
+                    "readiness is NOT_READY because statistical weakness "
                     "blocks promotion.",
                 )
             ),
@@ -558,6 +619,12 @@ def _action_items(rankings, promotion, overfitting):
         items.append(
             "Reduce uncertainty in Monte Carlo ruin and 20% drawdown risk through "
             "additional OOS evidence before any paper-trading review."
+        )
+    if promotion.statistical_validation_readiness_blocked:
+        items.append(
+            "Resolve advanced statistical weakness flags before any paper-trading review: "
+            + ", ".join(promotion.statistical_weakness_flags)
+            + "."
         )
     if promotion.overall_status is PromotionReadiness.READY_FOR_PAPER_TRADING:
         items.append(

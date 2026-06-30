@@ -89,6 +89,14 @@ Overall status is `INSUFFICIENT_DATA` below 100 source trades, `FAIL` for materi
 
 The 95% expectancy interval lower bound must be positive for paper-trading readiness. High ruin or tail heatmap status also blocks readiness. Kelly fractions are diagnostic estimates, capped at 2% for the displayed research fraction, and never update `risk_per_trade_percent` or any production setting.
 
+## Advanced Statistical Validation
+
+Version 3.5 optionally evaluates hidden weaknesses in completed calibration or OOS validation returns. It calculates exact independent-loss run probabilities for 3, 5, 8, and 10 losses; observed and expected streaks; seven R-distribution buckets; top 5%/10% gross-profit concentration; first/middle/final-third expectancy; decay; outlier dependency; and fold stability.
+
+Weakness flags identify decay, outlier dependency, losing sequences, fold instability, profit concentration, negative recent expectancy, and low sample size. A profitable aggregate can therefore fail validation when recent edge is negative or profits depend on a narrow tail.
+
+Paper-trading readiness is blocked by negative final-third expectancy, severe decay, top-10% contribution above 80%, fold stability below 50, extreme streak risk, or fewer than 100 completed returns. Findings are reporting-only and never tune thresholds or production behavior.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

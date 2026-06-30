@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.4.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.5.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1106,6 +1106,23 @@ The report includes 1st/5th percentile balance and R tails, median/worst drawdow
 The heatmap assigns `LOW`, `MEDIUM`, or `HIGH` risk plus a 0–100 score and explanation to drawdown, ruin, losing streak, tail risk, and profit stability. Expectancy output provides approximate normal 90%, 95%, and 99% intervals. Kelly output provides full, half, and quarter fractions plus a capped research-risk estimate and instability warning; no fraction is applied to trading.
 
 Failure codes identify ruin, drawdown, sample, tail, worst-case, confidence, and streak concerns. Paper-trading readiness is blocked when source validation has fewer than 100 trades, ruin reaches 5%, 20% drawdown probability reaches 25%, the 95% expectancy lower bound is non-positive, or ruin/tail heatmap risk is `HIGH`. Disabled Monte Carlo analysis leaves all six fields null.
+
+### v3.5 Advanced Statistical Validation
+
+Add `"statistical_validation_analysis": true` to a calibration request. Enabled responses add:
+
+- `statistical_validation_summary`
+- `losing_streak_summary`
+- `trade_distribution_summary`
+- `edge_decay_summary`
+- `fold_stability_summary`
+- `weakness_detection_summary`
+
+The validator uses completed OOS validation returns when OOS is enabled and completed calibration returns otherwise. Losing-streak output estimates probabilities of at least one 3-, 5-, 8-, or 10-loss run and reports observed/expected streaks. Distribution output groups R outcomes from below -1R through above 5R and measures top 5%/10% gross-profit contribution.
+
+Edge decay compares chronological first, middle, and final thirds. OOS-enabled requests also measure validation expectancy variance and positive-fold rate. Weakness flags are `EDGE_DECAY`, `HIGH_OUTLIER_DEPENDENCY`, `LARGE_LOSING_STREAK_RISK`, `FOLD_INSTABILITY`, `PROFIT_CONCENTRATION`, `NEGATIVE_RECENT_EXPECTANCY`, and `LOW_SAMPLE_SIZE`.
+
+Severe decay, negative final-third expectancy, over-80% top-10% profit concentration, poor fold stability, extreme losing-streak risk, or fewer than 100 trades prevents `READY_FOR_PAPER_TRADING`. This only downgrades research readiness. Disabled validation leaves all six fields null.
 
 ## v3.1 Statistical Research Laboratory
 

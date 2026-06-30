@@ -43,6 +43,7 @@ The platform includes:
 - **Research Pipeline and Walk-Forward Intelligence** — combines finalized calibration, statistical research, and OOS folds into conservative robustness rankings and human-reviewed promotion readiness.
 - **Monte Carlo Simulation Engine** — stress-tests completed calibration or OOS validation returns through deterministic reshuffling, bootstrap sampling, skipped-trade stress, and observed execution degradation.
 - **Monte Carlo Risk Intelligence** — turns simulation paths into target probabilities, tail-risk heatmaps, expectancy confidence intervals, research-only Kelly estimates, and explicit pass/fail findings.
+- **Advanced Statistical Validation** — detects edge decay, loss-sequence risk, outlier dependency, profit concentration, unstable folds, and negative recent expectancy hidden by aggregate profitability.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -166,6 +167,8 @@ Set `monte_carlo_analysis` to `true` to run v3.3 deterministic sequence-risk res
 
 Version 3.4 adds a professional interpretation layer to the same simulations: probabilities of reaching R and account-growth targets, risk heatmaps, 90%/95%/99% expectancy intervals, deterministic Kelly fractions, failure codes, and `PASS`, `WATCHLIST`, `FAIL`, or `INSUFFICIENT_DATA` status. Kelly output is a research estimate only and is never applied to risk sizing.
 
+Set `statistical_validation_analysis` to `true` for v3.5 hidden-weakness research. It measures consecutive-loss probabilities, R-distribution buckets, top-trade profit concentration, chronological expectancy thirds, edge decay, OOS fold stability, and explicit weakness flags. Severe findings can only downgrade research promotion readiness.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -177,7 +180,7 @@ Version 3.4 adds a professional interpretation layer to the same simulations: pr
 
 ## Roadmap and Release Information
 
-Version `3.4.0` adds Monte Carlo reporting, target probabilities, risk heatmaps, confidence intervals, Kelly research estimates, and explicit readiness blockers. Production behavior remains unchanged.
+Version `3.5.0` adds advanced statistical weakness detection and conservative readiness integration. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

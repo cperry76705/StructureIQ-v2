@@ -434,6 +434,19 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can explain why Monte Carlo evidence passes or fails research review without changing a single production risk rule.
 
-## Beyond Version 3.4
+## Version 3.5 — Advanced Statistical Validation
+
+- Estimate 3/5/8/10-loss sequence probabilities and observed/expected streaks.
+- Report the full R distribution and top-trade profit contribution.
+- Compare chronological expectancy thirds and quantify edge decay.
+- Measure OOS fold consistency and variance.
+- Detect outlier dependency and profit concentration hidden by aggregate returns.
+- Apply named severe-weakness blockers to research readiness only.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can identify apparently profitable results whose edge is decaying, concentrated, or unstable before any future experiment is reviewed.
+
+## Beyond Version 3.5
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

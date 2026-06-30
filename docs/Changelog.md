@@ -2,6 +2,26 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.5.0 — Advanced Statistical Validation — 2026-06-30
+
+### Added
+
+- Exact 3/5/8/10-loss run probabilities plus observed and expected losing streaks.
+- Seven-bucket R distribution and top 5%/10% gross-profit contribution.
+- Chronological first/middle/final-third expectancy and edge-decay scoring.
+- OOS fold stability, outlier dependency, weakness score, and named weakness flags.
+- Six additive calibration response fields controlled by `statistical_validation_analysis`.
+
+### Readiness Safety
+
+- Negative recent expectancy, severe decay, concentrated profit, poor folds, extreme streak risk, and insufficient samples block paper-trading readiness.
+- Validation can only downgrade research status and cannot alter production behavior.
+- Aggregate calibration metrics remain unchanged.
+
+### Verification
+
+- 296 automated tests pass together, including stable samples, profitable outlier dependence, profitable decay, negative recent expectancy, fold variance, distributions, API gating, readiness blocking, and metric invariance.
+
 ## Version 3.4.0 — Monte Carlo Reporting and Risk Intelligence — 2026-06-30
 
 ### Added

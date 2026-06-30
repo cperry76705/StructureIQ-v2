@@ -226,6 +226,12 @@ Version 3.4 interprets immutable v3.3 simulation paths after simulation complete
 
 Only explicit report blockers may flow into downstream promotion readiness: insufficient validation sample, elevated ruin or 20% drawdown probability, non-positive 95% expectancy lower bound, or high ruin/tail heatmap risk. Kelly fractions and target probabilities have no path into Risk, Decision, Setup, Strategy, Execution, or Trade Management engines.
 
+#### Advanced Statistical Validation
+
+Version 3.5 consumes the chronological completed-R sequence and optional OOS fold expectancies after all production simulation is complete. It owns exact Bernoulli run-probability estimates, R buckets, gross-profit concentration, chronological expectancy thirds, edge-decay scoring, fold stability, outlier dependency, and named weakness flags.
+
+Only severe weakness status may flow into promotion readiness. Negative recent expectancy, severe decay, over-80% top-decile profit concentration, poor folds, extreme losing streaks, or insufficient samples remove paper-trading readiness. The validator cannot change the source sequence, folds, calibration metrics, or production engines.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -257,6 +263,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Is an OOS result stable and sufficiently sampled for further research review? | Research Pipeline and Walk-Forward Intelligence |
 | How sensitive are completed results to trade order, sampling, and tail drawdown? | Monte Carlo Simulation Engine |
 | How should simulation tails, targets, confidence, and sizing uncertainty be interpreted? | Monte Carlo Reporting and Risk Intelligence |
+| Is aggregate profit hiding decay, concentration, outliers, or unstable loss sequences? | Advanced Statistical Validation |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 

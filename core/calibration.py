@@ -109,6 +109,16 @@ from core.research_lab import (
 )
 from core.research_pipeline import ResearchPipelineSummary, build_research_pipeline
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
+from core.statistical_validation import (
+    EdgeDecaySummary,
+    LosingStreakSummary,
+    StatisticalFoldStabilitySummary,
+    StatisticalValidationSummary,
+    StatisticalValidationResult,
+    TradeDistributionSummary,
+    WeaknessDetectionSummary,
+    build_statistical_validation,
+)
 from core.symbols import normalize_yahoo_symbol
 from core.walk_forward_intelligence import (
     PromotionReadinessSummary,
@@ -188,6 +198,7 @@ class CalibrationRequest(BaseModel):
     monte_carlo_analysis: bool = False
     monte_carlo_simulations: int = Field(default=1_000, ge=1, le=10_000)
     monte_carlo_random_seed: int = 42
+    statistical_validation_analysis: bool = False
 
     @field_validator("symbols")
     @classmethod
@@ -390,6 +401,12 @@ class CalibrationResult:
     monte_carlo_expectancy_confidence: MonteCarloExpectancyConfidence | None = None
     monte_carlo_kelly_summary: MonteCarloKellySummary | None = None
     monte_carlo_failure_reasons: tuple[str, ...] | None = None
+    statistical_validation_summary: StatisticalValidationSummary | None = None
+    losing_streak_summary: LosingStreakSummary | None = None
+    trade_distribution_summary: TradeDistributionSummary | None = None
+    edge_decay_summary: EdgeDecaySummary | None = None
+    fold_stability_summary: StatisticalFoldStabilitySummary | None = None
+    weakness_detection_summary: WeaknessDetectionSummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -691,23 +708,23 @@ class CalibrationEngine:
             entry_timing_summary=entry_timing_summary,
             execution_sensitivity_summary=execution_sensitivity_summary,
         )
+        closed_trades = [
+            trade for trade in all_trades
+            if trade.realized_r is not None
+            and trade.outcome in {
+                TradeOutcome.WIN,
+                TradeOutcome.LOSS,
+                TradeOutcome.BREAKEVEN,
+            }
+        ]
+        research_trade_returns = (
+            oos_trade_returns
+            if request.out_of_sample_validation
+            else tuple(float(trade.realized_r) for trade in closed_trades)
+        )
         if request.monte_carlo_analysis:
-            closed_trades = [
-                trade for trade in all_trades
-                if trade.realized_r is not None
-                and trade.outcome in {
-                    TradeOutcome.WIN,
-                    TradeOutcome.LOSS,
-                    TradeOutcome.BREAKEVEN,
-                }
-            ]
-            monte_carlo_source_returns = (
-                oos_trade_returns
-                if request.out_of_sample_validation
-                else tuple(float(trade.realized_r) for trade in closed_trades)
-            )
             monte_carlo = run_monte_carlo(
-                monte_carlo_source_returns,
+                research_trade_returns,
                 simulations=request.monte_carlo_simulations,
                 random_seed=request.monte_carlo_random_seed,
                 starting_balance=request.starting_balance,
@@ -725,11 +742,24 @@ class CalibrationEngine:
                 ),
             )
             monte_carlo_reporting = build_monte_carlo_report(
-                monte_carlo, monte_carlo_source_returns
+                monte_carlo, research_trade_returns
             )
         else:
             monte_carlo = None
             monte_carlo_reporting = None
+        statistical_validation: StatisticalValidationResult | None = (
+            build_statistical_validation(
+                research_trade_returns,
+                fold_expectancies=(
+                    tuple(
+                        fold.validation.expectancy
+                        for fold in validation_fold_results
+                    )
+                    if validation_fold_results else ()
+                ),
+            )
+            if request.statistical_validation_analysis else None
+        )
         if (
             request.out_of_sample_validation
             and out_of_sample_summary is not None
@@ -756,6 +786,7 @@ class CalibrationEngine:
                     monte_carlo.risk_summary if monte_carlo else None
                 ),
                 monte_carlo_reporting=monte_carlo_reporting,
+                statistical_validation=statistical_validation,
             )
         else:
             research_pipeline = None
@@ -867,6 +898,30 @@ class CalibrationEngine:
             monte_carlo_failure_reasons=(
                 monte_carlo_reporting.failure_reasons
                 if monte_carlo_reporting else None
+            ),
+            statistical_validation_summary=(
+                statistical_validation.statistical_validation_summary
+                if statistical_validation else None
+            ),
+            losing_streak_summary=(
+                statistical_validation.losing_streak_summary
+                if statistical_validation else None
+            ),
+            trade_distribution_summary=(
+                statistical_validation.trade_distribution_summary
+                if statistical_validation else None
+            ),
+            edge_decay_summary=(
+                statistical_validation.edge_decay_summary
+                if statistical_validation else None
+            ),
+            fold_stability_summary=(
+                statistical_validation.fold_stability_summary
+                if statistical_validation else None
+            ),
+            weakness_detection_summary=(
+                statistical_validation.weakness_detection_summary
+                if statistical_validation else None
             ),
         )
         _assert_out_of_sample_result(request, result)

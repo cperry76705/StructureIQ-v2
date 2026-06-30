@@ -19,6 +19,7 @@ from core.walk_forward_intelligence import (
     WalkForwardIntelligenceSummary,
     build_walk_forward_intelligence,
 )
+from core.statistical_validation import StatisticalValidationResult
 
 
 @dataclass(frozen=True)
@@ -40,6 +41,9 @@ class ResearchPipelineSummary:
     monte_carlo_risk_level: str | None
     monte_carlo_readiness_blocked: bool
     monte_carlo_report_status: str | None
+    statistical_validation_status: str | None
+    statistical_weakness_score: float | None
+    statistical_readiness_blocked: bool
     human_readable_summary: str
 
 
@@ -67,6 +71,7 @@ def build_research_pipeline(
     timeframe_validation_summary: tuple[SegmentValidationSummary, ...],
     monte_carlo_risk_summary: MonteCarloRiskSummary | None = None,
     monte_carlo_reporting: MonteCarloReportingResult | None = None,
+    statistical_validation: StatisticalValidationResult | None = None,
 ) -> ResearchPipelineResult:
     """Combine finalized research artifacts without feeding findings upstream."""
 
@@ -78,6 +83,7 @@ def build_research_pipeline(
         stability_summary,
         monte_carlo_risk_summary,
         monte_carlo_reporting,
+        statistical_validation,
     )
     strongest = research_rankings.highest_expectancy
     weakest = (
@@ -119,6 +125,17 @@ def build_research_pipeline(
         monte_carlo_report_status=(
             monte_carlo_reporting.report.overall_status
             if monte_carlo_reporting else None
+        ),
+        statistical_validation_status=(
+            statistical_validation.statistical_validation_summary.overall_status
+            if statistical_validation else None
+        ),
+        statistical_weakness_score=(
+            statistical_validation.weakness_detection_summary.weakness_score
+            if statistical_validation else None
+        ),
+        statistical_readiness_blocked=(
+            promotion.statistical_validation_readiness_blocked
         ),
         human_readable_summary=(
             f"The unified research pipeline combined {aggregate_metrics.total_runs} "
