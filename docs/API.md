@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.3.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.4.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1089,6 +1089,23 @@ Simulation count defaults to 1,000 and accepts 1–10,000. Starting balance and 
 Enabled responses add `monte_carlo_summary`, `monte_carlo_distribution`, `monte_carlo_risk_summary`, and `monte_carlo_recommendations`. The distribution contains deterministic per-simulation balance, R, drawdown, streak, profit-factor, win-rate, ruin, profit, and drawdown-threshold results. Aggregate summaries report ending-balance percentiles, median/worst drawdown, streak risk, expectancy dispersion, probability of profit, risk of ruin, and probabilities of exceeding 5%, 10%, and 20% drawdown.
 
 The simulator alternates trade-order reshuffling and sampling with replacement. It applies deterministic skipped-trade stress and, when available, random stress sampled from observed execution degradation. High ruin risk or at least 25% probability of drawdown beyond 20% prevents `READY_FOR_PAPER_TRADING`; this modifies research readiness output only. When disabled, all four Monte Carlo fields are `null`.
+
+### v3.4 Monte Carlo Reporting and Risk Intelligence
+
+The same `monte_carlo_analysis: true` flag adds six interpretation fields:
+
+- `monte_carlo_report`
+- `monte_carlo_risk_heatmap`
+- `monte_carlo_target_probabilities`
+- `monte_carlo_expectancy_confidence`
+- `monte_carlo_kelly_summary`
+- `monte_carlo_failure_reasons`
+
+The report includes 1st/5th percentile balance and R tails, median/worst drawdown, profit/loss/ruin probabilities, 5%/10%/20%/30% drawdown probabilities, losing-streak statistics, status, and plain-English interpretation. Target probabilities use peak path values and cover +5R, +10R, +20R, +50R, 10%/25%/50% growth, account doubling, and finishing below starting balance.
+
+The heatmap assigns `LOW`, `MEDIUM`, or `HIGH` risk plus a 0–100 score and explanation to drawdown, ruin, losing streak, tail risk, and profit stability. Expectancy output provides approximate normal 90%, 95%, and 99% intervals. Kelly output provides full, half, and quarter fractions plus a capped research-risk estimate and instability warning; no fraction is applied to trading.
+
+Failure codes identify ruin, drawdown, sample, tail, worst-case, confidence, and streak concerns. Paper-trading readiness is blocked when source validation has fewer than 100 trades, ruin reaches 5%, 20% drawdown probability reaches 25%, the 95% expectancy lower bound is non-positive, or ruin/tail heatmap risk is `HIGH`. Disabled Monte Carlo analysis leaves all six fields null.
 
 ## v3.1 Statistical Research Laboratory
 

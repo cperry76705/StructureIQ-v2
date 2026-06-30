@@ -13,6 +13,10 @@ from core.out_of_sample import (
     ValidationFoldResult,
 )
 from core.monte_carlo import MonteCarloRiskSummary
+from core.monte_carlo_reporting import (
+    MonteCarloReportingResult,
+    monte_carlo_blocks_readiness,
+)
 
 
 class PromotionReadiness(str, Enum):
@@ -78,6 +82,8 @@ class PromotionReadinessSummary:
     reasons: tuple[str, ...]
     monte_carlo_risk_level: str | None
     monte_carlo_readiness_blocked: bool
+    monte_carlo_report_status: str | None
+    monte_carlo_failure_reasons: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -95,11 +101,14 @@ def build_walk_forward_intelligence(
     overfitting: OverfittingSummary,
     stability: StabilitySummary,
     monte_carlo_risk_summary: MonteCarloRiskSummary | None = None,
+    monte_carlo_reporting: MonteCarloReportingResult | None = None,
 ) -> WalkForwardIntelligenceResult:
     """Evaluate immutable training/validation results without changing trades."""
 
     rankings = _apply_monte_carlo_risk(
-        _build_rankings(folds, overfitting), monte_carlo_risk_summary
+        _build_rankings(folds, overfitting),
+        monte_carlo_risk_summary,
+        monte_carlo_reporting,
     )
     ordered = tuple(
         sorted(
@@ -140,7 +149,11 @@ def build_walk_forward_intelligence(
         ),
     )
     promotion = _promotion_summary(
-        ordered, out_of_sample, overfitting, monte_carlo_risk_summary
+        ordered,
+        out_of_sample,
+        overfitting,
+        monte_carlo_risk_summary,
+        monte_carlo_reporting,
     )
     return WalkForwardIntelligenceResult(
         summary=summary,
@@ -417,11 +430,15 @@ def _drawdown_stability(folds) -> float:
     return max(0.0, 100.0 - (pstdev(values) * 20.0 if len(values) > 1 else 0.0))
 
 
-def _promotion_summary(rankings, oos, overfitting, monte_carlo_risk):
+def _promotion_summary(
+    rankings, oos, overfitting, monte_carlo_risk, monte_carlo_reporting
+):
     counts = {status: 0 for status in PromotionReadiness}
     for row in rankings:
         counts[row.promotion_readiness] += 1
-    monte_carlo_blocked = _monte_carlo_blocks_readiness(monte_carlo_risk)
+    monte_carlo_blocked = _monte_carlo_blocks_readiness(
+        monte_carlo_risk, monte_carlo_reporting
+    )
     if counts[PromotionReadiness.READY_FOR_PAPER_TRADING] and not monte_carlo_blocked:
         overall = PromotionReadiness.READY_FOR_PAPER_TRADING
     elif oos.validation.trades < 100:
@@ -467,11 +484,19 @@ def _promotion_summary(rankings, oos, overfitting, monte_carlo_risk):
             monte_carlo_risk.risk_level if monte_carlo_risk else None
         ),
         monte_carlo_readiness_blocked=monte_carlo_blocked,
+        monte_carlo_report_status=(
+            monte_carlo_reporting.report.overall_status
+            if monte_carlo_reporting else None
+        ),
+        monte_carlo_failure_reasons=(
+            monte_carlo_reporting.failure_reasons
+            if monte_carlo_reporting else ()
+        ),
     )
 
 
-def _apply_monte_carlo_risk(rankings, risk):
-    if not _monte_carlo_blocks_readiness(risk):
+def _apply_monte_carlo_risk(rankings, risk, reporting):
+    if not _monte_carlo_blocks_readiness(risk, reporting):
         return rankings
     return [
         replace(
@@ -498,7 +523,9 @@ def _apply_monte_carlo_risk(rankings, risk):
     ]
 
 
-def _monte_carlo_blocks_readiness(risk):
+def _monte_carlo_blocks_readiness(risk, reporting=None):
+    if reporting is not None:
+        return monte_carlo_blocks_readiness(reporting)
     return bool(
         risk is not None
         and (

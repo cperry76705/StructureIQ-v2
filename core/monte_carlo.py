@@ -23,6 +23,8 @@ class MonteCarloSimulationResult:
     probability_of_drawdown_over_5_percent: float
     probability_of_drawdown_over_10_percent: float
     probability_of_drawdown_over_20_percent: float
+    peak_total_r: float
+    peak_balance: float
 
 
 @dataclass(frozen=True)
@@ -217,6 +219,8 @@ def _simulate_sequence(index, method, returns, starting_balance, risk_percent):
         probability_of_drawdown_over_20_percent=(
             100.0 if max_drawdown_percent > 20.0 else 0.0
         ),
+        peak_total_r=round(peak_r, 6),
+        peak_balance=round(peak_balance, 2),
     )
 
 

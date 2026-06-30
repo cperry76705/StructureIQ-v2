@@ -57,6 +57,14 @@ from core.monte_carlo import (
     MonteCarloSummary,
     run_monte_carlo,
 )
+from core.monte_carlo_reporting import (
+    MonteCarloExpectancyConfidence,
+    MonteCarloKellySummary,
+    MonteCarloReport,
+    MonteCarloRiskHeatmap,
+    MonteCarloTargetProbabilities,
+    build_monte_carlo_report,
+)
 from core.out_of_sample import (
     GeneralizationSummary,
     OutOfSampleRequest,
@@ -376,6 +384,12 @@ class CalibrationResult:
     monte_carlo_distribution: MonteCarloDistribution | None = None
     monte_carlo_risk_summary: MonteCarloRiskSummary | None = None
     monte_carlo_recommendations: tuple[str, ...] | None = None
+    monte_carlo_report: MonteCarloReport | None = None
+    monte_carlo_risk_heatmap: MonteCarloRiskHeatmap | None = None
+    monte_carlo_target_probabilities: MonteCarloTargetProbabilities | None = None
+    monte_carlo_expectancy_confidence: MonteCarloExpectancyConfidence | None = None
+    monte_carlo_kelly_summary: MonteCarloKellySummary | None = None
+    monte_carlo_failure_reasons: tuple[str, ...] | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -687,12 +701,13 @@ class CalibrationEngine:
                     TradeOutcome.BREAKEVEN,
                 }
             ]
+            monte_carlo_source_returns = (
+                oos_trade_returns
+                if request.out_of_sample_validation
+                else tuple(float(trade.realized_r) for trade in closed_trades)
+            )
             monte_carlo = run_monte_carlo(
-                (
-                    oos_trade_returns
-                    if request.out_of_sample_validation
-                    else tuple(float(trade.realized_r) for trade in closed_trades)
-                ),
+                monte_carlo_source_returns,
                 simulations=request.monte_carlo_simulations,
                 random_seed=request.monte_carlo_random_seed,
                 starting_balance=request.starting_balance,
@@ -709,8 +724,12 @@ class CalibrationEngine:
                     )
                 ),
             )
+            monte_carlo_reporting = build_monte_carlo_report(
+                monte_carlo, monte_carlo_source_returns
+            )
         else:
             monte_carlo = None
+            monte_carlo_reporting = None
         if (
             request.out_of_sample_validation
             and out_of_sample_summary is not None
@@ -736,6 +755,7 @@ class CalibrationEngine:
                 monte_carlo_risk_summary=(
                     monte_carlo.risk_summary if monte_carlo else None
                 ),
+                monte_carlo_reporting=monte_carlo_reporting,
             )
         else:
             research_pipeline = None
@@ -824,6 +844,29 @@ class CalibrationEngine:
             ),
             monte_carlo_recommendations=(
                 monte_carlo.recommendations if monte_carlo else None
+            ),
+            monte_carlo_report=(
+                monte_carlo_reporting.report if monte_carlo_reporting else None
+            ),
+            monte_carlo_risk_heatmap=(
+                monte_carlo_reporting.risk_heatmap
+                if monte_carlo_reporting else None
+            ),
+            monte_carlo_target_probabilities=(
+                monte_carlo_reporting.target_probabilities
+                if monte_carlo_reporting else None
+            ),
+            monte_carlo_expectancy_confidence=(
+                monte_carlo_reporting.expectancy_confidence
+                if monte_carlo_reporting else None
+            ),
+            monte_carlo_kelly_summary=(
+                monte_carlo_reporting.kelly_summary
+                if monte_carlo_reporting else None
+            ),
+            monte_carlo_failure_reasons=(
+                monte_carlo_reporting.failure_reasons
+                if monte_carlo_reporting else None
             ),
         )
         _assert_out_of_sample_result(request, result)

@@ -2,6 +2,27 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.4.0 — Monte Carlo Reporting and Risk Intelligence — 2026-06-30
+
+### Added
+
+- Professional Monte Carlo report with 1st/5th percentile balance and R tails, 30% drawdown probability, and status interpretation.
+- Peak-path target probabilities for R thresholds, account growth, and doubling.
+- Five-part risk heatmap with categorical status, score, and explanation.
+- Approximate 90%, 95%, and 99% expectancy confidence intervals.
+- Deterministic Kelly estimates with conservative capped research fraction and stability warnings.
+- Explicit failure codes and six additive calibration response fields.
+
+### Readiness Safety
+
+- Insufficient samples, elevated ruin or 20% drawdown risk, non-positive expectancy confidence, and high ruin/tail risk block paper-trading readiness.
+- Reporting can only downgrade research readiness; Kelly estimates never alter sizing.
+- Production calibration metrics and every trading engine remain unchanged.
+
+### Verification
+
+- 289 automated tests pass together, including status behavior, tails, targets, heatmaps, confidence, Kelly determinism, readiness blocking, API gating, human-readable output, and metric invariance.
+
 ## Version 3.3.0 — Monte Carlo Simulation Engine — 2026-06-30
 
 ### Added

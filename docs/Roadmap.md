@@ -420,6 +420,20 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can quantify whether a historical edge survives adverse sequencing and tail-risk scenarios before any separately authorized experiment.
 
-## Beyond Version 3.3
+## Version 3.4 — Monte Carlo Reporting and Risk Intelligence
+
+- Add 1st/5th percentile balance and R tail reporting.
+- Measure peak-path R and account-growth target probabilities.
+- Build drawdown, ruin, streak, tail, and profit-stability heatmaps.
+- Estimate 90%, 95%, and 99% expectancy confidence intervals.
+- Report deterministic full/half/quarter Kelly research estimates without applying them.
+- Generate explicit failure codes and conservative pass/watch/fail/sample status.
+- Allow report blockers to downgrade research readiness only.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can explain why Monte Carlo evidence passes or fails research review without changing a single production risk rule.
+
+## Beyond Version 3.4
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

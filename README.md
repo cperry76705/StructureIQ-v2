@@ -42,6 +42,7 @@ The platform includes:
 - **Continuous Research Engine** — retains completed calibration records in a process-local reporting store and refreshes rolling strongest/weakest findings on demand.
 - **Research Pipeline and Walk-Forward Intelligence** — combines finalized calibration, statistical research, and OOS folds into conservative robustness rankings and human-reviewed promotion readiness.
 - **Monte Carlo Simulation Engine** — stress-tests completed calibration or OOS validation returns through deterministic reshuffling, bootstrap sampling, skipped-trade stress, and observed execution degradation.
+- **Monte Carlo Risk Intelligence** — turns simulation paths into target probabilities, tail-risk heatmaps, expectancy confidence intervals, research-only Kelly estimates, and explicit pass/fail findings.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -163,6 +164,8 @@ When OOS validation is enabled, v3.2 adds a unified research pipeline. It compar
 
 Set `monte_carlo_analysis` to `true` to run v3.3 deterministic sequence-risk research. The engine uses OOS validation returns when OOS is enabled and completed calibration returns otherwise. It reports balance percentiles, R and drawdown distributions, streaks, profit probability, ruin risk, and drawdown-threshold probabilities. High ruin risk or a high probability of drawdown beyond 20% blocks research promotion to paper-trading readiness but changes no trade.
 
+Version 3.4 adds a professional interpretation layer to the same simulations: probabilities of reaching R and account-growth targets, risk heatmaps, 90%/95%/99% expectancy intervals, deterministic Kelly fractions, failure codes, and `PASS`, `WATCHLIST`, `FAIL`, or `INSUFFICIENT_DATA` status. Kelly output is a research estimate only and is never applied to risk sizing.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -174,7 +177,7 @@ Set `monte_carlo_analysis` to `true` to run v3.3 deterministic sequence-risk res
 
 ## Roadmap and Release Information
 
-Version `3.3.0` adds deterministic Monte Carlo sequence-risk, drawdown, expectancy, and readiness diagnostics. Production behavior remains unchanged.
+Version `3.4.0` adds Monte Carlo reporting, target probabilities, risk heatmaps, confidence intervals, Kelly research estimates, and explicit readiness blockers. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

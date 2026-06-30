@@ -13,6 +13,8 @@ from core.walk_forward_intelligence import (
     build_walk_forward_intelligence,
 )
 from core.monte_carlo import MonteCarloRiskSummary
+from core.monte_carlo_reporting import build_monte_carlo_report
+from core.monte_carlo import run_monte_carlo
 
 
 def _measurement(trades: int, expectancy: float, drawdown: float = 1.0):
@@ -116,7 +118,12 @@ def _overfit(risk: str = "LOW"):
     )
 
 
-def _build(folds, risk="LOW", monte_carlo_risk=None):
+def _build(
+    folds,
+    risk="LOW",
+    monte_carlo_risk=None,
+    monte_carlo_reporting=None,
+):
     validation_trades = sum(fold.validation.trades for fold in folds)
     oos = OutOfSampleSummary(
         validation_method=ValidationMethod.WALK_FORWARD,
@@ -147,6 +154,7 @@ def _build(folds, risk="LOW", monte_carlo_risk=None):
         _overfit(risk),
         stability,
         monte_carlo_risk,
+        monte_carlo_reporting,
     )
 
 
@@ -214,3 +222,22 @@ def test_high_monte_carlo_drawdown_blocks_paper_trading_readiness() -> None:
     assert setup.promotion_readiness is not PromotionReadiness.READY_FOR_PAPER_TRADING
     assert result.promotion_readiness.monte_carlo_readiness_blocked is True
     assert "Monte Carlo" in " ".join(result.promotion_readiness.reasons)
+
+
+def test_expectancy_confidence_crossing_zero_blocks_readiness() -> None:
+    folds = [_fold(1, 120, 1.0), _fold(2, 120, 1.0), _fold(3, 120, 1.0)]
+    returns = [1.0, -1.0] * 60
+    monte_carlo = run_monte_carlo(returns, simulations=100, random_seed=42)
+    reporting = build_monte_carlo_report(monte_carlo, returns)
+    result = _build(
+        folds,
+        monte_carlo_risk=monte_carlo.risk_summary,
+        monte_carlo_reporting=reporting,
+    )
+
+    assert reporting.expectancy_confidence.lower_bound_positive is False
+    assert result.promotion_readiness.monte_carlo_readiness_blocked is True
+    assert result.promotion_readiness.ready_for_paper_trading_count == 0
+    assert "expectancy_confidence_crosses_zero" in (
+        result.promotion_readiness.monte_carlo_failure_reasons
+    )

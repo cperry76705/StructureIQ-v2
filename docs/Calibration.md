@@ -81,6 +81,14 @@ The output reports each simulated equity path's ending balance, total and averag
 
 Monte Carlo risk is diagnostic. A risk of ruin at or above 5%, a high risk classification, or at least 25% probability of drawdown beyond 20% blocks paper-trading readiness in the v3.2 pipeline. It cannot alter trades, sizing, thresholds, or production rules. Empty closed-trade samples return an unavailable report rather than an error.
 
+## Monte Carlo Reporting and Risk Intelligence
+
+Version 3.4 converts raw simulation paths into a research report with 1st/5th percentile tails, target-hit probabilities, drawdown/ruin/streak/tail/profit-stability heatmaps, approximate expectancy confidence intervals, and Kelly estimates. Target probabilities use each path's peak R and balance; final loss probability uses ending balance.
+
+Overall status is `INSUFFICIENT_DATA` below 100 source trades, `FAIL` for material ruin/drawdown/tail/confidence failures, `WATCHLIST` for moderate unresolved risk, and `PASS` only for sufficiently sampled evidence without those blockers. Failure codes make every downgrade explicit.
+
+The 95% expectancy interval lower bound must be positive for paper-trading readiness. High ruin or tail heatmap status also blocks readiness. Kelly fractions are diagnostic estimates, capped at 2% for the displayed research fraction, and never update `risk_per_trade_percent` or any production setting.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:
