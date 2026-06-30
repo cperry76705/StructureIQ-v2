@@ -447,6 +447,19 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can identify apparently profitable results whose edge is decaying, concentrated, or unstable before any future experiment is reviewed.
 
-## Beyond Version 3.5
+## Version 3.6 — Centralized Evidence Scoring Engine
+
+- Score eleven live and research evidence categories through one typed contract.
+- Separate trade quality, confidence, edge, and risk-quality scores.
+- Expose weighted breakdowns and positive, negative, neutral contributors.
+- Grade evidence from `A+` through `F` with plain-English explanations.
+- Mark unavailable research inputs explicitly without penalizing live evidence.
+- Aggregate immutable per-window scores during calibration.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can explain why combined evidence is strong or weak without allowing the score to make or modify a trade decision.
+
+## Beyond Version 3.6
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

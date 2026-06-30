@@ -28,6 +28,7 @@ from core.execution import (
 from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
 from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
+from core.score_engine import ScoreSummary
 from core.regime import RegimeResult
 from core.regime_forward_validation import (
     RegimeForwardValidationObservation,
@@ -209,6 +210,7 @@ class BacktestTrade:
     regime_tuning_evidence: Annotated[
         RegimeTuningEvidence | None, Field(exclude=True)
     ] = None
+    score_summary: Annotated[ScoreSummary | None, Field(exclude=True)] = None
 
 
 @dataclass(frozen=True)
@@ -413,8 +415,7 @@ class BacktestingEngine:
             analysis = self._analysis_engine_factory(window_provider).analyze(
                 analysis_request
             )
-            trades.append(
-                build_backtest_trade(
+            trade = build_backtest_trade(
                     analysis=analysis,
                     timestamp=candles[index].timestamp,
                     symbol=request.symbol,
@@ -426,6 +427,11 @@ class BacktestingEngine:
                     signal_close=candles[index].close,
                     timeframe=request.timeframe,
                     higher_timeframe=request.higher_timeframe,
+                )
+            trades.append(
+                replace(
+                    trade,
+                    score_summary=getattr(analysis, "score_summary", None),
                 )
             )
 

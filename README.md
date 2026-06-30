@@ -44,6 +44,7 @@ The platform includes:
 - **Monte Carlo Simulation Engine** — stress-tests completed calibration or OOS validation returns through deterministic reshuffling, bootstrap sampling, skipped-trade stress, and observed execution degradation.
 - **Monte Carlo Risk Intelligence** — turns simulation paths into target probabilities, tail-risk heatmaps, expectancy confidence intervals, research-only Kelly estimates, and explicit pass/fail findings.
 - **Advanced Statistical Validation** — detects edge decay, loss-sequence risk, outlier dependency, profit concentration, unstable folds, and negative recent expectancy hidden by aggregate profitability.
+- **Centralized Evidence Scoring Engine** — consolidates live engine evidence and optional research reliability into a transparent quality score without controlling decisions.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -169,6 +170,8 @@ Version 3.4 adds a professional interpretation layer to the same simulations: pr
 
 Set `statistical_validation_analysis` to `true` for v3.5 hidden-weakness research. It measures consecutive-loss probabilities, R-distribution buckets, top-trade profit concentration, chronological expectancy thirds, edge decay, OOS fold stability, and explicit weakness flags. Severe findings can only downgrade research promotion readiness.
 
+Every `/analysis` response now includes v3.6 `score_summary`, with trade quality, confidence, edge, risk, category breakdown, contributors, grade, unavailable research inputs, and plain-English interpretation. Calibration aggregates these immutable analysis scores into `aggregate_score_summary` and adds research categories when their reports exist. Scores never determine action or execution.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -180,7 +183,7 @@ Set `statistical_validation_analysis` to `true` for v3.5 hidden-weakness researc
 
 ## Roadmap and Release Information
 
-Version `3.5.0` adds advanced statistical weakness detection and conservative readiness integration. Production behavior remains unchanged.
+Version `3.6.0` adds transparent centralized evidence scoring for live analysis and calibration research. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

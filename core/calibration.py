@@ -109,6 +109,7 @@ from core.research_lab import (
 )
 from core.research_pipeline import ResearchPipelineSummary, build_research_pipeline
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
+from core.score_engine import ScoreEngine, ScoreSummary
 from core.statistical_validation import (
     EdgeDecaySummary,
     LosingStreakSummary,
@@ -407,6 +408,7 @@ class CalibrationResult:
     edge_decay_summary: EdgeDecaySummary | None = None
     fold_stability_summary: StatisticalFoldStabilitySummary | None = None
     weakness_detection_summary: WeaknessDetectionSummary | None = None
+    aggregate_score_summary: ScoreSummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -790,6 +792,24 @@ class CalibrationEngine:
             )
         else:
             research_pipeline = None
+        aggregate_score_summary = ScoreEngine().aggregate(
+            tuple(
+                trade.score_summary
+                for trade in all_trades
+                if trade.score_summary is not None
+            ),
+            research_pipeline_summary=(
+                research_pipeline.research_pipeline_summary
+                if research_pipeline else None
+            ),
+            statistical_validation_summary=(
+                statistical_validation.statistical_validation_summary
+                if statistical_validation else None
+            ),
+            monte_carlo_report=(
+                monte_carlo_reporting.report if monte_carlo_reporting else None
+            ),
+        )
         research_recommendations = tuple(
             dict.fromkeys(
                 (
@@ -923,6 +943,7 @@ class CalibrationEngine:
                 statistical_validation.weakness_detection_summary
                 if statistical_validation else None
             ),
+            aggregate_score_summary=aggregate_score_summary,
         )
         _assert_out_of_sample_result(request, result)
         # Continuous research observes the completed calibration output only.

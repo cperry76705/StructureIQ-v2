@@ -97,6 +97,14 @@ Weakness flags identify decay, outlier dependency, losing sequences, fold instab
 
 Paper-trading readiness is blocked by negative final-third expectancy, severe decay, top-10% contribution above 80%, fold stability below 50, extreme streak risk, or fewer than 100 completed returns. Findings are reporting-only and never tune thresholds or production behavior.
 
+## Centralized Evidence Scoring
+
+Version 3.6 attaches a live-evidence score to every completed analysis window, then aggregates those immutable snapshots during calibration. The aggregate score can also include historical generalization, statistical reliability, and Monte Carlo risk when their optional research reports exist.
+
+Breakdowns expose category score, weight, weighted contribution, availability, and explanation. Missing research is explicitly unavailable and excluded from normalization. Grades are `A+`, `A`, `B`, `C`, `D`, and `F`; they describe evidence quality and do not authorize trades or change readiness thresholds.
+
+`aggregate_score_summary` is null only when no analysis or research evidence exists, such as an all-provider-failed request. Aggregate calibration metrics are calculated independently and remain unchanged.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

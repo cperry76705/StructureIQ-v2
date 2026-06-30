@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.5.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.6.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1123,6 +1123,21 @@ The validator uses completed OOS validation returns when OOS is enabled and comp
 Edge decay compares chronological first, middle, and final thirds. OOS-enabled requests also measure validation expectancy variance and positive-fold rate. Weakness flags are `EDGE_DECAY`, `HIGH_OUTLIER_DEPENDENCY`, `LARGE_LOSING_STREAK_RISK`, `FOLD_INSTABILITY`, `PROFIT_CONCENTRATION`, `NEGATIVE_RECENT_EXPECTANCY`, and `LOW_SAMPLE_SIZE`.
 
 Severe decay, negative final-third expectancy, over-80% top-10% profit concentration, poor fold stability, extreme losing-streak risk, or fewer than 100 trades prevents `READY_FOR_PAPER_TRADING`. This only downgrades research readiness. Disabled validation leaves all six fields null.
+
+### v3.6 Centralized Evidence Scoring
+
+`POST /analysis` includes additive `score_summary`. It reports:
+
+- `trade_quality_score`, `confidence_score`, `edge_score`, and risk-quality `risk_score`
+- `evidence_score_breakdown`
+- positive, negative, and neutral contributors
+- `score_grade` from `A+` through `F`
+- unavailable research inputs
+- human-readable summary
+
+The eleven categories are market structure, multi-timeframe alignment, regime quality, setup quality, strategy alignment, risk/reward, confirmation, execution readiness, historical edge, statistical reliability, and Monte Carlo risk. Live analysis has no historical research context, so the last three are marked unavailable and excluded from score normalization rather than treated as failures.
+
+`POST /calibrate` adds `aggregate_score_summary` when analysis records or research evidence exist. It averages immutable per-window live evidence, then includes pipeline, statistical, or Monte Carlo categories only when those optional reports are present. The score is descriptive and never replaces Decision Engine action, Setup selection, Strategy routing, execution gates, or risk rules.
 
 ## v3.1 Statistical Research Laboratory
 

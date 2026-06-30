@@ -2,6 +2,26 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.6.0 — Centralized Evidence Scoring Engine — 2026-06-30
+
+### Added
+
+- Eleven-category centralized evidence scoring across live analysis and optional research.
+- Trade quality, confidence, edge, risk quality, weighted breakdown, contributors, grades, and explanations.
+- Additive `/analysis` `score_summary`.
+- Additive calibration `aggregate_score_summary` using immutable per-window score snapshots.
+- Explicit unavailable-state handling for pipeline, statistical, and Monte Carlo research.
+
+### Production Safety
+
+- ScoreEngine runs only after authoritative decisions, setups, strategies, and levels are finalized.
+- Scores cannot alter actions, thresholds, routing, execution, risk, or management.
+- Backtest score snapshots are internal research metadata and do not change serialized trades or metrics.
+
+### Verification
+
+- 301 automated tests pass together, including strong, weak, mixed, missing-research, analysis/API, aggregate calibration, action invariance, and metric invariance coverage.
+
 ## Version 3.5.0 — Advanced Statistical Validation — 2026-06-30
 
 ### Added

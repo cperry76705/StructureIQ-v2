@@ -232,6 +232,12 @@ Version 3.5 consumes the chronological completed-R sequence and optional OOS fol
 
 Only severe weakness status may flow into promotion readiness. Negative recent expectancy, severe decay, over-80% top-decile profit concentration, poor folds, extreme losing streaks, or insufficient samples remove paper-trading readiness. The validator cannot change the source sequence, folds, calibration metrics, or production engines.
 
+#### Centralized Evidence Scoring Engine
+
+Version 3.6 runs after authoritative analysis engines complete. It reads Market Structure, Multi-Timeframe, Regime, Decision, Setup, Strategy, risk/reward, confirmation, and execution-readiness results and produces a normalized transparent score. Optional research pipeline, statistical validation, and Monte Carlo reports extend calibration scoring only when available.
+
+The scoring dependency is one-way: Analysis and Calibration call ScoreEngine after their authoritative outputs exist; Decision, Setup, Strategy, Risk, Execution, and Trade Management never import or read `ScoreSummary`. Historical backtests retain score snapshots as non-serialized research metadata so aggregation cannot change their trade outcomes.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -264,6 +270,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | How sensitive are completed results to trade order, sampling, and tail drawdown? | Monte Carlo Simulation Engine |
 | How should simulation tails, targets, confidence, and sizing uncertainty be interpreted? | Monte Carlo Reporting and Risk Intelligence |
 | Is aggregate profit hiding decay, concentration, outliers, or unstable loss sequences? | Advanced Statistical Validation |
+| How strong is the combined evidence, and which categories raise or lower quality? | Centralized Evidence Scoring Engine |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 
