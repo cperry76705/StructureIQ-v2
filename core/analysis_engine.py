@@ -8,6 +8,8 @@ from core.market_structure import MarketStructureEngine
 from core.multi_timeframe import MultiTimeframeEngine
 from core.risk import build_numeric_risk_levels, format_risk_levels
 from core.score_engine import ScoreEngine
+from core.execution_intelligence import ExecutionIntelligenceEngine
+from core.risk import diagnose_risk_reward
 from core.regime import MarketRegimeEngine, TunedMarketRegimeEngine
 from core.regime_tuning import build_regime_tuning_evidence
 from core.setup_engine import (
@@ -40,6 +42,7 @@ class AnalysisEngine:
         regime_engine: MarketRegimeEngine | None = None,
         tuned_regime_engine: TunedMarketRegimeEngine | None = None,
         score_engine: ScoreEngine | None = None,
+        execution_intelligence_engine: ExecutionIntelligenceEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -53,6 +56,9 @@ class AnalysisEngine:
         self._regime_engine = regime_engine or MarketRegimeEngine()
         self._tuned_regime_engine = tuned_regime_engine or TunedMarketRegimeEngine()
         self._score_engine = score_engine or ScoreEngine()
+        self._execution_intelligence_engine = (
+            execution_intelligence_engine or ExecutionIntelligenceEngine()
+        )
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         entry_candles = self._market_data.get_candles(
@@ -75,6 +81,7 @@ class AnalysisEngine:
             self._regime_engine,
             self._tuned_regime_engine,
             self._score_engine,
+            self._execution_intelligence_engine,
         )
 
 
@@ -91,6 +98,7 @@ def _build_analysis(
     regime_engine: MarketRegimeEngine,
     tuned_regime_engine: TunedMarketRegimeEngine,
     score_engine: ScoreEngine,
+    execution_intelligence_engine: ExecutionIntelligenceEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -207,6 +215,17 @@ def _build_analysis(
         strategy=strategy,
         risk_reward_ratio=risk_reward_ratio,
     )
+    execution_intelligence = execution_intelligence_engine.analyze(
+        action=action,
+        setup_plan=setup_plan,
+        strategy=strategy,
+        risk_reward_diagnostics=diagnose_risk_reward(
+            direction=setup_plan.direction,
+            entry_zone=setup_plan.entry_zone,
+            stop_loss=setup_plan.stop_loss,
+            target=setup_plan.target,
+        ),
+    )
     trader_analysis = explanation_engine.analyze(
         symbol=request.symbol,
         market_structure=entry_structure,
@@ -246,4 +265,5 @@ def _build_analysis(
         tuned_market_regime=tuned_market_regime,
         regime_tuning_evidence=regime_tuning_evidence,
         score_summary=score_summary,
+        execution_intelligence=execution_intelligence,
     )

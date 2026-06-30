@@ -105,6 +105,14 @@ Breakdowns expose category score, weight, weighted contribution, availability, a
 
 `aggregate_score_summary` is null only when no analysis or research evidence exists, such as an all-provider-failed request. Aggregate calibration metrics are calculated independently and remain unchanged.
 
+## Execution Intelligence
+
+Version 3.7 stores an advisory execution snapshot beside each historical analysis and returns `aggregate_execution_intelligence_summary` when records are available. The summary reports average execution quality, dominant style, stop/target/R:R assessments, timing guidance, warnings, blockers, research availability, and plain-English interpretation.
+
+Optional timing and management laboratories may add research guidance. If trailing after 1R or 1.5R improves sensitivity results, the summary names it but explicitly prohibits automatic adoption. Aggregate MFE/MAE and dominant stop-quality loss reasons can add warnings. Monte Carlo or statistical failure status is also advisory.
+
+The layer never recalculates or replaces entry, stop, target, action, setup, strategy, risk size, or management behavior. All calibration metrics remain independent.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

@@ -29,6 +29,7 @@ from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
 from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
 from core.score_engine import ScoreSummary
+from core.execution_intelligence import ExecutionIntelligence
 from core.regime import RegimeResult
 from core.regime_forward_validation import (
     RegimeForwardValidationObservation,
@@ -211,6 +212,9 @@ class BacktestTrade:
         RegimeTuningEvidence | None, Field(exclude=True)
     ] = None
     score_summary: Annotated[ScoreSummary | None, Field(exclude=True)] = None
+    execution_intelligence: Annotated[
+        ExecutionIntelligence | None, Field(exclude=True)
+    ] = None
 
 
 @dataclass(frozen=True)
@@ -432,6 +436,9 @@ class BacktestingEngine:
                 replace(
                     trade,
                     score_summary=getattr(analysis, "score_summary", None),
+                    execution_intelligence=getattr(
+                        analysis, "execution_intelligence", None
+                    ),
                 )
             )
 

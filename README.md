@@ -45,6 +45,7 @@ The platform includes:
 - **Monte Carlo Risk Intelligence** — turns simulation paths into target probabilities, tail-risk heatmaps, expectancy confidence intervals, research-only Kelly estimates, and explicit pass/fail findings.
 - **Advanced Statistical Validation** — detects edge decay, loss-sequence risk, outlier dependency, profit concentration, unstable folds, and negative recent expectancy hidden by aggregate profitability.
 - **Centralized Evidence Scoring Engine** — consolidates live engine evidence and optional research reliability into a transparent quality score without controlling decisions.
+- **Execution Intelligence Layer** — explains timing style, level quality, R:R, blockers, warnings, and research-only management guidance while preserving production execution.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -172,6 +173,8 @@ Set `statistical_validation_analysis` to `true` for v3.5 hidden-weakness researc
 
 Every `/analysis` response now includes v3.6 `score_summary`, with trade quality, confidence, edge, risk, category breakdown, contributors, grade, unavailable research inputs, and plain-English interpretation. Calibration aggregates these immutable analysis scores into `aggregate_score_summary` and adds research categories when their reports exist. Scores never determine action or execution.
 
+Version 3.7 adds `execution_intelligence` to `/analysis`. It recommends advisory styles such as limit retest, confirmation close, or wait for pullback using the already-selected setup and unchanged levels. Calibration returns an aggregate advisory summary enriched by MFE/MAE, entry-timing, management, Monte Carlo, and statistical research when available.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -183,7 +186,7 @@ Every `/analysis` response now includes v3.6 `score_summary`, with trade quality
 
 ## Roadmap and Release Information
 
-Version `3.6.0` adds transparent centralized evidence scoring for live analysis and calibration research. Production behavior remains unchanged.
+Version `3.7.0` adds research-safe execution guidance and aggregate execution intelligence. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

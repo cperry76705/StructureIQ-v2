@@ -2,6 +2,26 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.7.0 — Execution Intelligence Layer — 2026-06-30
+
+### Added
+
+- Advisory execution quality, grade, preferred style, timing guidance, and level/R:R assessments.
+- Explicit execution warnings and blockers with human-readable summaries.
+- Additive `/analysis` `execution_intelligence`.
+- Additive calibration `aggregate_execution_intelligence_summary`.
+- Optional aggregate enrichment from timing, management, MFE/MAE, Monte Carlo, and statistical research.
+
+### Production Safety
+
+- Guidance runs only after action, setup, strategy, and levels are finalized.
+- Existing entries, stops, targets, sizing, execution, and management remain unchanged.
+- Historical advisory snapshots are internal and cannot affect backtest outcomes or calibration metrics.
+
+### Verification
+
+- 307 automated tests pass together, including avoidance, valid retest, weak confirmation, strong R:R, missing research, level diagnostics, aggregate API output, action invariance, and metric invariance.
+
 ## Version 3.6.0 — Centralized Evidence Scoring Engine — 2026-06-30
 
 ### Added

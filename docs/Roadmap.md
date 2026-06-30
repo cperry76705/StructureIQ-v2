@@ -460,6 +460,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can explain why combined evidence is strong or weak without allowing the score to make or modify a trade decision.
 
-## Beyond Version 3.6
+## Version 3.7 — Execution Intelligence Layer
+
+- Assess execution quality after authoritative levels and setup selection are complete.
+- Recommend advisory market, retest, confirmation-close, pullback-wait, or avoidance styles.
+- Explain stop, target, R:R, confirmation, warnings, and blockers.
+- Enrich aggregate guidance with timing, management, MFE/MAE, Monte Carlo, and statistical research.
+- Preserve every production execution and risk rule.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can explain how an existing plan might be executed without modifying or automating that plan.
+
+## Beyond Version 3.7
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

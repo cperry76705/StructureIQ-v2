@@ -238,6 +238,12 @@ Version 3.6 runs after authoritative analysis engines complete. It reads Market 
 
 The scoring dependency is one-way: Analysis and Calibration call ScoreEngine after their authoritative outputs exist; Decision, Setup, Strategy, Risk, Execution, and Trade Management never import or read `ScoreSummary`. Historical backtests retain score snapshots as non-serialized research metadata so aggregation cannot change their trade outcomes.
 
+#### Execution Intelligence Layer
+
+Version 3.7 runs after action, setup, strategy, entry, stop, and target are finalized. It assesses execution coherence, confirmation, level completeness, R:R, and preferred advisory timing style. No-trade output is always avoidance guidance; valid setups may receive market, retest, confirmation-close, or pullback-wait explanations.
+
+Backtests retain advisory snapshots as non-serialized research metadata. Calibration aggregates them and may append findings from MFE/MAE diagnostics, Entry Timing Laboratory, Trade Management Laboratory, Monte Carlo, and Advanced Statistical Validation. Neither live nor aggregate guidance is consumed by any production engine.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -271,6 +277,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | How should simulation tails, targets, confidence, and sizing uncertainty be interpreted? | Monte Carlo Reporting and Risk Intelligence |
 | Is aggregate profit hiding decay, concentration, outliers, or unstable loss sequences? | Advanced Statistical Validation |
 | How strong is the combined evidence, and which categories raise or lower quality? | Centralized Evidence Scoring Engine |
+| How could an already-valid setup be executed, and what execution risks remain? | Execution Intelligence Layer |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 

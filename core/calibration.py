@@ -39,6 +39,10 @@ from core.execution import (
     calculate_execution_summary,
 )
 from core.entry_timing import EntryTimingProfile
+from core.execution_intelligence import (
+    ExecutionIntelligence,
+    ExecutionIntelligenceEngine,
+)
 from core.entry_timing_lab import (
     EntryTimingSummary,
     build_entry_timing_summary,
@@ -409,6 +413,7 @@ class CalibrationResult:
     fold_stability_summary: StatisticalFoldStabilitySummary | None = None
     weakness_detection_summary: WeaknessDetectionSummary | None = None
     aggregate_score_summary: ScoreSummary | None = None
+    aggregate_execution_intelligence_summary: ExecutionIntelligence | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -810,6 +815,28 @@ class CalibrationEngine:
                 monte_carlo_reporting.report if monte_carlo_reporting else None
             ),
         )
+        aggregate_execution_intelligence_summary = (
+            ExecutionIntelligenceEngine().aggregate(
+                tuple(
+                    trade.execution_intelligence
+                    for trade in all_trades
+                    if trade.execution_intelligence is not None
+                ),
+                outcome_diagnostics=aggregate_outcome_diagnostics,
+                entry_timing_summary=entry_timing_summary,
+                trade_management_sensitivity=(
+                    aggregate_trade_management_sensitivity
+                ),
+                monte_carlo_report=(
+                    monte_carlo_reporting.report
+                    if monte_carlo_reporting else None
+                ),
+                statistical_validation_summary=(
+                    statistical_validation.statistical_validation_summary
+                    if statistical_validation else None
+                ),
+            )
+        )
         research_recommendations = tuple(
             dict.fromkeys(
                 (
@@ -944,6 +971,9 @@ class CalibrationEngine:
                 if statistical_validation else None
             ),
             aggregate_score_summary=aggregate_score_summary,
+            aggregate_execution_intelligence_summary=(
+                aggregate_execution_intelligence_summary
+            ),
         )
         _assert_out_of_sample_result(request, result)
         # Continuous research observes the completed calibration output only.

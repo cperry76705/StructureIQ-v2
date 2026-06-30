@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.6.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.7.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1138,6 +1138,21 @@ Severe decay, negative final-third expectancy, over-80% top-10% profit concentra
 The eleven categories are market structure, multi-timeframe alignment, regime quality, setup quality, strategy alignment, risk/reward, confirmation, execution readiness, historical edge, statistical reliability, and Monte Carlo risk. Live analysis has no historical research context, so the last three are marked unavailable and excluded from score normalization rather than treated as failures.
 
 `POST /calibrate` adds `aggregate_score_summary` when analysis records or research evidence exist. It averages immutable per-window live evidence, then includes pipeline, statistical, or Monte Carlo categories only when those optional reports are present. The score is descriptive and never replaces Decision Engine action, Setup selection, Strategy routing, execution gates, or risk rules.
+
+### v3.7 Execution Intelligence
+
+`POST /analysis` includes additive `execution_intelligence` with:
+
+- `execution_quality_score` and grade
+- preferred style: `market_entry`, `limit_retest`, `confirmation_close`, `wait_for_pullback`, or `avoid_execution`
+- entry-timing guidance
+- stop, target, and risk/reward assessments
+- research-only trade-management guidance
+- warnings, blockers, available research inputs, and summary
+
+No-trade and `no_valid_setup` results always use `avoid_execution`. Developing or weakly confirmed setups use confirmation-close or pullback-wait guidance. Confirmed retest, pullback, and liquidity-sweep setups generally favor limit-retest guidance; this never modifies the existing entry zone.
+
+`POST /calibrate` adds `aggregate_execution_intelligence_summary` when analysis records exist. It averages immutable advisory scores and may explain aggregate MFE/MAE, timing-lab findings, management sensitivities, Monte Carlo status, and statistical validation. Guidance is descriptive only and cannot change entries, stops, targets, selection, sizing, or management.
 
 ## v3.1 Statistical Research Laboratory
 
