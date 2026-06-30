@@ -178,6 +178,8 @@ class OutOfSampleValidationBundle:
     symbol_validation_summary: tuple[SegmentValidationSummary, ...]
     timeframe_validation_summary: tuple[SegmentValidationSummary, ...]
     research_recommendations: tuple[str, ...]
+    validation_trade_returns: tuple[float, ...] = ()
+    validation_execution_degradations: tuple[float, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -433,6 +435,22 @@ class OutOfSampleValidationEngine:
             symbol_validation_summary=symbol_summaries,
             timeframe_validation_summary=timeframe_summaries,
             research_recommendations=recommendations,
+            validation_trade_returns=tuple(
+                float(trade.realized_r)
+                for trade in validation_trades
+                if trade.realized_r is not None
+                and trade.outcome in {
+                    TradeOutcome.WIN,
+                    TradeOutcome.LOSS,
+                    TradeOutcome.BREAKEVEN,
+                }
+            ),
+            validation_execution_degradations=tuple(
+                float(trade.execution_diagnostics.execution_degradation_r)
+                for trade in validation_trades
+                if trade.execution_diagnostics is not None
+                and trade.execution_diagnostics.execution_degradation_r is not None
+            ),
         )
 
     def _run_slice(

@@ -10,6 +10,7 @@ from core.out_of_sample import (
     StabilitySummary,
     ValidationFoldResult,
 )
+from core.monte_carlo import MonteCarloRiskSummary
 from core.research_lab import PerformanceMatrices, ResearchLabSummary, ResearchRankings
 from core.walk_forward_intelligence import (
     PromotionReadinessSummary,
@@ -35,6 +36,8 @@ class ResearchPipelineSummary:
     symbols_evaluated: int
     timeframes_evaluated: int
     matrices_available: int
+    monte_carlo_risk_level: str | None
+    monte_carlo_readiness_blocked: bool
     human_readable_summary: str
 
 
@@ -60,6 +63,7 @@ def build_research_pipeline(
     stability_summary: StabilitySummary,
     symbol_validation_summary: tuple[SegmentValidationSummary, ...],
     timeframe_validation_summary: tuple[SegmentValidationSummary, ...],
+    monte_carlo_risk_summary: MonteCarloRiskSummary | None = None,
 ) -> ResearchPipelineResult:
     """Combine finalized research artifacts without feeding findings upstream."""
 
@@ -69,6 +73,7 @@ def build_research_pipeline(
         generalization_summary,
         overfitting_summary,
         stability_summary,
+        monte_carlo_risk_summary,
     )
     strongest = research_rankings.highest_expectancy
     weakest = (
@@ -100,6 +105,13 @@ def build_research_pipeline(
         symbols_evaluated=len(symbol_validation_summary),
         timeframes_evaluated=len(timeframe_validation_summary),
         matrices_available=matrices_available,
+        monte_carlo_risk_level=(
+            monte_carlo_risk_summary.risk_level
+            if monte_carlo_risk_summary else None
+        ),
+        monte_carlo_readiness_blocked=(
+            promotion.monte_carlo_readiness_blocked
+        ),
         human_readable_summary=(
             f"The unified research pipeline combined {aggregate_metrics.total_runs} "
             f"calibration runs, {len(validation_fold_results)} independent folds, "

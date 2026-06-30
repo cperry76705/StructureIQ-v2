@@ -73,6 +73,14 @@ Validation sample standards are deliberately conservative:
 
 `READY_FOR_PAPER_TRADING` requires at least 100 validation trades plus positive expectancy, adequate fold consistency and robustness, controlled drawdown, and no high/overfit risk. It is a recommendation for human review of a future experiment, not an automatic system change. Disabled OOS validation leaves every pipeline field null.
 
+## Monte Carlo Sequence-Risk Research
+
+Version 3.3 optionally runs seeded Monte Carlo simulations over completed R outcomes. OOS-enabled requests use validation outcomes; other calibration requests use completed calibration outcomes. Simulations alternate trade-order reshuffling and sampling with replacement, apply a small deterministic skipped-trade stress, and sample existing execution degradation when present.
+
+The output reports each simulated equity path's ending balance, total and average R, maximum drawdown, winning and losing streaks, profit factor, win rate, ruin flag, and drawdown-threshold flags. Aggregate output includes balance percentiles, drawdown and streak extremes, probability of profit, risk of ruin, and probabilities of exceeding 5%, 10%, and 20% drawdown.
+
+Monte Carlo risk is diagnostic. A risk of ruin at or above 5%, a high risk classification, or at least 25% probability of drawdown beyond 20% blocks paper-trading readiness in the v3.2 pipeline. It cannot alter trades, sizing, thresholds, or production rules. Empty closed-trade samples return an unavailable report rather than an error.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

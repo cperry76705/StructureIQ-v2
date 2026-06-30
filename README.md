@@ -41,6 +41,7 @@ The platform includes:
 - **Statistical Research Laboratory** — automatically ranks symbols, timeframes, setups, strategies, regimes, timing, execution, and cross-dimensional performance after every calibration.
 - **Continuous Research Engine** — retains completed calibration records in a process-local reporting store and refreshes rolling strongest/weakest findings on demand.
 - **Research Pipeline and Walk-Forward Intelligence** — combines finalized calibration, statistical research, and OOS folds into conservative robustness rankings and human-reviewed promotion readiness.
+- **Monte Carlo Simulation Engine** — stress-tests completed calibration or OOS validation returns through deterministic reshuffling, bootstrap sampling, skipped-trade stress, and observed execution degradation.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -160,6 +161,8 @@ The v3.1.1 Yahoo adapter caps intraday chart ranges to combinations accepted rel
 
 When OOS validation is enabled, v3.2 adds a unified research pipeline. It compares training and validation behavior by symbol, timeframe, setup, strategy, and regime; penalizes variance, decay, drawdown, overfit risk, and dependency; and assigns research-only promotion statuses. Fewer than 100 validation trades can never qualify for paper trading, regardless of expectancy. These reports are observational and cannot update any production engine.
 
+Set `monte_carlo_analysis` to `true` to run v3.3 deterministic sequence-risk research. The engine uses OOS validation returns when OOS is enabled and completed calibration returns otherwise. It reports balance percentiles, R and drawdown distributions, streaks, profit probability, ruin risk, and drawdown-threshold probabilities. High ruin risk or a high probability of drawdown beyond 20% blocks research promotion to paper-trading readiness but changes no trade.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -171,7 +174,7 @@ When OOS validation is enabled, v3.2 adds a unified research pipeline. It compar
 
 ## Roadmap and Release Information
 
-Version `3.2.0` adds unified OOS research intelligence, robustness rankings, and conservative promotion-readiness reporting. Production behavior remains unchanged.
+Version `3.3.0` adds deterministic Monte Carlo sequence-risk, drawdown, expectancy, and readiness diagnostics. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

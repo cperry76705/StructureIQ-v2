@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.2.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.3.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1071,6 +1071,24 @@ Readiness is conservative: fewer than 100 validation trades is `NEEDS_MORE_DATA`
 Statuses are research workflow labels only: `NOT_READY`, `NEEDS_MORE_DATA`, `WATCHLIST`, `READY_FOR_REVIEW`, and `READY_FOR_PAPER_TRADING`. Paper-trading readiness means a result may be submitted for a separately authorized, controlled paper-trading design. It does not enable paper trading, alter production behavior, or authorize a live trade.
 
 When OOS validation is omitted or false, all five v3.2 fields are `null`.
+
+### v3.3 Monte Carlo Simulation Engine
+
+Add these optional calibration fields:
+
+```json
+{
+  "monte_carlo_analysis": true,
+  "monte_carlo_simulations": 1000,
+  "monte_carlo_random_seed": 42
+}
+```
+
+Simulation count defaults to 1,000 and accepts 1–10,000. Starting balance and risk per trade reuse the existing calibration fields. With OOS enabled, Monte Carlo uses completed validation returns; otherwise it uses completed calibration returns. No closed trades produces a controlled `available: false` summary.
+
+Enabled responses add `monte_carlo_summary`, `monte_carlo_distribution`, `monte_carlo_risk_summary`, and `monte_carlo_recommendations`. The distribution contains deterministic per-simulation balance, R, drawdown, streak, profit-factor, win-rate, ruin, profit, and drawdown-threshold results. Aggregate summaries report ending-balance percentiles, median/worst drawdown, streak risk, expectancy dispersion, probability of profit, risk of ruin, and probabilities of exceeding 5%, 10%, and 20% drawdown.
+
+The simulator alternates trade-order reshuffling and sampling with replacement. It applies deterministic skipped-trade stress and, when available, random stress sampled from observed execution degradation. High ruin risk or at least 25% probability of drawdown beyond 20% prevents `READY_FOR_PAPER_TRADING`; this modifies research readiness output only. When disabled, all four Monte Carlo fields are `null`.
 
 ## v3.1 Statistical Research Laboratory
 

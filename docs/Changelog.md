@@ -2,6 +2,27 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.3.0 — Monte Carlo Simulation Engine — 2026-06-30
+
+### Added
+
+- Deterministic trade-order reshuffling and bootstrap sampling with replacement.
+- Seeded skipped-trade stress and optional stress from observed execution degradation.
+- Per-simulation balance, R, drawdown, streak, profit factor, win rate, ruin, profit, and tail-risk metrics.
+- Aggregate balance percentiles, drawdown and losing-streak extremes, expectancy dispersion, and drawdown-threshold probabilities.
+- Optional calibration request controls and four additive response fields.
+- Controlled unavailable output for samples without closed trades.
+
+### Research Safety
+
+- OOS validation returns are used when available; source folds and calibration metrics remain unchanged.
+- High ruin or large-drawdown probability can block research promotion readiness only.
+- Monte Carlo output cannot change production decisions, setup/strategy routing, risk, execution, or management behavior.
+
+### Verification
+
+- 282 automated tests pass together, including determinism, empty samples, profitable and losing distributions, execution stress, readiness blocking, API gating, and metric invariance.
+
 ## Version 3.2.0 — Research Pipeline and Walk-Forward Intelligence — 2026-06-30
 
 ### Added

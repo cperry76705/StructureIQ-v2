@@ -408,6 +408,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can distinguish promising under-tested findings from sufficiently sampled, stable OOS behavior without promoting or changing a strategy automatically.
 
-## Beyond Version 3.2
+## Version 3.3 — Monte Carlo Simulation Engine
+
+- Reshuffle completed trade order and bootstrap sample with replacement.
+- Apply seeded skipped-trade and observed execution-degradation stress.
+- Measure equity distributions, R stability, drawdown tails, streaks, profit probability, and ruin risk.
+- Use OOS validation returns when available without changing validation metrics.
+- Allow high sequence risk to reduce research promotion readiness only.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can quantify whether a historical edge survives adverse sequencing and tail-risk scenarios before any separately authorized experiment.
+
+## Beyond Version 3.3
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

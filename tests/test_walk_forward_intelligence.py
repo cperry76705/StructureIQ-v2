@@ -12,6 +12,7 @@ from core.walk_forward_intelligence import (
     PromotionReadiness,
     build_walk_forward_intelligence,
 )
+from core.monte_carlo import MonteCarloRiskSummary
 
 
 def _measurement(trades: int, expectancy: float, drawdown: float = 1.0):
@@ -115,7 +116,7 @@ def _overfit(risk: str = "LOW"):
     )
 
 
-def _build(folds, risk="LOW"):
+def _build(folds, risk="LOW", monte_carlo_risk=None):
     validation_trades = sum(fold.validation.trades for fold in folds)
     oos = OutOfSampleSummary(
         validation_method=ValidationMethod.WALK_FORWARD,
@@ -140,7 +141,12 @@ def _build(folds, risk="LOW"):
         human_readable_summary="Stable folds.",
     )
     return build_walk_forward_intelligence(
-        oos, tuple(folds), _generalization(), _overfit(risk), stability
+        oos,
+        tuple(folds),
+        _generalization(),
+        _overfit(risk),
+        stability,
+        monte_carlo_risk,
     )
 
 
@@ -187,3 +193,24 @@ def test_stable_large_validation_sample_can_reach_paper_trading_readiness() -> N
     assert setup.sample_quality == "strong"
     assert setup.promotion_readiness is PromotionReadiness.READY_FOR_PAPER_TRADING
     assert result.promotion_readiness.ready_for_paper_trading_count > 0
+
+
+def test_high_monte_carlo_drawdown_blocks_paper_trading_readiness() -> None:
+    folds = [_fold(1, 120, 1.0), _fold(2, 120, 1.0), _fold(3, 120, 1.0)]
+    monte_carlo_risk = MonteCarloRiskSummary(
+        risk_of_ruin=1.0,
+        probability_of_finishing_profitable=80.0,
+        probability_of_drawdown_over_5_percent=80.0,
+        probability_of_drawdown_over_10_percent=55.0,
+        probability_of_drawdown_over_20_percent=40.0,
+        expectancy_mean=1.0,
+        expectancy_standard_deviation=0.2,
+        risk_level="high",
+        human_readable_summary="Synthetic high drawdown risk.",
+    )
+    result = _build(folds, monte_carlo_risk=monte_carlo_risk)
+    setup = next(row for row in result.rankings if row.dimension == "setup")
+
+    assert setup.promotion_readiness is not PromotionReadiness.READY_FOR_PAPER_TRADING
+    assert result.promotion_readiness.monte_carlo_readiness_blocked is True
+    assert "Monte Carlo" in " ".join(result.promotion_readiness.reasons)

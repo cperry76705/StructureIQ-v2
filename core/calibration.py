@@ -51,6 +51,12 @@ from core.execution_sensitivity import (
     ensure_perfect_baseline,
 )
 from core.market_data import Candle, MarketDataError, MarketDataProvider
+from core.monte_carlo import (
+    MonteCarloDistribution,
+    MonteCarloRiskSummary,
+    MonteCarloSummary,
+    run_monte_carlo,
+)
 from core.out_of_sample import (
     GeneralizationSummary,
     OutOfSampleRequest,
@@ -171,6 +177,9 @@ class CalibrationRequest(BaseModel):
     training_percent: float = Field(default=70.0, gt=0, lt=100)
     validation_percent: float = Field(default=30.0, gt=0, lt=100)
     validation_folds: int = Field(default=5, ge=1, le=20)
+    monte_carlo_analysis: bool = False
+    monte_carlo_simulations: int = Field(default=1_000, ge=1, le=10_000)
+    monte_carlo_random_seed: int = 42
 
     @field_validator("symbols")
     @classmethod
@@ -363,6 +372,10 @@ class CalibrationResult:
     strategy_robustness_rankings: tuple[RobustnessRanking, ...] | None = None
     promotion_readiness_summary: PromotionReadinessSummary | None = None
     research_action_items: tuple[str, ...] | None = None
+    monte_carlo_summary: MonteCarloSummary | None = None
+    monte_carlo_distribution: MonteCarloDistribution | None = None
+    monte_carlo_risk_summary: MonteCarloRiskSummary | None = None
+    monte_carlo_recommendations: tuple[str, ...] | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -593,6 +606,10 @@ class CalibrationEngine:
             symbol_validation_summary = out_of_sample.symbol_validation_summary
             timeframe_validation_summary = out_of_sample.timeframe_validation_summary
             oos_research_recommendations = out_of_sample.research_recommendations
+            oos_trade_returns = out_of_sample.validation_trade_returns
+            oos_execution_degradations = (
+                out_of_sample.validation_execution_degradations
+            )
         else:
             out_of_sample_summary = None
             validation_fold_results = None
@@ -602,6 +619,8 @@ class CalibrationEngine:
             symbol_validation_summary = None
             timeframe_validation_summary = None
             oos_research_recommendations = ()
+            oos_trade_returns = ()
+            oos_execution_degradations = ()
         setup_performance = _setup_performance(all_trades)
         strategy_performance = _strategy_performance(all_trades)
         recommendations = _recommendations(
@@ -658,6 +677,40 @@ class CalibrationEngine:
             entry_timing_summary=entry_timing_summary,
             execution_sensitivity_summary=execution_sensitivity_summary,
         )
+        if request.monte_carlo_analysis:
+            closed_trades = [
+                trade for trade in all_trades
+                if trade.realized_r is not None
+                and trade.outcome in {
+                    TradeOutcome.WIN,
+                    TradeOutcome.LOSS,
+                    TradeOutcome.BREAKEVEN,
+                }
+            ]
+            monte_carlo = run_monte_carlo(
+                (
+                    oos_trade_returns
+                    if request.out_of_sample_validation
+                    else tuple(float(trade.realized_r) for trade in closed_trades)
+                ),
+                simulations=request.monte_carlo_simulations,
+                random_seed=request.monte_carlo_random_seed,
+                starting_balance=request.starting_balance,
+                risk_per_trade_percent=request.risk_per_trade_percent,
+                execution_degradations=(
+                    oos_execution_degradations
+                    if request.out_of_sample_validation
+                    else tuple(
+                        float(trade.execution_diagnostics.execution_degradation_r)
+                        for trade in closed_trades
+                        if trade.execution_diagnostics is not None
+                        and trade.execution_diagnostics.execution_degradation_r
+                        is not None
+                    )
+                ),
+            )
+        else:
+            monte_carlo = None
         if (
             request.out_of_sample_validation
             and out_of_sample_summary is not None
@@ -680,6 +733,9 @@ class CalibrationEngine:
                 stability_summary=stability_summary,
                 symbol_validation_summary=symbol_validation_summary,
                 timeframe_validation_summary=timeframe_validation_summary,
+                monte_carlo_risk_summary=(
+                    monte_carlo.risk_summary if monte_carlo else None
+                ),
             )
         else:
             research_pipeline = None
@@ -758,6 +814,16 @@ class CalibrationEngine:
             research_action_items=(
                 research_pipeline.research_action_items
                 if research_pipeline else None
+            ),
+            monte_carlo_summary=monte_carlo.summary if monte_carlo else None,
+            monte_carlo_distribution=(
+                monte_carlo.distribution if monte_carlo else None
+            ),
+            monte_carlo_risk_summary=(
+                monte_carlo.risk_summary if monte_carlo else None
+            ),
+            monte_carlo_recommendations=(
+                monte_carlo.recommendations if monte_carlo else None
             ),
         )
         _assert_out_of_sample_result(request, result)

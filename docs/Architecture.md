@@ -214,6 +214,12 @@ Walk-Forward Intelligence measures expectancy decay, fold consistency and varian
 
 Readiness output is advisory workflow metadata. No Decision, Setup, Strategy, Risk, Execution, Entry Timing, Trade Management, Backtesting, or Analysis component imports or reads pipeline output.
 
+#### Monte Carlo Simulation Engine
+
+Version 3.3 consumes copied realized-R sequences after calibration or OOS validation completes. It alternates deterministic order reshuffling and bootstrap sampling, then applies seeded skipped-trade stress and optional degradation sampled from existing execution diagnostics. It owns simulated equity, drawdown, streak, expectancy, profit-factor, ruin, and tail-probability reporting.
+
+When both OOS research and Monte Carlo are enabled, only the aggregate risk summary may flow into the downstream promotion-readiness report. Elevated ruin risk or a high probability of drawdown beyond 20% can remove a readiness label. Monte Carlo never changes fold results, calibration metrics, trades, position sizing, or any production engine.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -243,6 +249,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Are regime confidence values reliable, and which mapping merits further research? | Regime Confidence Calibration Laboratory |
 | What combinations are currently strongest or weakest across rolling history? | Continuous Research Engine |
 | Is an OOS result stable and sufficiently sampled for further research review? | Research Pipeline and Walk-Forward Intelligence |
+| How sensitive are completed results to trade order, sampling, and tail drawdown? | Monte Carlo Simulation Engine |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 
