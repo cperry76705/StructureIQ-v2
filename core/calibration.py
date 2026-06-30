@@ -114,6 +114,20 @@ class CalibrationRequest(BaseModel):
                     "max_trades_per_run": 25,
                     "risk_per_trade_percent": 1.0,
                     "starting_balance": 10_000,
+                },
+                {
+                    "symbols": ["BTC-USD"],
+                    "timeframes": ["5m"],
+                    "higher_timeframes": ["1h"],
+                    "lookback": 300,
+                    "max_trades_per_run": 50,
+                    "risk_per_trade_percent": 1.0,
+                    "starting_balance": 10_000,
+                    "out_of_sample_validation": True,
+                    "validation_method": "walk_forward",
+                    "training_percent": 70,
+                    "validation_percent": 30,
+                    "validation_folds": 3,
                 }
             ]
         }
@@ -540,7 +554,7 @@ class CalibrationEngine:
             f"{aggregate.total_trades} closed trades, {aggregate.total_skipped} "
             f"skipped records, and {aggregate.total_r:.2f}R aggregate performance."
         )
-        return CalibrationResult(
+        result = CalibrationResult(
             runs=tuple(runs),
             aggregate_metrics=aggregate,
             aggregate_skip_diagnostics=aggregate_skip_diagnostics,
@@ -581,6 +595,34 @@ class CalibrationEngine:
             symbol_validation_summary=symbol_validation_summary,
             timeframe_validation_summary=timeframe_validation_summary,
             research_recommendations=research_recommendations,
+        )
+        _assert_out_of_sample_result(request, result)
+        return result
+
+
+def _assert_out_of_sample_result(
+    request: CalibrationRequest,
+    result: CalibrationResult,
+) -> None:
+    """Prevent enabled OOS validation from silently returning an empty contract."""
+
+    if not request.out_of_sample_validation:
+        return
+    required = (
+        "out_of_sample_summary",
+        "validation_fold_results",
+        "generalization_summary",
+        "overfitting_summary",
+        "stability_summary",
+        "symbol_validation_summary",
+        "timeframe_validation_summary",
+        "research_recommendations",
+    )
+    missing = [name for name in required if getattr(result, name) is None]
+    if missing:
+        raise RuntimeError(
+            "Out-of-sample validation was enabled but failed to populate: "
+            + ", ".join(missing)
         )
 
 

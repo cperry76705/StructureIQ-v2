@@ -2,6 +2,19 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.0.1 — OOS Response Reporting Hardening — 2026-06-29
+
+### Fixed
+
+- Added the exact 300-candle walk-forward request to the generated OpenAPI examples; the previous primary example represented ordinary calibration with OOS disabled.
+- Added an enabled-request response invariant preventing OOS validation from silently returning null laboratory sections.
+- Added HTTP regression coverage proving all eight OOS response fields serialize and the five primary sections are non-null for the documented request.
+- Confirmed disabled requests retain null OOS fields and unchanged calibration metrics.
+
+### Verification
+
+- 251 automated tests pass together.
+
 ## Version 3.0.0 — Out-of-Sample Validation Framework — 2026-06-29
 
 ### Added

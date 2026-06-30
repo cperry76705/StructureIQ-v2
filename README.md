@@ -155,7 +155,7 @@ Set `out_of_sample_validation` to `true` to run chronological, rolling, walk-for
 
 ## Roadmap and Release Information
 
-Version `3.0.0` adds deterministic out-of-sample validation for measuring whether sampled performance survives unseen chronological data. Production behavior remains unchanged.
+Version `3.0.1` hardens v3.0 response reporting and adds an exact OOS OpenAPI request example. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

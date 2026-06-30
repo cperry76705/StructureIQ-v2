@@ -165,7 +165,7 @@ class _Provider:
                 100 + index * 0.1,
                 100,
             )
-            for index in range(120)
+            for index in range(320)
         ]
         return candles[-lookback:]
 
@@ -216,3 +216,62 @@ def test_api_out_of_sample_is_additive_deterministic_and_regression_safe() -> No
     assert first.json()["generalization_summary"] == second.json()["generalization_summary"]
     assert analysis.status_code == 200
     assert "out_of_sample_summary" not in analysis.json()
+
+
+def test_exact_300_candle_request_serializes_all_oos_sections() -> None:
+    request = {
+        "symbols": ["BTC-USD"],
+        "timeframes": ["5m"],
+        "higher_timeframes": ["1h"],
+        "lookback": 300,
+        "max_trades_per_run": 50,
+        "risk_per_trade_percent": 1,
+        "starting_balance": 10000,
+        "out_of_sample_validation": True,
+        "validation_method": "walk_forward",
+        "training_percent": 70,
+        "validation_percent": 30,
+        "validation_folds": 3,
+    }
+    app.dependency_overrides[get_market_data_provider] = lambda: _Provider()
+    try:
+        client = TestClient(app)
+        response = client.post("/calibrate", json=request)
+        openapi = client.get("/openapi.json").json()
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    for field in (
+        "out_of_sample_summary",
+        "validation_fold_results",
+        "generalization_summary",
+        "overfitting_summary",
+        "stability_summary",
+        "symbol_validation_summary",
+        "timeframe_validation_summary",
+        "research_recommendations",
+    ):
+        assert field in payload
+        assert payload[field] is not None
+    assert len(payload["validation_fold_results"]) == 3
+
+    request_properties = openapi["components"]["schemas"]["CalibrationRequest"]["properties"]
+    result_properties = openapi["components"]["schemas"]["CalibrationResult"]["properties"]
+    for field in (
+        "out_of_sample_validation",
+        "validation_method",
+        "training_percent",
+        "validation_percent",
+        "validation_folds",
+    ):
+        assert field in request_properties
+    for field in (
+        "out_of_sample_summary",
+        "validation_fold_results",
+        "generalization_summary",
+        "overfitting_summary",
+        "stability_summary",
+    ):
+        assert field in result_properties

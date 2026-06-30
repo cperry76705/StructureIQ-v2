@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.0.1` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
 
@@ -1039,3 +1039,5 @@ When enabled, `/calibrate` adds `out_of_sample_summary`, `validation_fold_result
 Each fold reports separate training and validation measurements for trades, win rate, R, profit factor, drawdown, expectancy, MFE/MAE, duration, skips, confidence, setup, strategy, regime, execution degradation, and trade-management sensitivity. The generalization report adds decay, drift, variance, stability, and overfit risk. When disabled, all additive fields remain null and ordinary calibration follows its established path.
 
 Validation segments use prior raw candles only as indicator/structure warm-up context. Every fold creates a fresh backtester and reruns the complete production pipeline; no cached decision, setup, or trade state crosses the split.
+
+Version 3.0.1 also exposes this OOS request as a first-class OpenAPI example. When `out_of_sample_validation` is true, calibration now enforces a response invariant: all eight OOS sections must be populated rather than failing silently. Clients running an older long-lived application process must restart it to load the v3.0.1 schema and implementation.
