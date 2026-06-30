@@ -67,6 +67,15 @@ class ValidationMeasurements:
 
 
 @dataclass(frozen=True)
+class ValidationCategoryPerformance:
+    trades: int
+    win_rate: float
+    expectancy: float
+    profit_factor: float | None
+    maximum_drawdown: float
+
+
+@dataclass(frozen=True)
 class ValidationFoldResult:
     fold: int
     symbol: str
@@ -79,6 +88,12 @@ class ValidationFoldResult:
     training: ValidationMeasurements
     validation: ValidationMeasurements
     human_readable_summary: str
+    training_setup_performance: dict[str, ValidationCategoryPerformance] | None = None
+    validation_setup_performance: dict[str, ValidationCategoryPerformance] | None = None
+    training_strategy_performance: dict[str, ValidationCategoryPerformance] | None = None
+    validation_strategy_performance: dict[str, ValidationCategoryPerformance] | None = None
+    training_regime_performance: dict[str, ValidationCategoryPerformance] | None = None
+    validation_regime_performance: dict[str, ValidationCategoryPerformance] | None = None
 
 
 @dataclass(frozen=True)
@@ -336,6 +351,24 @@ class OutOfSampleValidationEngine:
                                     f"validated on [{split.validation_start}, "
                                     f"{split.validation_end}) without reused decisions."
                                 ),
+                                training_setup_performance=_category_performance(
+                                    train, lambda item: item.setup_type
+                                ),
+                                validation_setup_performance=_category_performance(
+                                    validate, lambda item: item.setup_type
+                                ),
+                                training_strategy_performance=_category_performance(
+                                    train, lambda item: item.strategy_type
+                                ),
+                                validation_strategy_performance=_category_performance(
+                                    validate, lambda item: item.strategy_type
+                                ),
+                                training_regime_performance=_category_performance(
+                                    train, _trade_regime
+                                ),
+                                validation_regime_performance=_category_performance(
+                                    validate, _trade_regime
+                                ),
                             )
                         )
 
@@ -501,6 +534,32 @@ def measure_trades(trades: list[BacktestTrade]) -> ValidationMeasurements:
             item.rule.value: item.total_r for item in management
         },
     )
+
+
+def _category_performance(
+    trades: list[BacktestTrade],
+    key: Callable[[BacktestTrade], str],
+) -> dict[str, ValidationCategoryPerformance]:
+    groups: dict[str, list[BacktestTrade]] = defaultdict(list)
+    for trade in trades:
+        groups[key(trade)].append(trade)
+    result: dict[str, ValidationCategoryPerformance] = {}
+    for category, records in sorted(groups.items()):
+        measurements = measure_trades(records)
+        result[category] = ValidationCategoryPerformance(
+            trades=measurements.trades,
+            win_rate=measurements.win_rate,
+            expectancy=measurements.expectancy,
+            profit_factor=measurements.profit_factor,
+            maximum_drawdown=measurements.maximum_drawdown,
+        )
+    return result
+
+
+def _trade_regime(trade: BacktestTrade) -> str:
+    if trade.market_regime is None:
+        return "unknown"
+    return trade.market_regime.market_regime.value
 
 
 def build_generalization_summary(

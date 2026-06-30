@@ -206,6 +206,14 @@ The v3.1 Continuous Research Engine observes completed calibration records after
 
 The reporting store has no dependency path back into Decision, Setup, Strategy, Risk, Execution, Backtesting, or Calibration calculations. Refresh operations only replace cached research snapshots. The optional scheduler is explicitly started, daemonized, and disabled by default; v3.1 does not persist research state across process restarts.
 
+#### Research Pipeline and Walk-Forward Intelligence
+
+Version 3.2 adds a terminal research orchestrator that runs only after calibration, statistical research, and OOS validation objects are finalized. The pipeline consumes summaries and per-fold category performance; it cannot access or mutate live analysis state. Per-fold setup, strategy, and regime measurements are additive reporting snapshots derived from the same immutable training and validation trades.
+
+Walk-Forward Intelligence measures expectancy decay, fold consistency and variance, drawdown and trade-frequency stability, confidence drift, and symbol/timeframe/setup/strategy/regime dependency. A deterministic scoring layer produces robustness and promotion-readiness labels. Sample size is a hard safety boundary: fewer than 100 validation trades cannot qualify for paper trading. Overfit risk and concentrated dependency apply explicit penalties.
+
+Readiness output is advisory workflow metadata. No Decision, Setup, Strategy, Risk, Execution, Entry Timing, Trade Management, Backtesting, or Analysis component imports or reads pipeline output.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -234,6 +242,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Which classifier better matches shared future-behavior proxies? | Tuned Regime Forward Validation |
 | Are regime confidence values reliable, and which mapping merits further research? | Regime Confidence Calibration Laboratory |
 | What combinations are currently strongest or weakest across rolling history? | Continuous Research Engine |
+| Is an OOS result stable and sufficiently sampled for further research review? | Research Pipeline and Walk-Forward Intelligence |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 

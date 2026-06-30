@@ -40,6 +40,7 @@ The platform includes:
 - **Out-of-Sample Validation Laboratory** — rebuilds the complete production pipeline across deterministic unseen-data folds and measures generalization.
 - **Statistical Research Laboratory** — automatically ranks symbols, timeframes, setups, strategies, regimes, timing, execution, and cross-dimensional performance after every calibration.
 - **Continuous Research Engine** — retains completed calibration records in a process-local reporting store and refreshes rolling strongest/weakest findings on demand.
+- **Research Pipeline and Walk-Forward Intelligence** — combines finalized calibration, statistical research, and OOS folds into conservative robustness rankings and human-reviewed promotion readiness.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -157,6 +158,8 @@ Completed calibration records also feed the process-local Continuous Research En
 
 The v3.1.1 Yahoo adapter caps intraday chart ranges to combinations accepted reliably by Yahoo (`1m: 7d`, `5m/15m/30m: 1mo`, `1h: 2y`). Calibration isolates provider failures by run: available combinations still complete, while unavailable combinations appear in `provider_failures` and `data_availability_summary`. Analysis and standalone backtesting retain their existing provider-error behavior.
 
+When OOS validation is enabled, v3.2 adds a unified research pipeline. It compares training and validation behavior by symbol, timeframe, setup, strategy, and regime; penalizes variance, decay, drawdown, overfit risk, and dependency; and assigns research-only promotion statuses. Fewer than 100 validation trades can never qualify for paper trading, regardless of expectancy. These reports are observational and cannot update any production engine.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -168,7 +171,7 @@ The v3.1.1 Yahoo adapter caps intraday chart ranges to combinations accepted rel
 
 ## Roadmap and Release Information
 
-Version `3.1.1` hardens Yahoo intraday range selection and makes multi-run calibration resilient to partial market-data failures. Production behavior remains unchanged.
+Version `3.2.0` adds unified OOS research intelligence, robustness rankings, and conservative promotion-readiness reporting. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

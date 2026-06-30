@@ -93,8 +93,14 @@ from core.research_lab import (
     ResearchStatistics,
     build_research_lab,
 )
+from core.research_pipeline import ResearchPipelineSummary, build_research_pipeline
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from core.symbols import normalize_yahoo_symbol
+from core.walk_forward_intelligence import (
+    PromotionReadinessSummary,
+    RobustnessRanking,
+    WalkForwardIntelligenceSummary,
+)
 
 
 RecommendationCategory = Literal[
@@ -352,6 +358,11 @@ class CalibrationResult:
     provider_failures: tuple[ProviderFailure, ...] = ()
     failed_runs: int = 0
     data_availability_summary: DataAvailabilitySummary | None = None
+    research_pipeline_summary: ResearchPipelineSummary | None = None
+    walk_forward_intelligence_summary: WalkForwardIntelligenceSummary | None = None
+    strategy_robustness_rankings: tuple[RobustnessRanking, ...] | None = None
+    promotion_readiness_summary: PromotionReadinessSummary | None = None
+    research_action_items: tuple[str, ...] | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -647,6 +658,31 @@ class CalibrationEngine:
             entry_timing_summary=entry_timing_summary,
             execution_sensitivity_summary=execution_sensitivity_summary,
         )
+        if (
+            request.out_of_sample_validation
+            and out_of_sample_summary is not None
+            and validation_fold_results is not None
+            and generalization_summary is not None
+            and overfitting_summary is not None
+            and stability_summary is not None
+            and symbol_validation_summary is not None
+            and timeframe_validation_summary is not None
+        ):
+            research_pipeline = build_research_pipeline(
+                aggregate_metrics=aggregate,
+                research_lab_summary=research_lab.research_lab_summary,
+                research_rankings=research_lab.research_rankings,
+                performance_matrices=research_lab.performance_matrices,
+                out_of_sample_summary=out_of_sample_summary,
+                validation_fold_results=validation_fold_results,
+                generalization_summary=generalization_summary,
+                overfitting_summary=overfitting_summary,
+                stability_summary=stability_summary,
+                symbol_validation_summary=symbol_validation_summary,
+                timeframe_validation_summary=timeframe_validation_summary,
+            )
+        else:
+            research_pipeline = None
         research_recommendations = tuple(
             dict.fromkeys(
                 (
@@ -703,6 +739,26 @@ class CalibrationEngine:
             provider_failures=tuple(provider_failures),
             failed_runs=failed_run_count,
             data_availability_summary=availability_summary,
+            research_pipeline_summary=(
+                research_pipeline.research_pipeline_summary
+                if research_pipeline else None
+            ),
+            walk_forward_intelligence_summary=(
+                research_pipeline.walk_forward_intelligence_summary
+                if research_pipeline else None
+            ),
+            strategy_robustness_rankings=(
+                research_pipeline.strategy_robustness_rankings
+                if research_pipeline else None
+            ),
+            promotion_readiness_summary=(
+                research_pipeline.promotion_readiness_summary
+                if research_pipeline else None
+            ),
+            research_action_items=(
+                research_pipeline.research_action_items
+                if research_pipeline else None
+            ),
         )
         _assert_out_of_sample_result(request, result)
         # Continuous research observes the completed calibration output only.
@@ -731,6 +787,11 @@ def _assert_out_of_sample_result(
         "symbol_validation_summary",
         "timeframe_validation_summary",
         "research_recommendations",
+        "research_pipeline_summary",
+        "walk_forward_intelligence_summary",
+        "strategy_robustness_rankings",
+        "promotion_readiness_summary",
+        "research_action_items",
     )
     missing = [name for name in required if getattr(result, name) is None]
     if missing:

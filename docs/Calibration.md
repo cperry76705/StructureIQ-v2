@@ -58,6 +58,21 @@ Provider failures are availability events, not skipped trade records. They do no
 
 For the default Yahoo provider, intraday chart ranges are capped conservatively: `1m` at `7d`, `5m`/`15m`/`30m` at `1mo`, and `1h` at `2y`. Daily range selection is unchanged.
 
+## Research Pipeline and Promotion Readiness
+
+Version 3.2 builds unified research intelligence only when OOS validation is enabled. It combines aggregate metrics, Statistical Research Laboratory output, matrices, OOS summaries and folds, generalization, overfit findings, stability, and symbol/timeframe segments.
+
+Robustness rankings cover symbols, timeframes, setups, strategies, regimes, and combined symbol/timeframe setup or strategy rows. Their score rewards validation expectancy, sample size, consistent folds, controlled decay, and low drawdown. It penalizes fold variance, high overfit risk, and single-dimension dependency.
+
+Validation sample standards are deliberately conservative:
+
+- Below 100 trades: insufficient; positive findings are `NEEDS_MORE_DATA`.
+- 100–299 trades: acceptable.
+- 300–499 trades: strong.
+- 500 or more trades: excellent.
+
+`READY_FOR_PAPER_TRADING` requires at least 100 validation trades plus positive expectancy, adequate fold consistency and robustness, controlled drawdown, and no high/overfit risk. It is a recommendation for human review of a future experiment, not an automatic system change. Disabled OOS validation leaves every pipeline field null.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

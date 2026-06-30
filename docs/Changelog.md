@@ -2,6 +2,27 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.2.0 — Research Pipeline and Walk-Forward Intelligence — 2026-06-30
+
+### Added
+
+- Unified research pipeline over finalized calibration, statistical research, and OOS artifacts.
+- Per-fold setup, strategy, and regime performance snapshots alongside existing symbol and timeframe validation.
+- Walk-forward intelligence for expectancy decay, variance, consistency, dependency, drawdown stability, trade frequency, and confidence drift.
+- Robustness rankings with training/validation metrics, fold consistency, sample quality, readiness, and human-readable conclusions.
+- Conservative promotion statuses with hard 100-trade minimum and 300/500-trade strong/excellent sample standards.
+- Additive pipeline summaries, readiness report, and research action items on OOS-enabled calibration responses.
+
+### Compatibility and Safety
+
+- Pipeline fields remain null when OOS validation is disabled.
+- Rankings consume completed result objects only and cannot modify calibration metrics or production engines.
+- `READY_FOR_PAPER_TRADING` is advisory and requires separate human review; it starts no process and changes no rule.
+
+### Verification
+
+- 275 automated tests pass together, including sample gates, fold-variance penalties, overfit penalties, stable-sample readiness, API gating, readable recommendations, and production-metric invariance.
+
 ## Version 3.1.1 — Yahoo Provider Resilience Fix — 2026-06-29
 
 ### Fixed

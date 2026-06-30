@@ -395,6 +395,19 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can report how its current historical edge is distributed and how that view changes across rolling samples, without allowing research output to influence a trade.
 
-## Beyond Version 3.1
+## Version 3.2 — Research Pipeline and Walk-Forward Intelligence
+
+- Combine completed calibration, statistical research, and OOS artifacts into one typed report.
+- Measure expectancy decay, fold variance and consistency, drawdown stability, frequency stability, confidence drift, and category dependency.
+- Rank symbol, timeframe, setup, strategy, and regime robustness.
+- Apply conservative validation sample standards at 100, 300, and 500 trades.
+- Produce research-only promotion readiness and actionable human review items.
+- Preserve every production rule and prohibit automatic adjustment.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can distinguish promising under-tested findings from sufficiently sampled, stable OOS behavior without promoting or changing a strategy automatically.
+
+## Beyond Version 3.2
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
