@@ -14,7 +14,7 @@ from core.backtesting import (
 from core.calibration import CalibrationEngine, CalibrationRequest
 from core.decision_engine import DecisionDiagnostics, GateResult
 from core.journal import TradeOutcome
-from core.market_data import Candle
+from core.market_data import Candle, MarketDataError
 from core.setup_engine import SetupCandidateDiagnostics
 
 
@@ -130,6 +130,49 @@ def test_calibration_runs_multiple_symbol_timeframe_combinations() -> None:
     assert len(result.runs) == 8
     assert len(runner.requests) == 8
     assert any(run.normalized_symbol == "EURUSD=X" for run in result.runs)
+
+
+def test_single_provider_failure_does_not_abort_remaining_runs() -> None:
+    def resolver(request: BacktestRequest) -> list[BacktestTrade]:
+        if request.symbol == "BTC-USD":
+            raise MarketDataError("Synthetic Yahoo HTTP 422")
+        return [_trade(TradeOutcome.WIN, 2.0)]
+
+    result = _engine(_Runner(resolver)).run(
+        _request(symbols=["BTC-USD", "ETH-USD"])
+    )
+
+    assert len(result.runs) == 1
+    assert result.runs[0].symbol == "ETH-USD"
+    assert result.aggregate_metrics.total_runs == 1
+    assert result.aggregate_metrics.total_trades == 1
+    assert result.aggregate_metrics.total_r == 2.0
+    assert result.failed_runs == 1
+    assert result.provider_failures[0].symbol == "BTC-USD"
+    assert result.provider_failures[0].skipped is True
+    assert result.data_availability_summary is not None
+    assert result.data_availability_summary.completed_runs == 1
+
+
+def test_all_provider_failures_return_controlled_empty_result() -> None:
+    def resolver(request: BacktestRequest) -> list[BacktestTrade]:
+        raise MarketDataError(f"No data for {request.symbol}")
+
+    result = _engine(_Runner(resolver)).run(
+        _request(symbols=["BTC-USD", "ETH-USD"])
+    )
+
+    assert result.runs == ()
+    assert result.aggregate_metrics.total_runs == 0
+    assert result.aggregate_metrics.total_trades == 0
+    assert result.aggregate_metrics.total_r == 0.0
+    assert result.failed_runs == 2
+    assert len(result.provider_failures) == 2
+    assert result.data_availability_summary is not None
+    assert result.data_availability_summary.all_runs_failed is True
+    assert "No calibration runs completed" in (
+        result.data_availability_summary.human_readable_summary
+    )
 
 
 def test_calibration_passes_execution_profile_to_backtests() -> None:

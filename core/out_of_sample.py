@@ -15,7 +15,7 @@ from core.backtesting import (
     calculate_trade_management_sensitivity,
 )
 from core.journal import TradeOutcome
-from core.market_data import Candle, MarketDataProvider
+from core.market_data import Candle, MarketDataError, MarketDataProvider
 
 
 class ValidationMethod(str, Enum):
@@ -266,16 +266,22 @@ class OutOfSampleValidationEngine:
             for timeframe in request.timeframes:
                 timeframe_groups.setdefault(timeframe, ([], []))
                 for higher_timeframe in request.higher_timeframes:
-                    current = self._market_data.get_candles(
-                        symbol, timeframe, request.lookback
-                    )
-                    higher = (
-                        current
-                        if higher_timeframe == timeframe
-                        else self._market_data.get_candles(
-                            symbol, higher_timeframe, request.lookback
+                    try:
+                        current = self._market_data.get_candles(
+                            symbol, timeframe, request.lookback
                         )
-                    )
+                        higher = (
+                            current
+                            if higher_timeframe == timeframe
+                            else self._market_data.get_candles(
+                                symbol, higher_timeframe, request.lookback
+                            )
+                        )
+                    except MarketDataError:
+                        # Calibration owns availability reporting. OOS research
+                        # skips the same unavailable combination instead of
+                        # turning a partial calibration into a service failure.
+                        continue
                     total = min(len(current), len(higher))
                     splits = build_validation_splits(
                         total,

@@ -50,6 +50,14 @@ Each `CalibrationRun` records:
 
 Every run delegates to the existing Backtesting Engine. Calibration does not introduce a second simulation model.
 
+### Provider resilience
+
+Version 3.1.1 isolates market-data failures at the run boundary. A failed symbol/timeframe combination is excluded from `runs` and recorded in `provider_failures`; remaining combinations continue normally. `failed_runs` gives the failure count, while `data_availability_summary` reports requested, completed, and failed runs, completion percentage, whether all runs failed, and a readable explanation.
+
+Provider failures are availability events, not skipped trade records. They do not increase closed or skipped trade metrics, and they do not enter setup, strategy, regime, execution, or research aggregation. An all-failed request returns controlled zero metrics and diagnostics rather than aborting the calibration endpoint.
+
+For the default Yahoo provider, intraday chart ranges are capped conservatively: `1m` at `7d`, `5m`/`15m`/`30m` at `1mo`, and `1h` at `2y`. Daily range selection is unchanged.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

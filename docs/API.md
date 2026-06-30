@@ -2,9 +2,9 @@
 
 ## Overview
 
-StructureIQ `3.1.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.1.1` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
-Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format, and provider failures return `503` with a market-data message.
+Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
 ## Symbol Normalization
 
@@ -526,6 +526,18 @@ Request:
 ```
 
 Calibration passes an optional execution profile to every run and returns `aggregate_execution_summary`. Existing requests without the field remain valid and report zero modeled fills.
+
+### Provider availability and partial completion
+
+Version 3.1.1 treats each symbol/current-timeframe/higher-timeframe combination as an independent data request. If Yahoo or another provider fails one combination, calibration continues with the remaining combinations and returns HTTP `200` with additive fields:
+
+- `provider_failures`: structured symbol, normalized symbol, timeframe, higher timeframe, provider, message, failure type, and `skipped: true` records.
+- `failed_runs`: number of combinations that could not obtain market data.
+- `data_availability_summary`: requested, completed, and failed run counts; completion rate; all-failed flag; and plain-English summary.
+
+`runs` and `aggregate_metrics.total_runs` include completed runs only. Provider failures never become trades and therefore cannot affect closed trades, win rate, R, drawdown, setup/strategy performance, or research statistics. If every combination fails, the response remains a valid calibration result with zero completed runs and a clear `all_runs_failed` availability summary.
+
+The Yahoo chart adapter caps ranges before requesting intraday data: `1m` to `7d`, `5m`, `15m`, and `30m` to `1mo`, and `1h` to `2y`. Daily requests keep the pre-v3.1.1 selection behavior. Provider errors include the requested and normalized symbols, timeframe, Yahoo interval, lookback, selected range, and capped range for diagnosis.
 
 ### Execution Sensitivity Laboratory
 

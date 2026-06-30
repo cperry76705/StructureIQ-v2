@@ -50,7 +50,7 @@ from core.execution_sensitivity import (
     build_execution_sensitivity_summary,
     ensure_perfect_baseline,
 )
-from core.market_data import Candle, MarketDataProvider
+from core.market_data import Candle, MarketDataError, MarketDataProvider
 from core.out_of_sample import (
     GeneralizationSummary,
     OutOfSampleRequest,
@@ -282,6 +282,28 @@ class ThresholdSensitivityResult:
 
 
 @dataclass(frozen=True)
+class ProviderFailure:
+    symbol: str
+    normalized_symbol: str
+    timeframe: str
+    higher_timeframe: str
+    provider: str
+    error_message: str
+    failure_type: str
+    skipped: bool = True
+
+
+@dataclass(frozen=True)
+class DataAvailabilitySummary:
+    requested_runs: int
+    completed_runs: int
+    failed_runs: int
+    completion_rate: float
+    all_runs_failed: bool
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
 class CalibrationResult:
     runs: tuple[CalibrationRun, ...]
     aggregate_metrics: CalibrationMetrics
@@ -327,6 +349,9 @@ class CalibrationResult:
     research_rankings: ResearchRankings | None = None
     performance_matrices: PerformanceMatrices | None = None
     research_statistics: ResearchStatistics | None = None
+    provider_failures: tuple[ProviderFailure, ...] = ()
+    failed_runs: int = 0
+    data_availability_summary: DataAvailabilitySummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -343,6 +368,13 @@ class _CalibrationDataCache:
     def __init__(self, source: MarketDataProvider) -> None:
         self._source = source
         self._cache: dict[tuple[str, str, int], tuple[Candle, ...]] = {}
+
+    @property
+    def provider_name(self) -> str:
+        name = type(self._source).__name__
+        if name == "YahooFinanceMarketDataProvider":
+            return "Yahoo Finance"
+        return name.removeprefix("_") or "unknown"
 
     def get_candles(
         self, symbol: str, timeframe: str, lookback: int
@@ -371,6 +403,7 @@ class CalibrationEngine:
     def run(self, request: CalibrationRequest) -> CalibrationResult:
         runs: list[CalibrationRun] = []
         all_trades: list[BacktestTrade] = []
+        provider_failures: list[ProviderFailure] = []
 
         for symbol in request.symbols:
             for timeframe in request.timeframes:
@@ -385,7 +418,21 @@ class CalibrationEngine:
                         max_trades=request.max_trades_per_run,
                         execution_profile=request.execution_profile,
                     )
-                    result = self._backtester.run(backtest_request)
+                    try:
+                        result = self._backtester.run(backtest_request)
+                    except MarketDataError as exc:
+                        provider_failures.append(
+                            ProviderFailure(
+                                symbol=symbol,
+                                normalized_symbol=normalize_yahoo_symbol(symbol),
+                                timeframe=timeframe,
+                                higher_timeframe=higher_timeframe,
+                                provider=self._market_data.provider_name,
+                                error_message=str(exc),
+                                failure_type="market_data_error",
+                            )
+                        )
+                        continue
                     all_trades.extend(result.trades)
                     skipped = sum(
                         trade.outcome is TradeOutcome.SKIPPED
@@ -560,10 +607,39 @@ class CalibrationEngine:
             aggregate_trade_management_sensitivity,
             aggregate_setup_coverage_summary,
         )
+        requested_runs = (
+            len(request.symbols)
+            * len(request.timeframes)
+            * len(request.higher_timeframes)
+        )
+        failed_run_count = len(provider_failures)
+        completion_rate = round(
+            len(runs) / requested_runs * 100.0 if requested_runs else 0.0,
+            2,
+        )
+        all_runs_failed = bool(requested_runs and not runs)
+        availability_summary = DataAvailabilitySummary(
+            requested_runs=requested_runs,
+            completed_runs=len(runs),
+            failed_runs=failed_run_count,
+            completion_rate=completion_rate,
+            all_runs_failed=all_runs_failed,
+            human_readable_summary=(
+                f"Completed {len(runs)} of {requested_runs} requested calibration "
+                f"runs; {failed_run_count} failed because market data was unavailable."
+                if not all_runs_failed
+                else (
+                    f"No calibration runs completed: market data was unavailable "
+                    f"for all {requested_runs} requested runs."
+                )
+            ),
+        )
         summary = (
-            f"Calibration completed {aggregate.total_runs} runs with "
-            f"{aggregate.total_trades} closed trades, {aggregate.total_skipped} "
-            f"skipped records, and {aggregate.total_r:.2f}R aggregate performance."
+            f"Calibration completed {aggregate.total_runs} of {requested_runs} runs "
+            f"with {aggregate.total_trades} closed trades, "
+            f"{aggregate.total_skipped} skipped records, "
+            f"{failed_run_count} provider failures, and "
+            f"{aggregate.total_r:.2f}R aggregate performance."
         )
         research_lab = build_research_lab(
             all_trades,
@@ -624,6 +700,9 @@ class CalibrationEngine:
             research_rankings=research_lab.research_rankings,
             performance_matrices=research_lab.performance_matrices,
             research_statistics=research_lab.research_statistics,
+            provider_failures=tuple(provider_failures),
+            failed_runs=failed_run_count,
+            data_availability_summary=availability_summary,
         )
         _assert_out_of_sample_result(request, result)
         # Continuous research observes the completed calibration output only.
@@ -672,18 +751,21 @@ def _run_execution_sensitivity(
         for symbol in request.symbols:
             for timeframe in request.timeframes:
                 for higher_timeframe in request.higher_timeframes:
-                    result = backtester.run(
-                        BacktestRequest(
-                            symbol=symbol,
-                            timeframe=timeframe,
-                            higher_timeframe=higher_timeframe,
-                            lookback=request.lookback,
-                            starting_balance=request.starting_balance,
-                            risk_per_trade_percent=request.risk_per_trade_percent,
-                            max_trades=request.max_trades_per_run,
-                            execution_profile=profile.execution_profile,
+                    try:
+                        result = backtester.run(
+                            BacktestRequest(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                higher_timeframe=higher_timeframe,
+                                lookback=request.lookback,
+                                starting_balance=request.starting_balance,
+                                risk_per_trade_percent=request.risk_per_trade_percent,
+                                max_trades=request.max_trades_per_run,
+                                execution_profile=profile.execution_profile,
+                            )
                         )
-                    )
+                    except MarketDataError:
+                        continue
                     trades.extend(result.trades)
         profile_runs.append((profile, trades))
     return build_execution_sensitivity_summary(profile_runs)
@@ -705,19 +787,22 @@ def _run_entry_timing_lab(
         for symbol in request.symbols:
             for timeframe in request.timeframes:
                 for higher_timeframe in request.higher_timeframes:
-                    result = backtester.run(
-                        BacktestRequest(
-                            symbol=symbol,
-                            timeframe=timeframe,
-                            higher_timeframe=higher_timeframe,
-                            lookback=request.lookback,
-                            starting_balance=request.starting_balance,
-                            risk_per_trade_percent=request.risk_per_trade_percent,
-                            max_trades=request.max_trades_per_run,
-                            execution_profile=execution_profile,
-                            entry_timing_profile=profile,
+                    try:
+                        result = backtester.run(
+                            BacktestRequest(
+                                symbol=symbol,
+                                timeframe=timeframe,
+                                higher_timeframe=higher_timeframe,
+                                lookback=request.lookback,
+                                starting_balance=request.starting_balance,
+                                risk_per_trade_percent=request.risk_per_trade_percent,
+                                max_trades=request.max_trades_per_run,
+                                execution_profile=execution_profile,
+                                entry_timing_profile=profile,
+                            )
                         )
-                    )
+                    except MarketDataError:
+                        continue
                     trades.extend(result.trades)
         profile_runs.append((profile, trades))
     return build_entry_timing_summary(profile_runs)

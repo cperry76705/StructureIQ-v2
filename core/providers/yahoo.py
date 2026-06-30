@@ -32,6 +32,31 @@ _RANGES = (
     (3_650, "10y"),
 )
 
+_RANGE_DAYS = {
+    "1d": 1,
+    "5d": 5,
+    "7d": 7,
+    "1mo": 30,
+    "3mo": 90,
+    "6mo": 180,
+    "1y": 365,
+    "2y": 730,
+    "5y": 1_825,
+    "10y": 3_650,
+    "max": float("inf"),
+}
+
+# Conservative chart-API caps. Yahoo may expose longer theoretical windows for
+# some instruments, but these combinations are consistently accepted across the
+# crypto and Forex symbols supported by StructureIQ.
+_MAX_RANGE_BY_INTERVAL = {
+    "1m": "7d",
+    "5m": "1mo",
+    "15m": "1mo",
+    "30m": "1mo",
+    "1h": "2y",
+}
+
 
 class YahooFinanceMarketDataProvider:
     base_url = "https://query1.finance.yahoo.com/v8/finance/chart"
@@ -45,21 +70,28 @@ class YahooFinanceMarketDataProvider:
             raise MarketDataError(f"Yahoo Finance does not support timeframe '{timeframe}'.")
 
         interval, aggregation, source_minutes = _INTERVALS[timeframe]
-        range_value = self._select_range(lookback * aggregation, source_minutes)
+        selected_range = self._select_range(lookback * aggregation, source_minutes)
+        range_value = self._cap_range(interval, selected_range)
         provider_symbol = normalize_yahoo_symbol(symbol)
+        context = (
+            f"requested_symbol={symbol}, normalized_symbol={provider_symbol}, "
+            f"timeframe={timeframe}, interval={interval}, lookback={lookback}, "
+            f"selected_range={selected_range}, capped_range={range_value}"
+        )
         try:
             payload = self._fetch(provider_symbol, interval, range_value)
             candles = self._parse(payload)
-        except MarketDataError:
-            raise
+        except MarketDataError as exc:
+            raise MarketDataError(f"{exc} ({context})") from exc
         except httpx.HTTPStatusError as exc:
             raise MarketDataError(
                 f"Yahoo Finance returned HTTP {exc.response.status_code} for {symbol} "
-                f"({timeframe}); try again later."
+                f"({timeframe}); try again later. ({context})"
             ) from exc
         except (httpx.HTTPError, KeyError, TypeError, ValueError, IndexError) as exc:
             raise MarketDataError(
-                f"Yahoo Finance could not provide data for {symbol} ({timeframe})."
+                f"Yahoo Finance could not provide data for {symbol} ({timeframe}). "
+                f"({context})"
             ) from exc
 
         if aggregation > 1:
@@ -80,6 +112,16 @@ class YahooFinanceMarketDataProvider:
             if required_days <= maximum_days:
                 return range_value
         return "max"
+
+    @staticmethod
+    def _cap_range(interval: str, selected_range: str) -> str:
+        """Cap a selected chart range to a safe interval-specific maximum."""
+
+        maximum = _MAX_RANGE_BY_INTERVAL.get(interval)
+        if maximum is None:
+            return selected_range
+        selected_days = _RANGE_DAYS.get(selected_range, float("inf"))
+        return maximum if selected_days > _RANGE_DAYS[maximum] else selected_range
 
     def _fetch(self, symbol: str, interval: str, range_value: str) -> dict[str, Any]:
         url = f"{self.base_url}/{symbol}"

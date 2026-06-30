@@ -2,6 +2,24 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.1.1 — Yahoo Provider Resilience Fix — 2026-06-29
+
+### Fixed
+
+- Capped Yahoo chart ranges to `7d` for `1m`, `1mo` for `5m`/`15m`/`30m`, and `2y` for `1h`; daily selection remains unchanged.
+- Added detailed Yahoo failure context containing requested and normalized symbols, timeframe, interval, lookback, selected range, and capped range.
+- Isolated calibration market-data failures per run so available symbol/timeframe combinations continue.
+- Made all-failed calibration requests return controlled zero metrics and human-readable availability diagnostics instead of an unhandled `503`.
+
+### API
+
+- Added `provider_failures`, `failed_runs`, and `data_availability_summary` to calibration responses.
+- Completed-run aggregate metrics exclude failed provider combinations and remain otherwise unchanged.
+
+### Verification
+
+- 270 automated tests pass together, including interval caps, daily-range compatibility, provider error context, partial completion, all-failed responses, API serialization, and existing regressions.
+
 ## Version 3.1.0 — Statistical Research Laboratory — 2026-06-29
 
 ### Added

@@ -204,3 +204,30 @@ def test_analysis_returns_informative_503_when_provider_fails() -> None:
     assert response.json() == {
         "detail": "Market data unavailable: test provider is offline"
     }
+
+
+def test_calibration_returns_controlled_result_when_all_provider_runs_fail() -> None:
+    app.dependency_overrides[get_market_data_provider] = lambda: FailingProvider()
+    try:
+        response = TestClient(app).post(
+            "/calibrate",
+            json={
+                "symbols": ["BTC-USD"],
+                "timeframes": ["15m"],
+                "higher_timeframes": ["1h"],
+                "lookback": 300,
+                "max_trades_per_run": 50,
+                "risk_per_trade_percent": 1,
+                "starting_balance": 10000,
+            },
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["aggregate_metrics"]["total_runs"] == 0
+    assert payload["aggregate_metrics"]["total_trades"] == 0
+    assert payload["failed_runs"] == 1
+    assert payload["provider_failures"][0]["symbol"] == "BTC-USD"
+    assert payload["data_availability_summary"]["all_runs_failed"] is True

@@ -155,6 +155,8 @@ Every completed calibration now returns `research_lab_summary`, `research_rankin
 
 Completed calibration records also feed the process-local Continuous Research Engine. Research endpoints support `all_time`, `last_250`, `last_500`, `last_1000`, and `custom` windows. `POST /research/refresh` recalculates reports only; it cannot change calibration or trading behavior. Optional background refresh support exists but is stopped by default. Research history is intentionally non-durable in v3.1 and resets when the service process restarts.
 
+The v3.1.1 Yahoo adapter caps intraday chart ranges to combinations accepted reliably by Yahoo (`1m: 7d`, `5m/15m/30m: 1mo`, `1h: 2y`). Calibration isolates provider failures by run: available combinations still complete, while unavailable combinations appear in `provider_failures` and `data_availability_summary`. Analysis and standalone backtesting retain their existing provider-error behavior.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -166,7 +168,7 @@ Completed calibration records also feed the process-local Continuous Research En
 
 ## Roadmap and Release Information
 
-Version `3.1.0` adds automatic statistical research plus continuously refreshable rolling rankings and status reporting. Production behavior remains unchanged.
+Version `3.1.1` hardens Yahoo intraday range selection and makes multi-run calibration resilient to partial market-data failures. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)
