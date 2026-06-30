@@ -39,6 +39,7 @@ The platform includes:
 - **Regime Confidence Calibration Laboratory** — measures confidence reliability and simulates non-production calibration mappings.
 - **Out-of-Sample Validation Laboratory** — rebuilds the complete production pipeline across deterministic unseen-data folds and measures generalization.
 - **Statistical Research Laboratory** — automatically ranks symbols, timeframes, setups, strategies, regimes, timing, execution, and cross-dimensional performance after every calibration.
+- **Continuous Research Engine** — retains completed calibration records in a process-local reporting store and refreshes rolling strongest/weakest findings on demand.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -75,6 +76,11 @@ Tests use deterministic fixtures and do not require live market-data access.
 | `GET` | `/journal/summary` | Aggregate journal outcomes |
 | `POST` | `/backtest` | Run simplified historical evaluation |
 | `POST` | `/calibrate` | Aggregate backtests across requested combinations |
+| `GET` | `/research/status` | Read the latest human-readable research status |
+| `GET` | `/research/rankings` | Rank current research dimensions |
+| `GET` | `/research/best-combinations` | List strongest historical combinations |
+| `GET` | `/research/weakest-combinations` | List weakest historical combinations |
+| `POST` | `/research/refresh` | Recalculate a rolling research snapshot |
 
 ### Analysis Request
 
@@ -147,6 +153,8 @@ Set `out_of_sample_validation` to `true` to run chronological, rolling, walk-for
 
 Every completed calibration now returns `research_lab_summary`, `research_rankings`, `performance_matrices`, `research_statistics`, and `research_recommendations`. Standard research categories remain visible even with zero samples, while future observed categories are included automatically.
 
+Completed calibration records also feed the process-local Continuous Research Engine. Research endpoints support `all_time`, `last_250`, `last_500`, `last_1000`, and `custom` windows. `POST /research/refresh` recalculates reports only; it cannot change calibration or trading behavior. Optional background refresh support exists but is stopped by default. Research history is intentionally non-durable in v3.1 and resets when the service process restarts.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -158,7 +166,7 @@ Every completed calibration now returns `research_lab_summary`, `research_rankin
 
 ## Roadmap and Release Information
 
-Version `3.1.0` adds automatic statistical research, cross-dimensional matrices, rankings, uncertainty, and executive findings. Production behavior remains unchanged.
+Version `3.1.0` adds automatic statistical research plus continuously refreshable rolling rankings and status reporting. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

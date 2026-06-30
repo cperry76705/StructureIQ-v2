@@ -626,6 +626,12 @@ class CalibrationEngine:
             research_statistics=research_lab.research_statistics,
         )
         _assert_out_of_sample_result(request, result)
+        # Continuous research observes the completed calibration output only.
+        # It deliberately runs after every production metric has been finalized
+        # so reporting can never influence trade selection or calibration.
+        from core.research_engine import get_global_research_engine
+
+        get_global_research_engine().ingest(all_trades)
         return result
 
 

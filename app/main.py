@@ -12,6 +12,15 @@ from core.calibration import CalibrationEngine, CalibrationRequest, CalibrationR
 from core.journal import JournalEntry, JournalStore, JournalSummary, TradeOutcome
 from core.market_data import MarketDataError, MarketDataProvider
 from core.providers.yahoo import YahooFinanceMarketDataProvider
+from core.research_engine import (
+    ContinuousResearchRankings,
+    ContinuousResearchStatus,
+    ResearchCombination,
+    ResearchEngine,
+    ResearchRefreshRequest,
+    ResearchWindow,
+    get_global_research_engine,
+)
 from models.schemas import AnalysisRequest, AnalysisResponse, HealthResponse
 
 app = FastAPI(
@@ -39,6 +48,28 @@ def get_journal_store() -> JournalStore:
     """Return the local append-only journal store."""
 
     return JournalStore()
+
+
+def get_research_engine() -> ResearchEngine:
+    """Return the process-local, read-only continuous research store."""
+
+    return get_global_research_engine()
+
+
+def _research_snapshot(
+    engine: ResearchEngine,
+    window: ResearchWindow,
+    custom_lookback: int | None,
+):
+    """Resolve a rolling research snapshot with useful query validation."""
+
+    try:
+        return engine.snapshot(window, custom_lookback)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @app.get(
@@ -165,3 +196,86 @@ def calibrate(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Market data unavailable: {exc}",
         ) from exc
+
+
+@app.get(
+    "/research/status",
+    response_model=ContinuousResearchStatus,
+    tags=["research"],
+    summary="Read the latest continuous research status",
+)
+def research_status(
+    window: ResearchWindow = ResearchWindow.ALL_TIME,
+    custom_lookback: int | None = None,
+    engine: ResearchEngine = Depends(get_research_engine),
+) -> ContinuousResearchStatus:
+    """Return a human-readable snapshot of current historical findings."""
+
+    return _research_snapshot(engine, window, custom_lookback).status
+
+
+@app.get(
+    "/research/rankings",
+    response_model=ContinuousResearchRankings,
+    tags=["research"],
+    summary="Rank continuous research dimensions",
+)
+def research_rankings(
+    window: ResearchWindow = ResearchWindow.ALL_TIME,
+    custom_lookback: int | None = None,
+    engine: ResearchEngine = Depends(get_research_engine),
+) -> ContinuousResearchRankings:
+    """Rank symbols, timeframes, setups, strategies, regimes, and timing."""
+
+    return _research_snapshot(engine, window, custom_lookback).rankings
+
+
+@app.get(
+    "/research/best-combinations",
+    response_model=list[ResearchCombination],
+    tags=["research"],
+    summary="List the strongest historical combinations",
+)
+def research_best_combinations(
+    window: ResearchWindow = ResearchWindow.ALL_TIME,
+    custom_lookback: int | None = None,
+    engine: ResearchEngine = Depends(get_research_engine),
+) -> list[ResearchCombination]:
+    """Return up to ten highest-expectancy completed-trade combinations."""
+
+    return list(
+        _research_snapshot(engine, window, custom_lookback).best_combinations
+    )
+
+
+@app.get(
+    "/research/weakest-combinations",
+    response_model=list[ResearchCombination],
+    tags=["research"],
+    summary="List the weakest historical combinations",
+)
+def research_weakest_combinations(
+    window: ResearchWindow = ResearchWindow.ALL_TIME,
+    custom_lookback: int | None = None,
+    engine: ResearchEngine = Depends(get_research_engine),
+) -> list[ResearchCombination]:
+    """Return up to ten lowest-expectancy completed-trade combinations."""
+
+    return list(
+        _research_snapshot(engine, window, custom_lookback).weakest_combinations
+    )
+
+
+@app.post(
+    "/research/refresh",
+    response_model=ContinuousResearchStatus,
+    tags=["research"],
+    summary="Refresh a continuous research snapshot",
+)
+def refresh_research(
+    request: ResearchRefreshRequest,
+    engine: ResearchEngine = Depends(get_research_engine),
+) -> ContinuousResearchStatus:
+    """Recalculate research statistics without changing any trading behavior."""
+
+    return engine.refresh(request.window, request.custom_lookback)

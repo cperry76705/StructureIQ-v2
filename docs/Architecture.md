@@ -200,6 +200,12 @@ Version 3.1 adds an automatic terminal aggregation stage after ordinary calibrat
 
 The laboratory owns category normalization, uncertainty estimates, sample-quality rules, time buckets, cross-dimensional matrices, rankings, concentration checks, and executive research language. Empty standard categories and future observed categories share the same typed contracts, keeping coverage explicit and extensible.
 
+#### Continuous Research Engine
+
+The v3.1 Continuous Research Engine observes completed calibration records after their production metrics have been finalized. It maintains a process-local, read-only history and builds cached reports for the latest 250, 500, or 1,000 closed trades, all-time records, or a custom closed-trade lookback. It ranks symbol, timeframe, setup, strategy, regime, confidence, Eastern-time hour, weekday, and cross-dimensional combinations.
+
+The reporting store has no dependency path back into Decision, Setup, Strategy, Risk, Execution, Backtesting, or Calibration calculations. Refresh operations only replace cached research snapshots. The optional scheduler is explicitly started, daemonized, and disabled by default; v3.1 does not persist research state across process restarts.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -227,6 +233,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | How do legacy and tuned labels differ over identical records? | Tuned Regime Classifier comparison |
 | Which classifier better matches shared future-behavior proxies? | Tuned Regime Forward Validation |
 | Are regime confidence values reliable, and which mapping merits further research? | Regime Confidence Calibration Laboratory |
+| What combinations are currently strongest or weakest across rolling history? | Continuous Research Engine |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 

@@ -7,6 +7,10 @@ All notable changes to StructureIQ are documented in this file. The project foll
 ### Added
 
 - Automatic post-calibration research across symbols, timeframes, setup families, strategies, regimes, confidence buckets, UTC hours and weekdays, and trade duration.
+- Process-local Continuous Research Engine that ingests finalized calibration records and refreshes read-only rolling reports.
+- Rolling windows for the latest 250, 500, or 1,000 closed trades, all-time history, and custom lookbacks.
+- Research status, rankings, strongest-combination, weakest-combination, and manual-refresh endpoints.
+- Optional background refresh scheduler that remains disabled until explicitly started.
 - Consistent performance rows with outcomes, expectancy, risk/excursion measures, confidence intervals, significance, sample quality, and recommendations.
 - Existing stop-management, entry-timing, and execution-profile comparison ingestion.
 - Regime/strategy, setup/regime, symbol/setup, and timeframe/setup matrices.
@@ -19,10 +23,11 @@ All notable changes to StructureIQ are documented in this file. The project foll
 - No production decision, setup, strategy, confidence, entry, stop, target, risk, execution, or management rule reads research output.
 - Existing aggregate calibration metrics remain unchanged.
 - All response fields are additive.
+- Continuous research snapshots are reporting-only and have no dependency path into production engines.
 
 ### Verification
 
-- 254 automated tests pass together, including deterministic statistics, confidence intervals, standard and future categories, time/duration grouping, matrices, rankings, automatic API output, and metric invariance.
+- 260 automated tests pass together, including deterministic statistics, confidence intervals, rolling research windows, rankings, API reporting, scheduler defaults, and production-metric invariance.
 
 ## Version 3.0.1 — OOS Response Reporting Hardening — 2026-06-29
 

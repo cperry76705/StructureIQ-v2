@@ -1057,3 +1057,30 @@ The summary reports symbol, timeframe, setup, strategy, regime, confidence bucke
 Every performance row includes records, closed outcomes, win rate, R and expectancy, profit factor, drawdown, MFE/MAE, duration, confidence, a 95% interval for average R, deterministic significance score, sample quality, and a research recommendation. Empty requested standard categories remain visible with zero samples, and observed future categories are added automatically.
 
 Matrices cover regime/strategy, setup/regime, symbol/setup, and timeframe/setup. Rankings identify the top and bottom ten observed combinations plus headline expectancy, profit factor, drawdown, significance, and sample-size leaders. Research output is downstream-only and cannot alter any calibration or production metric.
+
+## v3.1 Continuous Research Endpoints
+
+Every successful calibration publishes its finalized backtest records to a process-local, read-only research store after all production metrics are complete. The store powers these additive endpoints:
+
+| Method | Path | Response |
+|---|---|---|
+| `GET` | `/research/status` | Current leaders, warnings, record counts, and a human-readable status statement |
+| `GET` | `/research/rankings` | Strongest and weakest rows for each supported research dimension |
+| `GET` | `/research/best-combinations` | Up to ten highest-expectancy cross-dimensional combinations |
+| `GET` | `/research/weakest-combinations` | Up to ten lowest-expectancy cross-dimensional combinations |
+| `POST` | `/research/refresh` | A recalculated status snapshot for the selected rolling window |
+
+The four `GET` endpoints accept `window=all_time|last_250|last_500|last_1000|custom`. A custom window also requires a positive `custom_lookback` query parameter. Built-in rolling windows count the latest completed trades, while all-time status preserves every ingested calibration record.
+
+Refresh request example:
+
+```json
+{
+  "window": "custom",
+  "custom_lookback": 400
+}
+```
+
+Performance objects include records, executed trades, wins, losses, win rate, average and total R, expectancy, profit factor, drawdown, MFE/MAE, a confidence interval, sample quality, and `last_updated`. Rankings cover symbols, timeframes, setups, strategies, market regimes, confidence buckets, Eastern-time hours, weekdays, and setup/regime, symbol/setup, and timeframe/setup pairs.
+
+The service does not start a background refresh thread automatically. The optional scheduler must be explicitly started by an embedding application. Research state is process-local and non-durable in v3.1; restarting the API clears it. None of these endpoints can alter decisions, setups, strategies, risk, execution, trade outcomes, or calibration metrics.

@@ -383,6 +383,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ explains where historical performance comes from, where it fails, and where evidence remains too weak to justify changes.
 
+## Version 3.1 — Continuous Research Engine
+
+- Ingest completed calibration records only after production metrics are finalized.
+- Refresh rankings and strongest/weakest combinations over 250, 500, 1,000, all-time, and custom closed-trade windows.
+- Publish human-readable status plus symbol, timeframe, setup, strategy, regime, confidence, time, and combination rankings.
+- Flag insufficient samples and possible overfitting without changing any production behavior.
+- Provide an optional refresh scheduler that remains disabled until explicitly started.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can report how its current historical edge is distributed and how that view changes across rolling samples, without allowing research output to influence a trade.
+
 ## Beyond Version 3.1
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
