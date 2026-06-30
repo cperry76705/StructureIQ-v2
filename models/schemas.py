@@ -14,6 +14,7 @@ from core.setup_engine import SetupResult
 from core.strategy_engine import StrategyResult
 from core.score_engine import ScoreSummary
 from core.execution_intelligence import ExecutionIntelligence
+from core.confidence_calibration_engine import ConfidenceCalibration
 
 
 Bias = Literal["bullish", "bearish", "ranging"]
@@ -72,6 +73,7 @@ class AnalysisResponse(BaseModel):
     market_regime: RegimeResult
     score_summary: ScoreSummary | None = None
     execution_intelligence: ExecutionIntelligence | None = None
+    confidence_calibration: ConfidenceCalibration | None = None
     tuned_market_regime: Annotated[RegimeResult | None, Field(exclude=True)] = None
     # Research metadata is carried into historical calibration but deliberately
     # excluded from the public /analysis response contract.

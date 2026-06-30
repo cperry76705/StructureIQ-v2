@@ -472,6 +472,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can explain how an existing plan might be executed without modifying or automating that plan.
 
-## Beyond Version 3.7
+## Version 3.8 — Confidence Calibration Engine
+
+- Preserve raw confidence as the authoritative Decision Engine value.
+- Build empirical calibration buckets from completed historical outcomes.
+- Fall back to identity mapping when fewer than 20 samples exist.
+- Grade reliability as insufficient, low, medium, or high.
+- Publish live identity calibration and aggregate historical calibration separately.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can measure whether stated confidence resembles historical probability without allowing calibration to alter a decision.
+
+## Beyond Version 3.8
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

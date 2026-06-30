@@ -9,6 +9,7 @@ from core.multi_timeframe import MultiTimeframeEngine
 from core.risk import build_numeric_risk_levels, format_risk_levels
 from core.score_engine import ScoreEngine
 from core.execution_intelligence import ExecutionIntelligenceEngine
+from core.confidence_calibration_engine import ConfidenceCalibrationEngine
 from core.risk import diagnose_risk_reward
 from core.regime import MarketRegimeEngine, TunedMarketRegimeEngine
 from core.regime_tuning import build_regime_tuning_evidence
@@ -43,6 +44,7 @@ class AnalysisEngine:
         tuned_regime_engine: TunedMarketRegimeEngine | None = None,
         score_engine: ScoreEngine | None = None,
         execution_intelligence_engine: ExecutionIntelligenceEngine | None = None,
+        confidence_calibration_engine: ConfidenceCalibrationEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -58,6 +60,9 @@ class AnalysisEngine:
         self._score_engine = score_engine or ScoreEngine()
         self._execution_intelligence_engine = (
             execution_intelligence_engine or ExecutionIntelligenceEngine()
+        )
+        self._confidence_calibration_engine = (
+            confidence_calibration_engine or ConfidenceCalibrationEngine()
         )
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
@@ -82,6 +87,7 @@ class AnalysisEngine:
             self._tuned_regime_engine,
             self._score_engine,
             self._execution_intelligence_engine,
+            self._confidence_calibration_engine,
         )
 
 
@@ -99,6 +105,7 @@ def _build_analysis(
     tuned_regime_engine: TunedMarketRegimeEngine,
     score_engine: ScoreEngine,
     execution_intelligence_engine: ExecutionIntelligenceEngine,
+    confidence_calibration_engine: ConfidenceCalibrationEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -226,6 +233,9 @@ def _build_analysis(
             target=setup_plan.target,
         ),
     )
+    confidence_calibration = confidence_calibration_engine.calibrate(
+        decision.confidence
+    )
     trader_analysis = explanation_engine.analyze(
         symbol=request.symbol,
         market_structure=entry_structure,
@@ -266,4 +276,5 @@ def _build_analysis(
         regime_tuning_evidence=regime_tuning_evidence,
         score_summary=score_summary,
         execution_intelligence=execution_intelligence,
+        confidence_calibration=confidence_calibration,
     )

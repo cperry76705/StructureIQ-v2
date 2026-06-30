@@ -46,6 +46,7 @@ The platform includes:
 - **Advanced Statistical Validation** — detects edge decay, loss-sequence risk, outlier dependency, profit concentration, unstable folds, and negative recent expectancy hidden by aggregate profitability.
 - **Centralized Evidence Scoring Engine** — consolidates live engine evidence and optional research reliability into a transparent quality score without controlling decisions.
 - **Execution Intelligence Layer** — explains timing style, level quality, R:R, blockers, warnings, and research-only management guidance while preserving production execution.
+- **Confidence Calibration Engine** — maps immutable raw decision scores to empirical historical win probabilities while preserving identity output when evidence is insufficient.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -175,6 +176,8 @@ Every `/analysis` response now includes v3.6 `score_summary`, with trade quality
 
 Version 3.7 adds `execution_intelligence` to `/analysis`. It recommends advisory styles such as limit retest, confirmation close, or wait for pullback using the already-selected setup and unchanged levels. Calibration returns an aggregate advisory summary enriched by MFE/MAE, entry-timing, management, Monte Carlo, and statistical research when available.
 
+Version 3.8 adds `confidence_calibration` to `/analysis`; without historical context it mirrors the raw Decision Engine score and reports insufficient reliability. Calibration returns empirical 50–59 through 90–100 buckets, sample reliability, historical win probability, identity fallbacks, and an aggregate calibration summary. Calibrated confidence is never used for actionability.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -186,7 +189,7 @@ Version 3.7 adds `execution_intelligence` to `/analysis`. It recommends advisory
 
 ## Roadmap and Release Information
 
-Version `3.7.0` adds research-safe execution guidance and aggregate execution intelligence. Production behavior remains unchanged.
+Version `3.8.0` adds research-safe empirical confidence calibration and reliability reporting. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

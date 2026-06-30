@@ -39,6 +39,11 @@ from core.execution import (
     calculate_execution_summary,
 )
 from core.entry_timing import EntryTimingProfile
+from core.confidence_calibration_engine import (
+    AggregateConfidenceCalibrationSummary,
+    ConfidenceBucketCalibration,
+    ConfidenceCalibrationEngine,
+)
 from core.execution_intelligence import (
     ExecutionIntelligence,
     ExecutionIntelligenceEngine,
@@ -414,6 +419,10 @@ class CalibrationResult:
     weakness_detection_summary: WeaknessDetectionSummary | None = None
     aggregate_score_summary: ScoreSummary | None = None
     aggregate_execution_intelligence_summary: ExecutionIntelligence | None = None
+    aggregate_confidence_calibration_summary: (
+        AggregateConfidenceCalibrationSummary | None
+    ) = None
+    confidence_bucket_calibration: tuple[ConfidenceBucketCalibration, ...] | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -521,6 +530,26 @@ class CalibrationEngine:
         aggregate_skip_diagnostics = calculate_skip_diagnostics(all_trades)
         aggregate_decision_diagnostics = calculate_decision_diagnostics_summary(
             all_trades
+        )
+        confidence_engine = ConfidenceCalibrationEngine()
+        confidence_observations = tuple(
+            (
+                trade.decision_diagnostics.final_confidence,
+                trade.outcome.value,
+            )
+            for trade in all_trades
+            if trade.decision_diagnostics is not None
+            and trade.outcome in {
+                TradeOutcome.WIN,
+                TradeOutcome.LOSS,
+                TradeOutcome.BREAKEVEN,
+            }
+        )
+        confidence_bucket_calibration = confidence_engine.build_buckets(
+            confidence_observations
+        )
+        aggregate_confidence_calibration_summary = confidence_engine.summarize(
+            confidence_bucket_calibration
         )
         threshold_sensitivity = calculate_threshold_sensitivity(all_trades)
         aggregate_risk_reward_summary = calculate_risk_reward_summary(all_trades)
@@ -974,6 +1003,10 @@ class CalibrationEngine:
             aggregate_execution_intelligence_summary=(
                 aggregate_execution_intelligence_summary
             ),
+            aggregate_confidence_calibration_summary=(
+                aggregate_confidence_calibration_summary
+            ),
+            confidence_bucket_calibration=confidence_bucket_calibration,
         )
         _assert_out_of_sample_result(request, result)
         # Continuous research observes the completed calibration output only.

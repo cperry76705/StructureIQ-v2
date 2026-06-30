@@ -244,6 +244,12 @@ Version 3.7 runs after action, setup, strategy, entry, stop, and target are fina
 
 Backtests retain advisory snapshots as non-serialized research metadata. Calibration aggregates them and may append findings from MFE/MAE diagnostics, Entry Timing Laboratory, Trade Management Laboratory, Monte Carlo, and Advanced Statistical Validation. Neither live nor aggregate guidance is consumed by any production engine.
 
+#### Confidence Calibration Engine
+
+Version 3.8 reads the finalized Decision Engine confidence after action and gate evaluation. Live analysis has no historical outcome sample and therefore returns an explicit identity mapping. Calibration groups completed trade outcomes into fixed raw-confidence buckets and estimates empirical win probability only when at least 20 observations exist.
+
+The calibrated value is a parallel research field. Decision, Setup, Strategy, Risk, Execution, and Trade Management never import or consume it. Reliability is graded independently by bucket sample size, and sparse buckets preserve the original score.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -278,6 +284,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Is aggregate profit hiding decay, concentration, outliers, or unstable loss sequences? | Advanced Statistical Validation |
 | How strong is the combined evidence, and which categories raise or lower quality? | Centralized Evidence Scoring Engine |
 | How could an already-valid setup be executed, and what execution risks remain? | Execution Intelligence Layer |
+| How closely do raw confidence scores match historical win probabilities? | Confidence Calibration Engine |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 

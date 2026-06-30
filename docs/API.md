@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.7.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.8.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1153,6 +1153,19 @@ The eleven categories are market structure, multi-timeframe alignment, regime qu
 No-trade and `no_valid_setup` results always use `avoid_execution`. Developing or weakly confirmed setups use confirmation-close or pullback-wait guidance. Confirmed retest, pullback, and liquidity-sweep setups generally favor limit-retest guidance; this never modifies the existing entry zone.
 
 `POST /calibrate` adds `aggregate_execution_intelligence_summary` when analysis records exist. It averages immutable advisory scores and may explain aggregate MFE/MAE, timing-lab findings, management sensitivities, Monte Carlo status, and statistical validation. Guidance is descriptive only and cannot change entries, stops, targets, selection, sizing, or management.
+
+### v3.8 Confidence Calibration
+
+`POST /analysis` adds `confidence_calibration` containing raw score, calibrated confidence, historical win probability, confidence band, sample size, reliability, method, bucket, warning, and summary. Since live analysis does not load historical outcomes, it uses identity mapping and marks reliability `insufficient`.
+
+`POST /calibrate` adds `aggregate_confidence_calibration_summary` and `confidence_bucket_calibration`. Standard buckets are `50-59`, `60-69`, `70-79`, `80-89`, and `90-100`. Each reports outcomes, average raw score, historical win probability, calibrated probability, method, warning, and reliability.
+
+- No sample: `insufficient`, identity mapping.
+- 1–19 trades: `low`, identity mapping.
+- 20–99 trades: `medium`, empirical mapping.
+- 100 or more trades: `high`, empirical mapping.
+
+Scores below 50 remain outside the requested empirical buckets and retain their authoritative raw value. Calibrated confidence is reporting-only and never changes Decision Engine action, confidence gates, setup qualification, or trade eligibility.
 
 ## v3.1 Statistical Research Laboratory
 

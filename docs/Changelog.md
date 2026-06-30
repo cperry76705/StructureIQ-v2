@@ -2,6 +2,26 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.8.0 — Confidence Calibration Engine — 2026-06-30
+
+### Added
+
+- Live identity confidence calibration with explicit insufficient reliability.
+- Empirical calibration buckets for raw scores from 50 through 100.
+- Per-bucket outcomes, win probability, calibrated confidence, sample reliability, method, and warnings.
+- Aggregate calibration summary with raw-versus-calibrated averages and fallback buckets.
+- Additive `/analysis` and `/calibrate` response fields.
+
+### Production Safety
+
+- Raw Decision Engine confidence remains authoritative and unchanged.
+- Calibrated confidence cannot alter action, thresholds, setup, strategy, execution, sizing, or management.
+- Aggregate calibration metrics remain independent.
+
+### Verification
+
+- 312 automated tests pass together, including missing history, sparse identity fallback, strong empirical samples, live API output, aggregate bucket output, action invariance, and metric invariance.
+
 ## Version 3.7.0 — Execution Intelligence Layer — 2026-06-30
 
 ### Added

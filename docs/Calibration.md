@@ -113,6 +113,14 @@ Optional timing and management laboratories may add research guidance. If traili
 
 The layer never recalculates or replaces entry, stop, target, action, setup, strategy, risk size, or management behavior. All calibration metrics remain independent.
 
+## Confidence Calibration
+
+Version 3.8 groups completed outcomes by raw Decision Engine confidence: 50–59, 60–69, 70–79, 80–89, and 90–100. Win probability is wins divided by all completed outcomes in the bucket, including breakeven observations in the denominator.
+
+Buckets with fewer than 20 trades retain identity mapping and receive low reliability; 20–99 trades use empirical mapping with medium reliability; 100 or more use empirical mapping with high reliability. Empty buckets are insufficient. `aggregate_confidence_calibration_summary` reports total evidence, average raw and calibrated values, overall reliability, and fallback buckets.
+
+This analysis never overwrites `DecisionResult.confidence`, changes gates, or alters calibration metrics. It exists to measure confidence reliability before any separately authorized future experiment.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:
