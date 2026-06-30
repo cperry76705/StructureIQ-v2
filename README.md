@@ -47,6 +47,7 @@ The platform includes:
 - **Centralized Evidence Scoring Engine** — consolidates live engine evidence and optional research reliability into a transparent quality score without controlling decisions.
 - **Execution Intelligence Layer** — explains timing style, level quality, R:R, blockers, warnings, and research-only management guidance while preserving production execution.
 - **Confidence Calibration Engine** — maps immutable raw decision scores to empirical historical win probabilities while preserving identity output when evidence is insufficient.
+- **Strategy Rating Engine** — grades observed setups and strategies from historical performance, OOS consistency, sample quality, drawdown, significance, and research risk.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -178,6 +179,8 @@ Version 3.7 adds `execution_intelligence` to `/analysis`. It recommends advisory
 
 Version 3.8 adds `confidence_calibration` to `/analysis`; without historical context it mirrors the raw Decision Engine score and reports insufficient reliability. Calibration returns empirical 50–59 through 90–100 buckets, sample reliability, historical win probability, identity fallbacks, and an aggregate calibration summary. Calibrated confidence is never used for actionability.
 
+Version 3.9 adds unavailable current setup/strategy ratings to live analysis and historical `strategy_rating_summary` plus `setup_rating_summary` to calibration. Ratings enforce hard low-sample and negative-expectancy caps and cannot promote, demote, or reroute production categories.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -189,7 +192,7 @@ Version 3.8 adds `confidence_calibration` to `/analysis`; without historical con
 
 ## Roadmap and Release Information
 
-Version `3.8.0` adds research-safe empirical confidence calibration and reliability reporting. Production behavior remains unchanged.
+Version `3.9.0` adds advisory historical setup and strategy grading with prominent sample warnings. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

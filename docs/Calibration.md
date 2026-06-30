@@ -121,6 +121,14 @@ Buckets with fewer than 20 trades retain identity mapping and receive low reliab
 
 This analysis never overwrites `DecisionResult.confidence`, changes gates, or alters calibration metrics. It exists to measure confidence reliability before any separately authorized future experiment.
 
+## Strategy and Setup Ratings
+
+Version 3.9 grades observed setup and strategy research rows using expectancy, profit factor, drawdown, win rate, sample size and quality, significance, confidence interval, optional OOS consistency, confidence-calibration evidence, overfit risk, and statistical status.
+
+Hard evidence caps override the numeric rating: fewer than five trades cannot exceed `D`, fewer than 20 cannot exceed `B`, and negative expectancy is `F`. Insufficient sample quality always produces a production-change warning. `A+` requires at least 100 trades plus stable OOS category evidence and controlled risk.
+
+Summaries name strongest and weakest observed categories but remain advisory. Ratings do not feed Strategy Engine or Setup Engine and cannot change calibration metrics.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

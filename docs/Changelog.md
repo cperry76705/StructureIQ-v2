@@ -2,6 +2,26 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 3.9.0 — Strategy Rating Engine — 2026-06-30
+
+### Added
+
+- Historical setup and strategy grades from `A+` through `F`.
+- Rating detail covering performance, sample, drawdown, confidence interval, significance, OOS consistency, and overfit risk.
+- Strongest/weakest category summaries and prominent low-sample warnings.
+- Additive calibration strategy/setup rating summaries.
+- Explicit unavailable current ratings in `/analysis`.
+
+### Rating Safety
+
+- Samples below five trades are capped at `D`; samples below 20 are capped at `B`.
+- Negative expectancy is always `F`.
+- Ratings cannot change setup selection, strategy routing, action, levels, risk, execution, or management.
+
+### Verification
+
+- 319 automated tests pass together, including sufficient strong grades, sample caps, negative expectancy, missing research, live unavailable ratings, calibration summaries, action invariance, and metric invariance.
+
 ## Version 3.8.0 — Confidence Calibration Engine — 2026-06-30
 
 ### Added

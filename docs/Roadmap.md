@@ -484,6 +484,19 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can measure whether stated confidence resembles historical probability without allowing calibration to alter a decision.
 
-## Beyond Version 3.8
+## Version 3.9 — Strategy Rating Engine
+
+- Grade observed setup and strategy categories from rich historical research.
+- Include expectancy, profit factor, drawdown, significance, confidence interval, and OOS consistency.
+- Enforce hard caps for samples below five and 20 trades.
+- Force negative-expectancy categories to `F`.
+- Return explicit unavailable ratings in live analysis.
+- Keep every rating advisory and disconnected from routing.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can rank historical category quality without silently promoting or demoting a production setup or strategy.
+
+## Beyond Version 3.9
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

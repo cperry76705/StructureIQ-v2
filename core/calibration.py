@@ -129,6 +129,7 @@ from core.statistical_validation import (
     WeaknessDetectionSummary,
     build_statistical_validation,
 )
+from core.strategy_rating_engine import RatingSummary, StrategyRatingEngine
 from core.symbols import normalize_yahoo_symbol
 from core.walk_forward_intelligence import (
     PromotionReadinessSummary,
@@ -423,6 +424,8 @@ class CalibrationResult:
         AggregateConfidenceCalibrationSummary | None
     ) = None
     confidence_bucket_calibration: tuple[ConfidenceBucketCalibration, ...] | None = None
+    strategy_rating_summary: RatingSummary | None = None
+    setup_rating_summary: RatingSummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -844,6 +847,22 @@ class CalibrationEngine:
                 monte_carlo_reporting.report if monte_carlo_reporting else None
             ),
         )
+        rating_result = StrategyRatingEngine().rate(
+            setup_performance=setup_performance,
+            strategy_performance=strategy_performance,
+            research_lab_summary=research_lab.research_lab_summary,
+            research_rankings=research_lab.research_rankings,
+            performance_matrices=research_lab.performance_matrices,
+            out_of_sample_summary=out_of_sample_summary,
+            validation_fold_results=validation_fold_results or (),
+            generalization_summary=generalization_summary,
+            overfitting_summary=overfitting_summary,
+            statistical_validation_summary=(
+                statistical_validation.statistical_validation_summary
+                if statistical_validation else None
+            ),
+            confidence_bucket_calibration=confidence_bucket_calibration,
+        )
         aggregate_execution_intelligence_summary = (
             ExecutionIntelligenceEngine().aggregate(
                 tuple(
@@ -1007,6 +1026,8 @@ class CalibrationEngine:
                 aggregate_confidence_calibration_summary
             ),
             confidence_bucket_calibration=confidence_bucket_calibration,
+            strategy_rating_summary=rating_result.strategy_rating_summary,
+            setup_rating_summary=rating_result.setup_rating_summary,
         )
         _assert_out_of_sample_result(request, result)
         # Continuous research observes the completed calibration output only.

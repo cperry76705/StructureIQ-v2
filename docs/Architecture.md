@@ -250,6 +250,12 @@ Version 3.8 reads the finalized Decision Engine confidence after action and gate
 
 The calibrated value is a parallel research field. Decision, Setup, Strategy, Risk, Execution, and Trade Management never import or consume it. Reliability is graded independently by bucket sample size, and sparse buckets preserve the original score.
 
+#### Strategy Rating Engine
+
+Version 3.9 runs after Statistical Research, optional OOS validation, confidence calibration, and weakness analysis complete. It grades only observed historical setup and strategy categories using rich research rows and category-level fold consistency. Global overfit and statistical failures may penalize grades.
+
+Live analysis cannot access the calibration research store, so it returns unavailable named ratings. Calibration ratings cannot promote, demote, select, suppress, or reroute any category; no production engine imports rating output.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -285,6 +291,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | How strong is the combined evidence, and which categories raise or lower quality? | Centralized Evidence Scoring Engine |
 | How could an already-valid setup be executed, and what execution risks remain? | Execution Intelligence Layer |
 | How closely do raw confidence scores match historical win probabilities? | Confidence Calibration Engine |
+| Which historical setups and strategies appear strongest, weakest, or under-tested? | Strategy Rating Engine |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 

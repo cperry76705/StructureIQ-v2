@@ -63,6 +63,8 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "score_summary",
         "execution_intelligence",
         "confidence_calibration",
+        "current_strategy_rating",
+        "current_setup_rating",
     }
     assert set(payload["market_regime"]) == {
         "market_regime",

@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.8.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `3.9.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1166,6 +1166,14 @@ No-trade and `no_valid_setup` results always use `avoid_execution`. Developing o
 - 100 or more trades: `high`, empirical mapping.
 
 Scores below 50 remain outside the requested empirical buckets and retain their authoritative raw value. Calibrated confidence is reporting-only and never changes Decision Engine action, confidence gates, setup qualification, or trade eligibility.
+
+### v3.9 Strategy and Setup Ratings
+
+`POST /analysis` adds `current_strategy_rating` and `current_setup_rating`. Because live analysis does not load historical category research, both are explicitly `available: false`, carry no grade, and include a prominent warning. The selected setup and strategy remain unchanged.
+
+`POST /calibrate` adds `strategy_rating_summary` and `setup_rating_summary`. Each contains observed category grades, strongest and weakest names, low-sample warnings, and a readable summary. Every category grade reports rating score, sample size/quality, win rate, expectancy, average/total R, profit factor, drawdown, confidence interval, significance, OOS consistency, overfit risk, recommendation, and explanation.
+
+Grades range from `A+` through `F`. Fewer than five closed trades cap a grade at `D`; fewer than 20 cap it at `B`; negative expectancy is always `F`. `A+` additionally requires at least 100 trades, strong expectancy/profit factor, controlled drawdown, stable category-level OOS evidence, and no high overfit risk. Ratings are advisory and cannot alter routing or eligibility.
 
 ## v3.1 Statistical Research Laboratory
 
