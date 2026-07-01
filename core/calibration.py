@@ -145,6 +145,7 @@ from core.walk_forward_intelligence import (
     RobustnessRanking,
     WalkForwardIntelligenceSummary,
 )
+from core.calibration_research_contract import validate_research_population
 
 
 RecommendationCategory = Literal[
@@ -658,10 +659,6 @@ class CalibrationEngine:
             if request.regime_confidence_analysis
             and request.regime_classifier_mode is RegimeClassifierMode.COMPARE
             and request.forward_validation
-            and legacy_forward_validation is not None
-            and tuned_forward_validation is not None
-            and legacy_forward_validation.statistical_summary.evaluated_predictions > 0
-            and tuned_forward_validation.statistical_summary.evaluated_predictions > 0
             else None
         )
         if request.out_of_sample_validation:
@@ -1070,6 +1067,7 @@ class CalibrationEngine:
             ),
         )
         _assert_out_of_sample_result(request, result)
+        validate_research_population(request, result)
         # Continuous research observes the completed calibration output only.
         # It deliberately runs after every production metric has been finalized
         # so reporting can never influence trade selection or calibration.

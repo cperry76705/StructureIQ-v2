@@ -2,6 +2,21 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 4.1.1 — Research Summary Population Fix — 2026-07-01
+
+### Fixed
+
+- Centralized the request-flag, source-data, and response-field population contract for calibration research.
+- Removed a hidden non-empty-prediction gate that caused enabled regime confidence analysis to return `null`.
+- Added exact-payload HTTP regression coverage across OOS, pipeline, Monte Carlo, statistical, regime comparison, profile, routing, and always-on summaries.
+- Added OpenAPI flag coverage and production-metric invariance tests.
+
+### Compatibility
+
+- Disabled optional laboratories remain `null` as documented.
+- Enabled empty-sample Monte Carlo and statistical laboratories return controlled unavailable summaries.
+- Trading decisions, routing, setups, levels, thresholds, execution, risk, and management are unchanged.
+
 ## Version 4.1.0 — Adaptive Strategy Router Laboratory — 2026-06-30
 
 ### Added

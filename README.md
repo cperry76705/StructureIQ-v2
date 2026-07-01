@@ -196,7 +196,7 @@ Version 4.0 persistently merges completed calibration observations into local sy
 
 ## Roadmap and Release Information
 
-Version `4.1.0` adds an observational adaptive-route comparator on top of persistent symbol intelligence. Production behavior remains unchanged.
+Version `4.1.1` enforces calibration research-population contracts so enabled laboratories cannot silently serialize as null. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

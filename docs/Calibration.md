@@ -141,6 +141,25 @@ Market character requires 30 trades and sufficient dominance confidence. Strateg
 
 Version 4.1 compares finalized calibration routes with persisted symbol preferences. `aggregate_adaptive_strategy_router_summary` reports alignment counts, common mismatches, and dominant preferred categories. It runs after production backtest output is fixed and never feeds selection, scoring, levels, or execution.
 
+## Research Population Contract
+
+Version 4.1.1 centrally validates additive research output before `/calibrate` returns. An enabled laboratory must return its typed result; when its sample is empty, laboratories that support unavailable states return explicit unavailable summaries rather than silently returning `null`.
+
+| Output family | Required request condition | Required source | Intentionally null when |
+| --- | --- | --- | --- |
+| Execution sensitivity | `execution_sensitivity_profiles` supplied | Replayed backtests | No profiles requested |
+| Entry timing | `entry_timing_profiles` supplied | Executed candidates | No profiles requested |
+| Regime summary/matrices | `market_regime_analysis=true` or tuned mode | Regime-tagged records | Analysis disabled in legacy/compare mode |
+| Regime validation | `regime_validation_analysis=true` | Regime observations | Disabled |
+| Regime tuning | `regime_tuning_analysis=true` | Legacy evidence | Disabled |
+| Legacy/tuned comparison | `regime_classifier_mode=compare` | Matched classifications | Other classifier modes |
+| Forward validation | Compare mode and `forward_validation=true` | Forward observations | Disabled or not compare mode |
+| Regime confidence | Compare mode, forward validation, and `regime_confidence_analysis=true` | Forward observations | Any prerequisite disabled |
+| Out-of-sample and research pipeline | `out_of_sample_validation=true` | Chronological folds | Disabled |
+| Monte Carlo/reporting | `monte_carlo_analysis=true` | Closed research returns | Disabled; empty enabled samples return unavailable objects |
+| Statistical validation | `statistical_validation_analysis=true` | Closed research returns | Disabled; empty enabled samples return unavailable objects |
+| Research Lab, scores, execution intelligence, confidence calibration, ratings, symbol profiles, adaptive routing | Always | Calibration records, including skipped observations where applicable | Never |
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

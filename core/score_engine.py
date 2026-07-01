@@ -104,11 +104,22 @@ class ScoreEngine:
         research_pipeline_summary=None,
         statistical_validation_summary=None,
         monte_carlo_report=None,
-    ) -> ScoreSummary | None:
+    ) -> ScoreSummary:
         if not summaries and not any(
             (research_pipeline_summary, statistical_validation_summary, monte_carlo_report)
         ):
-            return None
+            items = tuple(
+                EvidenceScoreItem(
+                    category=category,
+                    score=50.0,
+                    weight=weight,
+                    weighted_score=round(weight / 2.0, 3),
+                    available=False,
+                    explanation="No calibration score observations are available.",
+                )
+                for category, weight in WEIGHTS.items()
+            )
+            return _build_summary(items, None)
         grouped: dict[str, list[EvidenceScoreItem]] = {}
         for summary in summaries:
             for item in summary.evidence_score_breakdown:

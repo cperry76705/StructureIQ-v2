@@ -191,9 +191,30 @@ class ExecutionIntelligenceEngine:
         self,
         records: list[ExecutionIntelligence] | tuple[ExecutionIntelligence, ...],
         **research,
-    ) -> ExecutionIntelligence | None:
+    ) -> ExecutionIntelligence:
         if not records:
-            return None
+            unavailable = self.analyze(
+                action="no_trade",
+                setup_plan=None,
+                strategy=None,
+            )
+            return ExecutionIntelligence(
+                execution_quality_score=0.0,
+                execution_grade="F",
+                preferred_execution_style=ExecutionStyle.AVOID_EXECUTION,
+                entry_timing_guidance=unavailable.entry_timing_guidance,
+                stop_quality_assessment=unavailable.stop_quality_assessment,
+                target_quality_assessment=unavailable.target_quality_assessment,
+                risk_reward_assessment=unavailable.risk_reward_assessment,
+                trade_management_guidance=unavailable.trade_management_guidance,
+                execution_warnings=("No calibration execution observations are available.",),
+                execution_blockers=unavailable.execution_blockers,
+                research_inputs_available=(),
+                human_readable_summary=(
+                    "Aggregate execution intelligence is unavailable because no "
+                    "calibration execution observations were produced."
+                ),
+            )
         style = Counter(item.preferred_execution_style for item in records).most_common(1)[0][0]
         average_quality = mean(item.execution_quality_score for item in records)
         warnings = tuple(dict.fromkeys(message for item in records for message in item.execution_warnings))
