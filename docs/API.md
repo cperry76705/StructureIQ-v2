@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `4.2.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `4.3.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, observational calibration, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 ## Application Launcher
 
@@ -29,6 +29,67 @@ Supported launcher commands:
 | `python start.py --help` | Display launcher options. |
 
 The launcher is not an API endpoint and does not modify request or response contracts.
+
+## Research Dashboard API
+
+Version 4.3 adds dashboard-friendly read-only endpoints under the `dashboard` OpenAPI tag. They summarize existing research artifacts and the latest completed process-local calibration snapshot. They do not rerun calibration, mutate symbol profiles, alter strategy routing, or change any production trade behavior.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/dashboard/overview` | Current version, latest research status, headline metrics, best categories, readiness, and major warnings. |
+| `GET` | `/dashboard/symbols` | Ranked persisted symbol profiles from `research/symbol_profiles.json` when available. |
+| `GET` | `/dashboard/strategies` | Compact rows from the latest `strategy_rating_summary`. |
+| `GET` | `/dashboard/setups` | Compact rows from the latest `setup_rating_summary`. |
+| `GET` | `/dashboard/readiness` | Conservative paper-trading readiness from promotion readiness, OOS, Monte Carlo, statistical validation, confidence calibration, symbol profiles, and adaptive routing. |
+| `GET` | `/dashboard/risks` | Overfit, drawdown, low-sample, confidence, calibration, provider, and data-availability warnings. |
+| `GET` | `/dashboard/recommendations` | Prioritized advisory action items combined from calibration, research, ratings, confidence, profiles, adaptive routing, statistical validation, and Monte Carlo findings. |
+
+If `/calibrate` has not completed since service startup, dashboard endpoints return controlled unavailable summaries. After restart, they can still read persisted symbol profiles and the process-local continuous research store when those sources are available, but they do not persist or reload the full calibration result.
+
+Example `/dashboard/overview` response:
+
+```json
+{
+  "app_version": "4.3.0",
+  "latest_research_status": "No completed calibration research is available yet.",
+  "total_symbols_profiled": 0,
+  "best_symbol": null,
+  "best_strategy": null,
+  "best_setup": null,
+  "aggregate_win_rate": null,
+  "aggregate_expectancy": null,
+  "aggregate_total_r": null,
+  "aggregate_profit_factor": null,
+  "aggregate_drawdown": null,
+  "paper_trading_readiness": "UNAVAILABLE",
+  "major_warnings": [],
+  "human_readable_summary": "Dashboard is unavailable until calibration or symbol-profile research exists."
+}
+```
+
+Example `/dashboard/readiness` response:
+
+```json
+{
+  "paper_trading_status": "NEEDS_MORE_DATA",
+  "readiness_score": 45,
+  "blocking_reasons": ["Fewer than 100 completed validation trades are available."],
+  "watchlist_reasons": ["Minimum validation sample has not reached 100 trades."],
+  "minimum_data_requirements": [
+    "At least 100 completed validation trades for paper-trading consideration.",
+    "300 validation trades is strong; 500+ is excellent.",
+    "Monte Carlo and statistical validation must not block readiness."
+  ],
+  "current_sample_summary": "42 validation trades; 58 completed calibration trades.",
+  "out_of_sample_status": "available",
+  "monte_carlo_status": "unavailable",
+  "statistical_validation_status": "unavailable",
+  "confidence_calibration_status": "available",
+  "symbol_profile_status": "available",
+  "adaptive_router_status": "available",
+  "human_readable_summary": "Paper-trading readiness is NEEDS_MORE_DATA. This dashboard is advisory and cannot change production behavior."
+}
+```
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 

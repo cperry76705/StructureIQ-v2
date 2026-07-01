@@ -16,6 +16,12 @@ Version 4.2 adds `start.py` as the official startup entry point. The launcher is
 
 The launcher does not contain FastAPI route logic, domain scoring, calibration behavior, or trading rules. Its future sections for Paper Trading, Live Trading, Scheduler, AI Research, Broker Connections, and Web Dashboard are displayed as `NOT ENABLED` placeholders only.
 
+## Research Dashboard Boundary
+
+Version 4.3 adds a compact dashboard API above existing research artifacts. The dashboard reads the latest process-local calibration result, persisted symbol profiles, and continuous research snapshots. It converts those large research objects into overview, symbol, strategy, setup, readiness, risk, and recommendation summaries for review workflows.
+
+The dashboard never runs calibration, backtesting, analysis, routing, setup selection, execution simulation, or confidence recalculation. If no calibration snapshot exists, it returns controlled unavailable summaries and uses persisted symbol profiles where possible. This makes the dashboard a reporting layer only, not a research or trading engine.
+
 ## Output Boundaries
 
 ### Internal Engine Output
@@ -310,6 +316,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | Which historical setups and strategies appear strongest, weakest, or under-tested? | Strategy Rating Engine |
 | How has each symbol behaved historically, and which rated categories fit it best? | Adaptive Symbol Profile Engine |
 | How should the local application validate and start? | Application Launcher |
+| How can existing research be reviewed without inspecting full calibration JSON? | Research Dashboard API |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 
@@ -326,4 +333,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 4.2 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, independent validation, automatic statistical research, durable symbol profiles, adaptive-route diagnostics, and an official startup launcher. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 4.3 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, independent validation, automatic statistical research, durable symbol profiles, adaptive-route diagnostics, an official startup launcher, and compact research dashboard endpoints. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

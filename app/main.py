@@ -21,6 +21,17 @@ from core.research_engine import (
     ResearchWindow,
     get_global_research_engine,
 )
+from core.research_dashboard import (
+    DashboardOverview,
+    DashboardReadiness,
+    DashboardRecommendations,
+    DashboardRisks,
+    DashboardSetups,
+    DashboardStrategies,
+    DashboardSymbols,
+    ResearchDashboardService,
+    store_latest_calibration,
+)
 from core.symbol_profile_engine import (
     SymbolProfileEngine,
     get_global_symbol_profile_engine,
@@ -65,6 +76,18 @@ def get_research_engine() -> ResearchEngine:
     """Return the process-local, read-only continuous research store."""
 
     return get_global_research_engine()
+
+
+def get_research_dashboard_service(
+    symbol_profiles: SymbolProfileEngine = Depends(get_symbol_profile_engine),
+    research_engine: ResearchEngine = Depends(get_research_engine),
+) -> ResearchDashboardService:
+    """Return the compact read-only dashboard summarizer."""
+
+    return ResearchDashboardService(
+        symbol_profiles=symbol_profiles,
+        research_engine=research_engine,
+    )
 
 
 def _research_snapshot(
@@ -202,15 +225,115 @@ def calibrate(
     """Aggregate backtests and return observational recommendations."""
 
     try:
-        return CalibrationEngine(
+        result = CalibrationEngine(
             provider,
             symbol_profile_engine=symbol_profiles,
         ).run(request)
+        store_latest_calibration(result)
+        return result
     except MarketDataError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Market data unavailable: {exc}",
         ) from exc
+
+
+@app.get(
+    "/dashboard/overview",
+    response_model=DashboardOverview,
+    tags=["dashboard"],
+    summary="Read a compact research dashboard overview",
+)
+def dashboard_overview(
+    service: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> DashboardOverview:
+    """Summarize the latest available research state without recalibration."""
+
+    return service.overview()
+
+
+@app.get(
+    "/dashboard/symbols",
+    response_model=DashboardSymbols,
+    tags=["dashboard"],
+    summary="Rank persisted symbol research profiles",
+)
+def dashboard_symbols(
+    service: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> DashboardSymbols:
+    """Return compact symbol profile rows."""
+
+    return service.symbols()
+
+
+@app.get(
+    "/dashboard/strategies",
+    response_model=DashboardStrategies,
+    tags=["dashboard"],
+    summary="Rank historical strategy ratings",
+)
+def dashboard_strategies(
+    service: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> DashboardStrategies:
+    """Return compact strategy rating rows."""
+
+    return service.strategies()
+
+
+@app.get(
+    "/dashboard/setups",
+    response_model=DashboardSetups,
+    tags=["dashboard"],
+    summary="Rank historical setup ratings",
+)
+def dashboard_setups(
+    service: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> DashboardSetups:
+    """Return compact setup rating rows."""
+
+    return service.setups()
+
+
+@app.get(
+    "/dashboard/readiness",
+    response_model=DashboardReadiness,
+    tags=["dashboard"],
+    summary="Summarize paper-trading readiness research",
+)
+def dashboard_readiness(
+    service: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> DashboardReadiness:
+    """Return conservative paper-trading readiness from existing evidence."""
+
+    return service.readiness()
+
+
+@app.get(
+    "/dashboard/risks",
+    response_model=DashboardRisks,
+    tags=["dashboard"],
+    summary="Summarize research risk warnings",
+)
+def dashboard_risks(
+    service: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> DashboardRisks:
+    """Return compact risk warnings and data availability state."""
+
+    return service.risks()
+
+
+@app.get(
+    "/dashboard/recommendations",
+    response_model=DashboardRecommendations,
+    tags=["dashboard"],
+    summary="Return prioritized dashboard recommendations",
+)
+def dashboard_recommendations(
+    service: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> DashboardRecommendations:
+    """Return prioritized advisory action items from existing research."""
+
+    return service.recommendations()
 
 
 @app.get(

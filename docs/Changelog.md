@@ -2,6 +2,21 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 4.3.0 — Research Dashboard API — 2026-07-01
+
+### Added
+
+- Added `core/research_dashboard.py` with compact read-only dashboard response models and summarization logic.
+- Added `/dashboard/overview`, `/dashboard/symbols`, `/dashboard/strategies`, `/dashboard/setups`, `/dashboard/readiness`, `/dashboard/risks`, and `/dashboard/recommendations`.
+- Added process-local latest-calibration snapshot storage after successful `/calibrate` calls.
+- Added dashboard fallback behavior for no-snapshot/restart cases using controlled unavailable summaries and persisted symbol profiles where available.
+- Added OpenAPI, serialization, readiness, symbol-profile, rating, risk, recommendation, and production-metric invariance tests.
+
+### Safety
+
+- Dashboard endpoints do not rerun calibration or mutate any research source.
+- Analysis decisions, calibration metrics, setup selection, strategy routing, entries, stops, targets, confidence, execution, risk sizing, and trade management are unchanged.
+
 ## Version 4.2.0 — Application Launcher — 2026-07-01
 
 ### Added

@@ -530,6 +530,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ has a professional local startup path without changing any production trading or research behavior.
 
-## Beyond Version 4.2
+## Version 4.3 — Research Dashboard API
+
+**Status:** implemented.
+
+- Add compact read-only dashboard endpoints under `/dashboard`.
+- Summarize latest calibration metrics, symbol profiles, strategy/setup ratings, readiness, risks, and recommendations.
+- Store the latest calibration result in process-local memory after `/calibrate`.
+- Fall back to controlled unavailable responses and persisted symbol profiles when no snapshot exists.
+- Preserve all analysis, calibration, routing, setup, execution, confidence, risk, and trade-management behavior.
+
+**Outcome:** StructureIQ can support paper-trading review workflows without forcing users to inspect massive calibration JSON payloads.
+
+## Beyond Version 4.3
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

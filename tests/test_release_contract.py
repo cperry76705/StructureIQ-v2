@@ -12,7 +12,7 @@ def test_release_identity_is_exposed_without_changing_health_contract() -> None:
     health_response = client.get("/health")
     openapi_response = client.get("/openapi.json")
 
-    assert APP_VERSION == "4.2.0"
+    assert APP_VERSION == "4.3.0"
     assert health_response.status_code == 200
     assert health_response.json() == {"status": "ok", "app": APP_NAME}
     assert openapi_response.status_code == 200
@@ -28,6 +28,13 @@ def test_openapi_preserves_complete_stable_endpoint_surface() -> None:
         "/journal/summary": {"get"},
         "/backtest": {"post"},
         "/calibrate": {"post"},
+        "/dashboard/overview": {"get"},
+        "/dashboard/symbols": {"get"},
+        "/dashboard/strategies": {"get"},
+        "/dashboard/setups": {"get"},
+        "/dashboard/readiness": {"get"},
+        "/dashboard/risks": {"get"},
+        "/dashboard/recommendations": {"get"},
     }
 
     for path, methods in expected_methods.items():
