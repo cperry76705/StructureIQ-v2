@@ -14,6 +14,7 @@ All notable changes to StructureIQ are documented in this file. The project foll
 
 - Missing profiles, avoid/no-trade actions, and preferred routes below 20 trades cannot produce actionable suggestions.
 - Decisions, strategy routing, setup selection, confidence, levels, risk, execution, and management remain unchanged.
+- Added HTTP serialization and OpenAPI regression coverage for both adaptive-router response fields.
 
 ## Version 4.0.0 — Adaptive Symbol Profile Engine — 2026-06-30
 
