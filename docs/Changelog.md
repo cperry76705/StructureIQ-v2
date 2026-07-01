@@ -2,6 +2,27 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 4.0.0 — Adaptive Symbol Profile Engine — 2026-06-30
+
+### Added
+
+- Durable completed-trade observation store keyed by symbol.
+- Persistent profile merging across calibration runs and process restarts.
+- Symbol outcomes, R statistics, drawdown, confidence, market character, category preferences, grades, and rankings.
+- Strategy Rating Engine reuse for all per-symbol category grades.
+- Additive `/analysis` `symbol_profile` and calibration `symbol_profile_summary`.
+- Explicit unavailable/insufficient states and minimum-sample safety rules.
+
+### Production Safety
+
+- Profiles use historical calibration evidence only and never live candles.
+- Analysis access is read-only and profile output cannot influence production engines.
+- Preferences require positive expectancy, adequate sample, and profit factor at least 1.
+
+### Verification
+
+- 325 automated tests pass together, including creation, persistence, merging, character detection, preference safety, grade reuse, API schema, calibration integration, analysis integration, and metric invariance.
+
 ## Version 3.9.0 — Strategy Rating Engine — 2026-06-30
 
 ### Added

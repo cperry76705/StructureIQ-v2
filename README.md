@@ -48,6 +48,7 @@ The platform includes:
 - **Execution Intelligence Layer** — explains timing style, level quality, R:R, blockers, warnings, and research-only management guidance while preserving production execution.
 - **Confidence Calibration Engine** — maps immutable raw decision scores to empirical historical win probabilities while preserving identity output when evidence is insufficient.
 - **Strategy Rating Engine** — grades observed setups and strategies from historical performance, OOS consistency, sample quality, drawdown, significance, and research risk.
+- **Adaptive Symbol Profile Engine** — persistently learns symbol-level performance, market character, and historically preferred rated categories from completed calibration trades.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -181,6 +182,8 @@ Version 3.8 adds `confidence_calibration` to `/analysis`; without historical con
 
 Version 3.9 adds unavailable current setup/strategy ratings to live analysis and historical `strategy_rating_summary` plus `setup_rating_summary` to calibration. Ratings enforce hard low-sample and negative-expectancy caps and cannot promote, demote, or reroute production categories.
 
+Version 4.0 persistently merges completed calibration observations into local symbol profiles. `/analysis` can display market character, preferred historical strategy/setup, grades, confidence, and sample size, while `/calibrate` returns the updated profile collection. Profiles are informational and never enter production analysis logic.
+
 ## Limitations
 
 - Market structure and confidence are heuristic interpretations, not forecasts or guarantees.
@@ -192,7 +195,7 @@ Version 3.9 adds unavailable current setup/strategy ratings to live analysis and
 
 ## Roadmap and Release Information
 
-Version `3.9.0` adds advisory historical setup and strategy grading with prominent sample warnings. Production behavior remains unchanged.
+Version `4.0.0` adds persistent adaptive symbol intelligence built solely from completed calibration history. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

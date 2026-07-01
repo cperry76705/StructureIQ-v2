@@ -21,6 +21,10 @@ from core.research_engine import (
     ResearchWindow,
     get_global_research_engine,
 )
+from core.symbol_profile_engine import (
+    SymbolProfileEngine,
+    get_global_symbol_profile_engine,
+)
 from models.schemas import AnalysisRequest, AnalysisResponse, HealthResponse
 
 app = FastAPI(
@@ -36,11 +40,18 @@ def get_market_data_provider() -> MarketDataProvider:
     return YahooFinanceMarketDataProvider()
 
 
+def get_symbol_profile_engine() -> SymbolProfileEngine:
+    """Return the durable research-only symbol profile store."""
+
+    return get_global_symbol_profile_engine()
+
+
 def get_analysis_engine(
     provider: MarketDataProvider = Depends(get_market_data_provider),
+    symbol_profiles: SymbolProfileEngine = Depends(get_symbol_profile_engine),
 ) -> AnalysisEngine:
     """Build the engine from the selected provider through FastAPI DI."""
-    return AnalysisEngine(provider)
+    return AnalysisEngine(provider, symbol_profile_engine=symbol_profiles)
 
 
 @lru_cache
@@ -186,11 +197,15 @@ def backtest(
 def calibrate(
     request: CalibrationRequest,
     provider: MarketDataProvider = Depends(get_market_data_provider),
+    symbol_profiles: SymbolProfileEngine = Depends(get_symbol_profile_engine),
 ) -> CalibrationResult:
     """Aggregate backtests and return observational recommendations."""
 
     try:
-        return CalibrationEngine(provider).run(request)
+        return CalibrationEngine(
+            provider,
+            symbol_profile_engine=symbol_profiles,
+        ).run(request)
     except MarketDataError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

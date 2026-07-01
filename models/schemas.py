@@ -16,6 +16,7 @@ from core.score_engine import ScoreSummary
 from core.execution_intelligence import ExecutionIntelligence
 from core.confidence_calibration_engine import ConfidenceCalibration
 from core.strategy_rating_engine import UnavailableCategoryRating
+from core.symbol_profile_engine import SymbolProfileView
 
 
 Bias = Literal["bullish", "bearish", "ranging"]
@@ -77,6 +78,7 @@ class AnalysisResponse(BaseModel):
     confidence_calibration: ConfidenceCalibration | None = None
     current_strategy_rating: UnavailableCategoryRating | None = None
     current_setup_rating: UnavailableCategoryRating | None = None
+    symbol_profile: SymbolProfileView | None = None
     tuned_market_regime: Annotated[RegimeResult | None, Field(exclude=True)] = None
     # Research metadata is carried into historical calibration but deliberately
     # excluded from the public /analysis response contract.

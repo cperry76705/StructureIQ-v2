@@ -256,6 +256,12 @@ Version 3.9 runs after Statistical Research, optional OOS validation, confidence
 
 Live analysis cannot access the calibration research store, so it returns unavailable named ratings. Calibration ratings cannot promote, demote, select, suppress, or reroute any category; no production engine imports rating output.
 
+#### Adaptive Symbol Profile Engine
+
+Version 4.0 owns a durable local observation store containing only completed calibration trade facts: symbol, timestamp, outcome, realized R, confidence, setup, strategy, and regime. On every calibration it appends new observations, rebuilds deterministic symbol/category statistics, and delegates category grades to Strategy Rating Engine.
+
+Analysis has read-only access to the resulting profile view. The profile is constructed after historical calibration and has no dependency path into Market Structure, Decision, Setup, Strategy, Confidence, Risk, Execution, or Trade Management. Persistence uses an atomic local JSON replacement and preserves previous observations across service restarts.
+
 ### Validation and Calibration Layer
 
 The v0.9 Calibration Engine is a cross-cutting observation layer over the Backtesting Engine. It runs historical evaluation across requested symbol and timeframe combinations, aggregates behavior, groups setup and strategy performance, and reports possible conservatism, aggressiveness, or data-quality concerns.
@@ -292,6 +298,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | How could an already-valid setup be executed, and what execution risks remain? | Execution Intelligence Layer |
 | How closely do raw confidence scores match historical win probabilities? | Confidence Calibration Engine |
 | Which historical setups and strategies appear strongest, weakest, or under-tested? | Strategy Rating Engine |
+| How has each symbol behaved historically, and which rated categories fit it best? | Adaptive Symbol Profile Engine |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 

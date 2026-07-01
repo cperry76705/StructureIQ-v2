@@ -130,6 +130,11 @@ from core.statistical_validation import (
     build_statistical_validation,
 )
 from core.strategy_rating_engine import RatingSummary, StrategyRatingEngine
+from core.symbol_profile_engine import (
+    SymbolProfileEngine,
+    SymbolProfileSummary,
+    get_global_symbol_profile_engine,
+)
 from core.symbols import normalize_yahoo_symbol
 from core.walk_forward_intelligence import (
     PromotionReadinessSummary,
@@ -426,6 +431,7 @@ class CalibrationResult:
     confidence_bucket_calibration: tuple[ConfidenceBucketCalibration, ...] | None = None
     strategy_rating_summary: RatingSummary | None = None
     setup_rating_summary: RatingSummary | None = None
+    symbol_profile_summary: SymbolProfileSummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -468,11 +474,15 @@ class CalibrationEngine:
         self,
         market_data: MarketDataProvider,
         backtesting_engine_factory: BacktestingEngineFactory | None = None,
+        symbol_profile_engine: SymbolProfileEngine | None = None,
     ) -> None:
         factory = backtesting_engine_factory or BacktestingEngine
         self._market_data = _CalibrationDataCache(market_data)
         self._backtester_factory = factory
         self._backtester = factory(self._market_data)
+        self._symbol_profile_engine = (
+            symbol_profile_engine or get_global_symbol_profile_engine()
+        )
 
     def run(self, request: CalibrationRequest) -> CalibrationResult:
         runs: list[CalibrationRun] = []
@@ -863,6 +873,7 @@ class CalibrationEngine:
             ),
             confidence_bucket_calibration=confidence_bucket_calibration,
         )
+        symbol_profile_summary = self._symbol_profile_engine.update(all_trades)
         aggregate_execution_intelligence_summary = (
             ExecutionIntelligenceEngine().aggregate(
                 tuple(
@@ -1028,6 +1039,7 @@ class CalibrationEngine:
             confidence_bucket_calibration=confidence_bucket_calibration,
             strategy_rating_summary=rating_result.strategy_rating_summary,
             setup_rating_summary=rating_result.setup_rating_summary,
+            symbol_profile_summary=symbol_profile_summary,
         )
         _assert_out_of_sample_result(request, result)
         # Continuous research observes the completed calibration output only.

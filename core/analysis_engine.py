@@ -11,6 +11,10 @@ from core.score_engine import ScoreEngine
 from core.execution_intelligence import ExecutionIntelligenceEngine
 from core.confidence_calibration_engine import ConfidenceCalibrationEngine
 from core.strategy_rating_engine import StrategyRatingEngine
+from core.symbol_profile_engine import (
+    SymbolProfileEngine,
+    get_global_symbol_profile_engine,
+)
 from core.risk import diagnose_risk_reward
 from core.regime import MarketRegimeEngine, TunedMarketRegimeEngine
 from core.regime_tuning import build_regime_tuning_evidence
@@ -47,6 +51,7 @@ class AnalysisEngine:
         execution_intelligence_engine: ExecutionIntelligenceEngine | None = None,
         confidence_calibration_engine: ConfidenceCalibrationEngine | None = None,
         strategy_rating_engine: StrategyRatingEngine | None = None,
+        symbol_profile_engine: SymbolProfileEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -67,6 +72,9 @@ class AnalysisEngine:
             confidence_calibration_engine or ConfidenceCalibrationEngine()
         )
         self._strategy_rating_engine = strategy_rating_engine or StrategyRatingEngine()
+        self._symbol_profile_engine = (
+            symbol_profile_engine or get_global_symbol_profile_engine()
+        )
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         entry_candles = self._market_data.get_candles(
@@ -92,6 +100,7 @@ class AnalysisEngine:
             self._execution_intelligence_engine,
             self._confidence_calibration_engine,
             self._strategy_rating_engine,
+            self._symbol_profile_engine,
         )
 
 
@@ -111,6 +120,7 @@ def _build_analysis(
     execution_intelligence_engine: ExecutionIntelligenceEngine,
     confidence_calibration_engine: ConfidenceCalibrationEngine,
     strategy_rating_engine: StrategyRatingEngine,
+    symbol_profile_engine: SymbolProfileEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -247,6 +257,7 @@ def _build_analysis(
     current_setup_rating = strategy_rating_engine.unavailable(
         setup_plan.setup_type.value
     )
+    symbol_profile = symbol_profile_engine.get_view(request.symbol)
     trader_analysis = explanation_engine.analyze(
         symbol=request.symbol,
         market_structure=entry_structure,
@@ -290,4 +301,5 @@ def _build_analysis(
         confidence_calibration=confidence_calibration,
         current_strategy_rating=current_strategy_rating,
         current_setup_rating=current_setup_rating,
+        symbol_profile=symbol_profile,
     )

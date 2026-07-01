@@ -129,6 +129,14 @@ Hard evidence caps override the numeric rating: fewer than five trades cannot ex
 
 Summaries name strongest and weakest observed categories but remain advisory. Ratings do not feed Strategy Engine or Setup Engine and cannot change calibration metrics.
 
+## Adaptive Symbol Profiles
+
+Version 4.0 appends every completed calibration trade to a durable symbol research store. Skipped and open records do not contribute. Existing observations remain intact, so repeated calibration expands rather than overwrites history.
+
+Each profile reports trade outcomes, win rate, expectancy, average/total R, profit factor, drawdown, confidence, sample size, market character, preferred rated strategy/setup, and complete category rankings. Strategy Rating Engine remains the sole grading authority.
+
+Market character requires 30 trades and sufficient dominance confidence. Strategy and setup preferences require 20 category trades, positive expectancy, and profit factor at least 1. If these conditions fail, the profile reports `insufficient_data` or no preference. `symbol_profile_summary` is additive and cannot alter calibration metrics or production behavior.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

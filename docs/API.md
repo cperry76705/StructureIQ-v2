@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `3.9.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `4.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1174,6 +1174,31 @@ Scores below 50 remain outside the requested empirical buckets and retain their 
 `POST /calibrate` adds `strategy_rating_summary` and `setup_rating_summary`. Each contains observed category grades, strongest and weakest names, low-sample warnings, and a readable summary. Every category grade reports rating score, sample size/quality, win rate, expectancy, average/total R, profit factor, drawdown, confidence interval, significance, OOS consistency, overfit risk, recommendation, and explanation.
 
 Grades range from `A+` through `F`. Fewer than five closed trades cap a grade at `D`; fewer than 20 cap it at `B`; negative expectancy is always `F`. `A+` additionally requires at least 100 trades, strong expectancy/profit factor, controlled drawdown, stable category-level OOS evidence, and no high overfit risk. Ratings are advisory and cannot alter routing or eligibility.
+
+### v4.0 Adaptive Symbol Profiles
+
+`POST /analysis` adds `symbol_profile`. With sufficient stored calibration history it reports status, market character, preferred historical strategy/setup, their grades, profile confidence, sample size, and warning. With fewer than 20 completed trades it returns `status: unavailable` and `Not enough historical calibration data.`
+
+Example available response:
+
+```json
+{
+  "status": "available",
+  "symbol": "BTC-USD",
+  "market_character": "trending",
+  "preferred_strategy": "liquidity_sweep_reversal",
+  "preferred_setup": "bearish_bos_retest",
+  "strategy_grade": "A",
+  "setup_grade": "A",
+  "confidence": 82,
+  "sample_size": 164,
+  "warning": null
+}
+```
+
+`POST /calibrate` adds `symbol_profile_summary`, containing every persisted profile, symbols updated by the current request, profile count, and summary. Each profile includes outcomes, R statistics, profit factor, drawdown, confidence, market character, preferred categories, grades, timestamps, and complete strategy/setup rankings.
+
+Market character requires at least 30 completed trades. Preferred categories require at least 20 category trades, positive expectancy, and profit factor of at least 1. Profiles are stored locally in `research/symbol_profiles.json` and merged across calibration runs. Profile output is never consumed by production analysis.
 
 ## v3.1 Statistical Research Laboratory
 

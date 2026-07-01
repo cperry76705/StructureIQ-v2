@@ -16,3 +16,5 @@ dist/
 .DS_Store
 Thumbs.db
 journal/*.jsonl
+research/symbol_profiles.json
+research/symbol_profiles.tmp

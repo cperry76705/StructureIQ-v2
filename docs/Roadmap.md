@@ -497,6 +497,19 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can rank historical category quality without silently promoting or demoting a production setup or strategy.
 
-## Beyond Version 3.9
+## Version 4.0 — Adaptive Symbol Profile Engine
+
+- Persist minimal completed-trade observations by symbol.
+- Merge new calibration history without overwriting prior research.
+- Detect dominant historical market character after 30 trades.
+- Rank strategies and setups per symbol using Strategy Rating Engine.
+- Require 20 positive, profitable category trades before naming a preference.
+- Expose read-only profile views in analysis and updated summaries in calibration.
+
+**Status:** implemented.
+
+**Outcome:** StructureIQ can accumulate durable symbol-specific intelligence while keeping every production engine independent from that research.
+
+## Beyond Version 4.0
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.
