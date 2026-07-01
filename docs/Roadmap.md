@@ -1,5 +1,35 @@
 # StructureIQ Roadmap
 
+## Version 5.5 — Daily Paper Trading Report Engine (implemented)
+
+- Dated detailed and compact reports over existing paper/research evidence.
+- Immutable JSON persistence and future-GPT-compatible payload export.
+- Dashboard daily status, warnings, violations, and performance summary.
+
+## Version 5.4 — Automated Paper Trade Journaling (implemented)
+
+- Automatic paper/lifecycle observers with append-only reconstructed history.
+- Trade research context, account snapshots, planned/realized outcomes, warnings, and violations.
+- Summary, lookup, rebuild, export, and dashboard daily-report readiness.
+
+## Version 5.3 — Trade Lifecycle Manager (implemented)
+
+- Manual candidate approval and pending-order lifecycle.
+- Deterministic paper fills, expiration, stop/target closure, and lifecycle events.
+- Advisory break-even/trailing states and dashboard lifecycle visibility.
+
+## Version 5.2 — Paper Brokerage Engine (implemented)
+
+- Explicit simulated position lifecycle and balance-based risk sizing.
+- Paper account performance, risk gates, mark-to-market, and optional local state snapshot.
+- Monitor-candidate bridge that remains manual until a future Trade Lifecycle Manager.
+
+## Version 5.1 — Live Market Monitor (implemented)
+
+- Explicit synchronous and background market monitoring.
+- Candidate-only events with duplicate prevention and optional JSONL history.
+- Provider-failure isolation, monitor APIs, and dashboard visibility.
+
 ## Version 5.0 — Realistic Execution Cost Modeling (implemented)
 
 - Opt-in deterministic execution-cost research with asset-class defaults.

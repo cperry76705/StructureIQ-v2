@@ -11,6 +11,54 @@ from core.backtesting import BacktestRequest, BacktestResult, BacktestingEngine
 from core.calibration import CalibrationEngine, CalibrationRequest, CalibrationResult
 from core.journal import JournalEntry, JournalStore, JournalSummary, TradeOutcome
 from core.market_data import MarketDataError, MarketDataProvider
+from core.live_market_monitor import (
+    LiveMarketMonitor,
+    MonitorConfig,
+    MonitorCycleResult,
+    MonitorEvent,
+    MonitorStatus,
+    get_global_live_market_monitor,
+)
+from core.paper_brokerage import (
+    PaperAccount,
+    PaperAccountConfig,
+    PaperBrokerageEngine,
+    PaperBrokerageError,
+    PaperCloseRequest,
+    PaperOpenRequest,
+    PaperPerformance,
+    PaperTrade,
+    get_global_paper_brokerage,
+)
+from core.trade_lifecycle_manager import (
+    ApproveCandidateRequest,
+    CancelOrderRequest,
+    LifecycleCycleResult,
+    LifecycleError,
+    LifecycleEvent,
+    LifecycleStatus,
+    PendingPaperOrder,
+    RejectCandidateRequest,
+    TradeLifecycleManager,
+    get_global_trade_lifecycle_manager,
+)
+from core.paper_trade_journal import (
+    PaperJournalExport,
+    PaperTradeJournal,
+    PaperTradeJournalEntry,
+    PaperTradeJournalSummary,
+    get_global_paper_trade_journal,
+)
+from core.daily_report_engine import (
+    DailyPaperTradingReport,
+    DailyReportEngine,
+    DailyReportError,
+    DailyReportGenerateRequest,
+    DailyReportGPTPayload,
+    DailyReportGPTRequest,
+    DailyReportListItem,
+    get_global_daily_report_engine,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -30,6 +78,7 @@ from core.research_dashboard import (
     DashboardStrategies,
     DashboardSymbols,
     ResearchDashboardService,
+    latest_calibration,
     store_latest_calibration,
 )
 from core.symbol_profile_engine import (
@@ -78,6 +127,35 @@ def get_research_engine() -> ResearchEngine:
     return get_global_research_engine()
 
 
+def get_live_market_monitor(
+    provider: MarketDataProvider = Depends(get_market_data_provider),
+) -> LiveMarketMonitor:
+    """Return the explicitly controlled process-local market monitor."""
+
+    return get_global_live_market_monitor(provider)
+
+
+def get_paper_brokerage() -> PaperBrokerageEngine:
+    """Return the process-local advisory paper account."""
+
+    return get_global_paper_brokerage()
+
+
+def get_trade_lifecycle_manager(
+    provider: MarketDataProvider = Depends(get_market_data_provider),
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+) -> TradeLifecycleManager:
+    return get_global_trade_lifecycle_manager(provider, monitor, broker)
+
+
+def get_paper_trade_journal(
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+) -> PaperTradeJournal:
+    return get_global_paper_trade_journal(broker, lifecycle)
+
+
 def get_research_dashboard_service(
     symbol_profiles: SymbolProfileEngine = Depends(get_symbol_profile_engine),
     research_engine: ResearchEngine = Depends(get_research_engine),
@@ -87,6 +165,21 @@ def get_research_dashboard_service(
     return ResearchDashboardService(
         symbol_profiles=symbol_profiles,
         research_engine=research_engine,
+    )
+
+
+def get_daily_report_engine(
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+    dashboard: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> DailyReportEngine:
+    return get_global_daily_report_engine(
+        journal, lifecycle, broker, monitor,
+        calibration_result=latest_calibration(),
+        readiness_context=dashboard.readiness(),
+        risk_context=dashboard.risks(),
     )
 
 
@@ -334,6 +427,324 @@ def dashboard_recommendations(
     """Return prioritized advisory action items from existing research."""
 
     return service.recommendations()
+
+
+@app.get(
+    "/monitor/status",
+    response_model=MonitorStatus,
+    tags=["monitor"],
+    summary="Read advisory live-monitor status",
+)
+def monitor_status(
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+) -> MonitorStatus:
+    return monitor.status()
+
+
+@app.post(
+    "/monitor/run-once",
+    response_model=MonitorCycleResult,
+    tags=["monitor"],
+    summary="Run one synchronous monitoring cycle",
+)
+def monitor_run_once(
+    config: MonitorConfig | None = None,
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+) -> MonitorCycleResult:
+    try:
+        return monitor.run_once(config)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post(
+    "/monitor/start",
+    response_model=MonitorStatus,
+    tags=["monitor"],
+    summary="Start the advisory background monitor",
+)
+def monitor_start(
+    config: MonitorConfig | None = None,
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+) -> MonitorStatus:
+    try:
+        return monitor.start(config)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post(
+    "/monitor/stop",
+    response_model=MonitorStatus,
+    tags=["monitor"],
+    summary="Stop the advisory background monitor",
+)
+def monitor_stop(
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+) -> MonitorStatus:
+    return monitor.stop()
+
+
+@app.get(
+    "/monitor/events",
+    response_model=list[MonitorEvent],
+    tags=["monitor"],
+    summary="List recent candidate monitor events",
+)
+def monitor_events(
+    limit: int | None = None,
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+) -> list[MonitorEvent]:
+    if limit is not None and not 1 <= limit <= 10_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(monitor.events(limit))
+
+
+@app.get(
+    "/paper/account",
+    response_model=PaperAccount,
+    tags=["paper"],
+    summary="Read the simulated paper account",
+)
+def paper_account(
+    latest_prices: str | None = None,
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+) -> PaperAccount:
+    return broker.account(_parse_latest_prices(latest_prices))
+
+
+@app.post(
+    "/paper/reset",
+    response_model=PaperAccount,
+    tags=["paper"],
+    summary="Reset the simulated paper account",
+)
+def paper_reset(
+    config: PaperAccountConfig | None = None,
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+) -> PaperAccount:
+    return broker.reset(config)
+
+
+@app.post(
+    "/paper/open",
+    response_model=PaperTrade,
+    tags=["paper"],
+    summary="Explicitly open a simulated paper position",
+)
+def paper_open(
+    request: PaperOpenRequest,
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+) -> PaperTrade:
+    del journal
+    try:
+        if request.event_id:
+            event = monitor.find_event(request.event_id)
+            if event is None:
+                raise HTTPException(status_code=404, detail="monitor candidate was not found")
+            if event.paper_trade_created:
+                raise HTTPException(status_code=409, detail="monitor candidate already created a paper trade")
+            trade = broker.open_monitor_event(
+                event,
+                risk_per_trade_percent=request.risk_per_trade_percent,
+                allow_duplicate=request.allow_duplicate,
+            )
+            monitor.mark_paper_trade_created(event.event_id)
+            return trade
+        return broker.open_position(request)
+    except PaperBrokerageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post(
+    "/paper/close",
+    response_model=PaperTrade,
+    tags=["paper"],
+    summary="Close a simulated paper position",
+)
+def paper_close(
+    request: PaperCloseRequest,
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+) -> PaperTrade:
+    del journal
+    try:
+        return broker.close_position(request.trade_id, request.exit_price)
+    except PaperBrokerageError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(
+    "/paper/open-positions",
+    response_model=list[PaperTrade],
+    tags=["paper"],
+    summary="List simulated open positions",
+)
+def paper_open_positions(
+    latest_prices: str | None = None,
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+) -> list[PaperTrade]:
+    return list(broker.open_positions(_parse_latest_prices(latest_prices)))
+
+
+@app.get(
+    "/paper/closed-trades",
+    response_model=list[PaperTrade],
+    tags=["paper"],
+    summary="List closed simulated trades",
+)
+def paper_closed_trades(
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+) -> list[PaperTrade]:
+    return list(broker.closed_trades())
+
+
+@app.get(
+    "/paper/performance",
+    response_model=PaperPerformance,
+    tags=["paper"],
+    summary="Summarize simulated paper performance",
+)
+def paper_performance(
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+) -> PaperPerformance:
+    return broker.performance()
+
+
+@app.get("/lifecycle/status", response_model=LifecycleStatus, tags=["lifecycle"])
+def lifecycle_status(manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager)) -> LifecycleStatus:
+    return manager.status()
+
+
+@app.post("/lifecycle/run-once", response_model=LifecycleCycleResult, tags=["lifecycle"])
+def lifecycle_run_once(manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager), journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> LifecycleCycleResult:
+    del journal
+    return manager.run_once()
+
+
+@app.post("/lifecycle/approve-candidate", response_model=PendingPaperOrder, tags=["lifecycle"])
+def lifecycle_approve_candidate(request: ApproveCandidateRequest, manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager), journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> PendingPaperOrder:
+    del journal
+    try:
+        return manager.approve_candidate(request)
+    except LifecycleError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/lifecycle/reject-candidate", response_model=LifecycleEvent, tags=["lifecycle"])
+def lifecycle_reject_candidate(request: RejectCandidateRequest, manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager), journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> LifecycleEvent:
+    del journal
+    try:
+        return manager.reject_candidate(request)
+    except LifecycleError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.post("/lifecycle/cancel-order", response_model=LifecycleEvent, tags=["lifecycle"])
+def lifecycle_cancel_order(request: CancelOrderRequest, manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager), journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> LifecycleEvent:
+    del journal
+    try:
+        return manager.cancel_order(request)
+    except LifecycleError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/lifecycle/events", response_model=list[LifecycleEvent], tags=["lifecycle"])
+def lifecycle_events(limit: int | None = None, manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager)) -> list[LifecycleEvent]:
+    if limit is not None and not 1 <= limit <= 100_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 100000")
+    return list(manager.events(limit))
+
+
+@app.get("/lifecycle/pending-orders", response_model=list[PendingPaperOrder], tags=["lifecycle"])
+def lifecycle_pending_orders(manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager)) -> list[PendingPaperOrder]:
+    return list(manager.pending_orders())
+
+
+@app.get("/lifecycle/open-trades", response_model=list[PaperTrade], tags=["lifecycle"])
+def lifecycle_open_trades(manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager)) -> list[PaperTrade]:
+    return list(manager.open_trades())
+
+
+@app.get("/lifecycle/closed-trades", response_model=list[PaperTrade], tags=["lifecycle"])
+def lifecycle_closed_trades(manager: TradeLifecycleManager = Depends(get_trade_lifecycle_manager)) -> list[PaperTrade]:
+    return list(manager.closed_trades())
+
+
+@app.get("/paper-journal/entries", response_model=list[PaperTradeJournalEntry], tags=["paper-journal"])
+def paper_journal_entries(journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> list[PaperTradeJournalEntry]:
+    return list(journal.entries())
+
+
+@app.get("/paper-journal/summary", response_model=PaperTradeJournalSummary, tags=["paper-journal"])
+def paper_journal_summary(journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> PaperTradeJournalSummary:
+    return journal.summary()
+
+
+@app.get("/paper-journal/trade/{trade_id}", response_model=PaperTradeJournalEntry, tags=["paper-journal"])
+def paper_journal_trade(trade_id: str, journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> PaperTradeJournalEntry:
+    entry = journal.get_trade(trade_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="paper journal trade was not found")
+    return entry
+
+
+@app.post("/paper-journal/rebuild-from-paper-state", response_model=PaperTradeJournalSummary, tags=["paper-journal"])
+def paper_journal_rebuild(journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> PaperTradeJournalSummary:
+    return journal.rebuild_from_paper_state()
+
+
+@app.post("/paper-journal/export", response_model=PaperJournalExport, tags=["paper-journal"])
+def paper_journal_export(journal: PaperTradeJournal = Depends(get_paper_trade_journal)) -> PaperJournalExport:
+    return journal.export()
+
+
+@app.get("/reports/daily", response_model=list[DailyReportListItem], tags=["reports"])
+def daily_reports(engine: DailyReportEngine = Depends(get_daily_report_engine)) -> list[DailyReportListItem]:
+    return list(engine.list_reports())
+
+
+@app.post("/reports/daily/generate", response_model=DailyPaperTradingReport, tags=["reports"])
+def daily_report_generate(request: DailyReportGenerateRequest, engine: DailyReportEngine = Depends(get_daily_report_engine)) -> DailyPaperTradingReport:
+    try:
+        return engine.generate(request.report_date, overwrite=request.overwrite)
+    except DailyReportError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/reports/daily/export-gpt-payload", response_model=DailyReportGPTPayload, tags=["reports"])
+def daily_report_gpt_payload(request: DailyReportGPTRequest, engine: DailyReportEngine = Depends(get_daily_report_engine)) -> DailyReportGPTPayload:
+    try:
+        return engine.export_gpt_payload(request.report_date, generate_if_missing=request.generate_if_missing)
+    except DailyReportError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/reports/daily/{report_date}", response_model=DailyPaperTradingReport, tags=["reports"])
+def daily_report_by_date(report_date: str, engine: DailyReportEngine = Depends(get_daily_report_engine)) -> DailyPaperTradingReport:
+    try:
+        report = engine.get(report_date)
+    except DailyReportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if report is None:
+        raise HTTPException(status_code=404, detail="daily report was not found")
+    return report
+
+
+def _parse_latest_prices(value: str | None) -> dict[str, float]:
+    if value is None:
+        return {}
+    import json
+
+    try:
+        payload = json.loads(value)
+        if not isinstance(payload, dict):
+            raise ValueError
+        return {str(symbol).upper(): float(price) for symbol, price in payload.items()}
+    except (TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=422, detail="latest_prices must be a JSON object of symbol-to-price values") from exc
 
 
 @app.get(

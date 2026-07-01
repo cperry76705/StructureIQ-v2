@@ -113,6 +113,36 @@ Tests use deterministic fixtures and do not require live market-data access.
 | `GET` | `/dashboard/readiness` | Paper-trading readiness summary |
 | `GET` | `/dashboard/risks` | Research risk warnings |
 | `GET` | `/dashboard/recommendations` | Prioritized advisory action items |
+| `GET` | `/monitor/status` | Read monitor state and error counters |
+| `POST` | `/monitor/run-once` | Run one synchronous monitoring cycle |
+| `POST` | `/monitor/start` | Explicitly start background polling |
+| `POST` | `/monitor/stop` | Safely stop background polling |
+| `GET` | `/monitor/events` | List recent candidate events |
+| `GET` | `/paper/account` | Read simulated balance, equity, performance, and risk state |
+| `POST` | `/paper/reset` | Reset the in-memory paper account |
+| `POST` | `/paper/open` | Explicitly open a simulated trade or monitor candidate |
+| `POST` | `/paper/close` | Explicitly close a simulated trade |
+| `GET` | `/paper/open-positions` | List and optionally mark open positions to market |
+| `GET` | `/paper/closed-trades` | List closed simulated trades |
+| `GET` | `/paper/performance` | Summarize paper performance |
+| `GET` | `/lifecycle/status` | Read paper lifecycle state and counters |
+| `POST` | `/lifecycle/run-once` | Evaluate pending orders and managed positions once |
+| `POST` | `/lifecycle/approve-candidate` | Manually approve a monitor candidate |
+| `POST` | `/lifecycle/reject-candidate` | Record a manual candidate rejection |
+| `POST` | `/lifecycle/cancel-order` | Cancel a pending lifecycle order |
+| `GET` | `/lifecycle/events` | List lifecycle transitions |
+| `GET` | `/lifecycle/pending-orders` | List pending paper orders |
+| `GET` | `/lifecycle/open-trades` | List lifecycle-managed open paper trades |
+| `GET` | `/lifecycle/closed-trades` | List lifecycle-managed closed paper trades |
+| `GET` | `/paper-journal/entries` | List reconstructed paper journal entries |
+| `GET` | `/paper-journal/summary` | Summarize journaled paper performance |
+| `GET` | `/paper-journal/trade/{trade_id}` | Read one journaled trade |
+| `POST` | `/paper-journal/rebuild-from-paper-state` | Reconstruct from current paper/lifecycle state |
+| `POST` | `/paper-journal/export` | Produce compact daily-report-compatible data |
+| `GET` | `/reports/daily` | List saved daily paper reports |
+| `POST` | `/reports/daily/generate` | Generate and persist a dated report |
+| `GET` | `/reports/daily/{report_date}` | Read a saved dated report |
+| `POST` | `/reports/daily/export-gpt-payload` | Export compact future-review payload |
 
 ### Analysis Request
 
@@ -220,7 +250,7 @@ Version 4.3 adds dashboard-friendly endpoints under `/dashboard/*`. These endpoi
 
 ## Roadmap and Release Information
 
-Version `5.0.0` adds opt-in Realistic Execution Cost Modeling for backtests and calibration. Spread, entry slippage, adverse stop slippage, fixed commissions, and advisory latency impact are converted into R using each trade's risk geometry. Explicit basis-point assumptions may be supplied; otherwise conservative examples distinguish crypto, Forex, and stocks/ETFs. Baseline metrics remain untouched while realistic metrics, sensitivity analytics, dashboard warnings, and advisory actions are additive. Production behavior remains unchanged.
+Version `5.5.0` adds the Daily Paper Trading Report Engine. It creates immutable dated JSON reports from paper journal, lifecycle, brokerage, monitor, execution-cost, setup-quality, readiness, and risk evidence; applies deterministic PASS/WATCHLIST/FAIL/NO_TRADES rules; and exports compact payloads for future GPT review. It makes no external calls, sends no email, and cannot trigger trading behavior.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

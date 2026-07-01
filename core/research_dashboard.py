@@ -9,6 +9,11 @@ from typing import Any
 from app.config import APP_VERSION
 from core.research_engine import ResearchEngine, ResearchWindow
 from core.symbol_profile_engine import SymbolProfileEngine
+from core.live_market_monitor import current_live_market_monitor_status
+from core.paper_brokerage import current_paper_brokerage
+from core.trade_lifecycle_manager import current_trade_lifecycle_manager
+from core.paper_trade_journal import current_paper_trade_journal
+from core.daily_report_engine import current_daily_report_engine
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -40,6 +45,41 @@ class DashboardOverview:
     realistic_total_r: float | None = None
     execution_degradation_r: float | None = None
     highest_cost_sensitivity: str | None = None
+    live_monitor_status: str = "not_enabled"
+    last_monitor_signal_time: str | None = None
+    recent_monitor_signal_count: int = 0
+    monitor_error_count: int = 0
+    monitor_ready_for_paper_trading: bool = False
+    paper_account_balance: float | None = None
+    paper_equity: float | None = None
+    paper_open_positions_count: int = 0
+    paper_closed_trades_count: int = 0
+    paper_total_r: float = 0.0
+    paper_win_rate: float = 0.0
+    paper_max_drawdown: float = 0.0
+    paper_risk_status: str = "unavailable"
+    paper_trading_enabled: bool = False
+    lifecycle_enabled: bool = False
+    pending_orders_count: int = 0
+    lifecycle_open_trades_count: int = 0
+    lifecycle_closed_trades_count: int = 0
+    expired_orders_count: int = 0
+    rejected_candidates_count: int = 0
+    ambiguous_exit_count: int = 0
+    lifecycle_status: str = "unavailable"
+    journal_status: str = "unavailable"
+    journaled_trade_count: int = 0
+    latest_journaled_trade: str | None = None
+    journal_rule_violations: int = 0
+    journal_warnings: tuple[str, ...] = ()
+    journal_ready_for_daily_reports: bool = False
+    latest_daily_report_date: str | None = None
+    latest_daily_report_status: str = "unavailable"
+    daily_report_ready: bool = False
+    daily_report_warning_count: int = 0
+    daily_report_rule_violation_count: int = 0
+    daily_report_total_r: float = 0.0
+    daily_report_summary: str | None = None
 
 
 @dataclass(frozen=True)
@@ -112,6 +152,17 @@ class DashboardReadiness:
     symbol_profile_status: str
     adaptive_router_status: str
     human_readable_summary: str
+    live_monitor_status: str = "not_enabled"
+    monitor_ready_for_paper_trading: bool = False
+    monitor_errors: int = 0
+    paper_brokerage_status: str = "unavailable"
+    paper_trading_enabled: bool = False
+    paper_risk_status: str = "unavailable"
+    lifecycle_enabled: bool = False
+    lifecycle_status: str = "unavailable"
+    lifecycle_warnings: tuple[str, ...] = ()
+    latest_daily_report_status: str = "unavailable"
+    daily_report_ready: bool = False
 
 
 @dataclass(frozen=True)
@@ -130,6 +181,17 @@ class DashboardRisks:
     execution_cost_status: str = "disabled"
     execution_degradation_r: float | None = None
     highest_cost_sensitivity: str | None = None
+    monitor_errors: tuple[str, ...] = ()
+    live_monitor_status: str = "not_enabled"
+    paper_risk_status: str = "unavailable"
+    paper_risk_warnings: tuple[str, ...] = ()
+    lifecycle_status: str = "unavailable"
+    lifecycle_warnings: tuple[str, ...] = ()
+    journal_status: str = "unavailable"
+    journal_warnings: tuple[str, ...] = ()
+    journal_rule_violations: int = 0
+    latest_daily_report_status: str = "unavailable"
+    daily_report_warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -216,6 +278,16 @@ class ResearchDashboardService:
         quality_symbols = getattr(quality, "average_quality_by_symbol", ()) or ()
         costs = getattr(self.calibration, "aggregate_execution_cost_summary", None)
         sensitivities = getattr(costs, "symbols_most_affected", ()) or ()
+        monitor = current_live_market_monitor_status()
+        paper_broker = current_paper_brokerage()
+        paper = paper_broker.account() if paper_broker is not None else None
+        lifecycle_manager = current_trade_lifecycle_manager()
+        lifecycle = lifecycle_manager.status() if lifecycle_manager is not None else None
+        journal = current_paper_trade_journal()
+        journal_summary = journal.summary() if journal is not None else None
+        journal_entries = journal.entries() if journal is not None else ()
+        report_engine = current_daily_report_engine()
+        latest_report = report_engine.latest() if report_engine is not None else None
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -250,6 +322,43 @@ class ResearchDashboardService:
             realistic_total_r=getattr(costs, "realistic_total_r", None),
             execution_degradation_r=getattr(costs, "total_degradation_r", None),
             highest_cost_sensitivity=(sensitivities[0].name if sensitivities else None),
+            live_monitor_status=("running" if monitor and monitor.running else "stopped" if monitor else "not_enabled"),
+            last_monitor_signal_time=getattr(monitor, "last_signal_time", None),
+            recent_monitor_signal_count=int(getattr(monitor, "recent_signal_count", 0) or 0),
+            monitor_error_count=int(getattr(monitor, "error_count", 0) or 0),
+            monitor_ready_for_paper_trading=bool(getattr(monitor, "ready_for_paper_trading", False)),
+            paper_account_balance=getattr(paper, "balance", None),
+            paper_equity=getattr(paper, "equity", None),
+            paper_open_positions_count=int(getattr(paper, "open_positions_count", 0) or 0),
+            paper_closed_trades_count=int(getattr(paper, "closed_trades_count", 0) or 0),
+            paper_total_r=float(getattr(paper, "paper_total_r", 0.0) or 0.0),
+            paper_win_rate=float(getattr(paper, "paper_win_rate", 0.0) or 0.0),
+            paper_max_drawdown=float(getattr(paper, "paper_max_drawdown", 0.0) or 0.0),
+            paper_risk_status=str(getattr(paper, "risk_status", "unavailable")),
+            paper_trading_enabled=False,
+            lifecycle_enabled=bool(getattr(lifecycle, "lifecycle_enabled", False)),
+            pending_orders_count=int(getattr(lifecycle, "pending_orders_count", 0) or 0),
+            lifecycle_open_trades_count=int(getattr(lifecycle, "lifecycle_open_trades_count", 0) or 0),
+            lifecycle_closed_trades_count=int(getattr(lifecycle, "lifecycle_closed_trades_count", 0) or 0),
+            expired_orders_count=int(getattr(lifecycle, "expired_orders_count", 0) or 0),
+            rejected_candidates_count=int(getattr(lifecycle, "rejected_candidates_count", 0) or 0),
+            ambiguous_exit_count=int(getattr(lifecycle, "ambiguous_exit_count", 0) or 0),
+            lifecycle_status=str(getattr(lifecycle, "lifecycle_status", "unavailable")),
+            journal_status="available" if journal is not None else "unavailable",
+            journaled_trade_count=int(getattr(journal_summary, "total_journaled_trades", 0) or 0),
+            latest_journaled_trade=(journal_entries[-1].trade_id if journal_entries else None),
+            journal_rule_violations=int(getattr(journal_summary, "rule_violation_count", 0) or 0),
+            journal_warnings=tuple(
+                dict.fromkeys(warning for entry in journal_entries for warning in entry.warnings)
+            ),
+            journal_ready_for_daily_reports=bool(journal_entries),
+            latest_daily_report_date=getattr(latest_report, "report_date", None),
+            latest_daily_report_status=str(getattr(latest_report, "status", "unavailable")),
+            daily_report_ready=latest_report is not None,
+            daily_report_warning_count=int(getattr(getattr(latest_report, "summary", None), "warnings", 0) or 0),
+            daily_report_rule_violation_count=int(getattr(getattr(latest_report, "summary", None), "rule_violations", 0) or 0),
+            daily_report_total_r=float(getattr(getattr(latest_report, "summary", None), "total_r", 0.0) or 0.0),
+            daily_report_summary=getattr(latest_report, "human_readable_summary", None),
         )
 
     def symbols(self) -> DashboardSymbols:
@@ -369,6 +478,31 @@ class ResearchDashboardService:
                 f"Paper-trading readiness is {status}. "
                 "This dashboard is advisory and cannot change production behavior."
             ),
+            live_monitor_status=(
+                "running" if (monitor := current_live_market_monitor_status()) and monitor.running
+                else "stopped" if monitor else "not_enabled"
+            ),
+            monitor_ready_for_paper_trading=bool(getattr(monitor, "ready_for_paper_trading", False)),
+            monitor_errors=int(getattr(monitor, "error_count", 0) or 0),
+            paper_brokerage_status=("available_advisory" if current_paper_brokerage() is not None else "unavailable"),
+            paper_trading_enabled=False,
+            paper_risk_status=(
+                current_paper_brokerage().account().risk_status
+                if current_paper_brokerage() is not None else "unavailable"
+            ),
+            lifecycle_enabled=bool(getattr((lifecycle := current_trade_lifecycle_manager().status() if current_trade_lifecycle_manager() is not None else None), "lifecycle_enabled", False)),
+            lifecycle_status=str(getattr(lifecycle, "lifecycle_status", "unavailable")),
+            lifecycle_warnings=(
+                (str(lifecycle.last_error),) if lifecycle is not None and lifecycle.last_error else ()
+            ),
+            latest_daily_report_status=(
+                current_daily_report_engine().latest().status
+                if current_daily_report_engine() is not None and current_daily_report_engine().latest() is not None
+                else "unavailable"
+            ),
+            daily_report_ready=(
+                current_daily_report_engine() is not None and current_daily_report_engine().latest() is not None
+            ),
         )
 
     def risks(self) -> DashboardRisks:
@@ -381,8 +515,34 @@ class ResearchDashboardService:
         execution_costs = getattr(self.calibration, "aggregate_execution_cost_summary", None)
         execution_warnings = tuple(getattr(execution_costs, "warnings", ()) or ())
         cost_sensitivities = getattr(execution_costs, "symbols_most_affected", ()) or ()
+        monitor = current_live_market_monitor_status()
+        monitor_errors = (
+            (str(monitor.last_error),)
+            if monitor is not None and monitor.last_error else ()
+        )
+        paper_broker = current_paper_brokerage()
+        paper = paper_broker.account() if paper_broker is not None else None
+        paper_warnings = (
+            (f"Paper brokerage risk status is {paper.risk_status}.",)
+            if paper is not None and paper.risk_status != "available" else ()
+        )
+        lifecycle_manager = current_trade_lifecycle_manager()
+        lifecycle = lifecycle_manager.status() if lifecycle_manager is not None else None
+        lifecycle_warnings = (
+            (str(lifecycle.last_error),) if lifecycle is not None and lifecycle.last_error else ()
+        )
+        journal = current_paper_trade_journal()
+        journal_summary = journal.summary() if journal is not None else None
+        journal_entries = journal.entries() if journal is not None else ()
+        journal_warnings = tuple(dict.fromkeys(warning for entry in journal_entries for warning in entry.warnings))
+        report_engine = current_daily_report_engine()
+        latest_report = report_engine.latest() if report_engine is not None else None
+        daily_warnings = tuple(
+            str(item) for item in getattr(latest_report, "key_findings", ())
+            if "warning" in str(item).lower() or "error" in str(item).lower() or "risk" in str(item).lower()
+        )
         top = tuple(
-            dict.fromkeys((*execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
+            dict.fromkeys((*journal_warnings, *lifecycle_warnings, *paper_warnings, *monitor_errors, *execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
         )[:12]
         risk_grade = _risk_grade(top, overfit, drawdown)
         return DashboardRisks(
@@ -404,6 +564,17 @@ class ResearchDashboardService:
             execution_cost_status="enabled" if execution_costs is not None else "disabled",
             execution_degradation_r=getattr(execution_costs, "total_degradation_r", None),
             highest_cost_sensitivity=(cost_sensitivities[0].name if cost_sensitivities else None),
+            monitor_errors=monitor_errors,
+            live_monitor_status=("running" if monitor and monitor.running else "stopped" if monitor else "not_enabled"),
+            paper_risk_status=str(getattr(paper, "risk_status", "unavailable")),
+            paper_risk_warnings=paper_warnings,
+            lifecycle_status=str(getattr(lifecycle, "lifecycle_status", "unavailable")),
+            lifecycle_warnings=lifecycle_warnings,
+            journal_status="available" if journal is not None else "unavailable",
+            journal_warnings=journal_warnings,
+            journal_rule_violations=int(getattr(journal_summary, "rule_violation_count", 0) or 0),
+            latest_daily_report_status=str(getattr(latest_report, "status", "unavailable")),
+            daily_report_warnings=daily_warnings,
         )
 
     def recommendations(self) -> DashboardRecommendations:
@@ -599,6 +770,65 @@ class ResearchDashboardService:
                 "high" if getattr(costs, "degradation_percent", 0) >= 50 else "medium",
                 "Validate venue-specific cost assumptions and execution feasibility before paper trading.",
                 "Realistic Execution Cost Model",
+            )
+        monitor = current_live_market_monitor_status()
+        if monitor is not None and monitor.last_error:
+            yield (
+                "live_monitor",
+                f"Live monitor reported an error: {monitor.last_error}",
+                "medium",
+                "Review provider availability and monitor configuration; do not enable paper execution.",
+                "Live Market Monitor",
+            )
+        paper_broker = current_paper_brokerage()
+        if paper_broker is not None:
+            paper = paper_broker.account()
+            yield (
+                "paper_brokerage",
+                f"Paper account has {paper.open_positions_count} open and {paper.closed_trades_count} closed simulated trades; risk status is {paper.risk_status}.",
+                "medium" if paper.risk_status != "available" else "low",
+                "Continue explicit advisory paper testing; automated lifecycle management remains disabled.",
+                "Paper Brokerage Engine",
+            )
+        lifecycle_manager = current_trade_lifecycle_manager()
+        if lifecycle_manager is not None:
+            lifecycle = lifecycle_manager.status()
+            if lifecycle.last_error or lifecycle.ambiguous_exit_count or lifecycle.expired_orders_count:
+                yield (
+                    "trade_lifecycle",
+                    f"Lifecycle has {lifecycle.expired_orders_count} expired orders, {lifecycle.ambiguous_exit_count} ambiguous exits, and last error {lifecycle.last_error or 'none'}.",
+                    "medium",
+                    "Review paper lifecycle events; keep automated paper candidate consumption disabled until validated.",
+                    "Trade Lifecycle Manager",
+                )
+        journal = current_paper_trade_journal()
+        if journal is not None:
+            summary = journal.summary()
+            if summary.rule_violation_count or summary.most_common_warning:
+                yield (
+                    "paper_journal",
+                    f"Paper journal has {summary.rule_violation_count} rule violations; most common warning is {summary.most_common_warning or 'none'}.",
+                    "medium",
+                    "Review journal evidence before enabling any automated paper workflow.",
+                    "Automated Paper Trade Journal",
+                )
+        report_engine = current_daily_report_engine()
+        latest_report = report_engine.latest() if report_engine is not None else None
+        if latest_report is not None and latest_report.status in {"WATCHLIST", "FAIL"}:
+            yield (
+                "daily_report",
+                latest_report.human_readable_summary,
+                "high" if latest_report.status == "FAIL" else "medium",
+                "Review the saved daily report findings before the next paper session.",
+                "Daily Paper Trading Report Engine",
+            )
+        if monitor is not None and monitor.signal_count and not monitor.last_error:
+            yield (
+                "live_monitor",
+                f"The monitor has observed {monitor.signal_count} advisory candidate signals.",
+                "low",
+                "Review candidate quality manually; paper-trade creation remains disabled.",
+                "Live Market Monitor",
             )
 
 

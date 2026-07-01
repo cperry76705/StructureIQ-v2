@@ -18,4 +18,8 @@ Thumbs.db
 journal/*.jsonl
 research/symbol_profiles.json
 research/symbol_profiles.tmp
+research/live_monitor_events.jsonl
+research/paper_account_state.json
+research/paper_trade_journal.jsonl
+reports/daily/*.json
 logs/*.log

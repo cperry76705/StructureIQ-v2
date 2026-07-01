@@ -1,5 +1,44 @@
 # Changelog
 
+## Version 5.5.0 — Daily Paper Trading Report Engine — 2026-07-01
+
+- Added date-based detailed daily reports with deterministic PASS, WATCHLIST, FAIL, and NO_TRADES statuses.
+- Added immutable `reports/daily/YYYY-MM-DD.json` persistence, listing, lookup, explicit overwrite, and compact GPT payload export.
+- Combined journal, lifecycle, brokerage, monitor, execution-cost, setup-quality, risk, and readiness context without invoking those engines.
+- Added latest report state, warnings, violations, and R performance to dashboard views.
+- No external API, GPT, email, broker, or production trading behavior was added.
+
+## Version 5.4.0 — Automated Paper Trade Journaling — 2026-07-01
+
+- Added observer-based automatic paper open/close and lifecycle transition journaling.
+- Added append-only JSONL snapshots with reconstructed latest trade views and research context.
+- Added paper-journal entries, summary, trade lookup, rebuild, and compact export APIs.
+- Added journal counts, latest trade, warnings, violations, and daily-report readiness to the dashboard.
+- Journal failures cannot alter paper actions; no production or live-trading behavior changed.
+
+## Version 5.3.0 — Trade Lifecycle Manager — 2026-07-01
+
+- Added manual monitor-candidate approval/rejection and pending paper orders for market, limit-retest, and confirmation-close workflows.
+- Added deterministic fill, expiry, stop, target, and conservative same-candle ambiguity handling.
+- Added advisory break-even/trailing eligibility without changing brokerage stops or production management.
+- Added lifecycle transition events, APIs, dashboard counters/warnings, and an advisory launcher capability marker.
+- Paper Brokerage remains the account source of truth; no live broker or automatic trading path exists.
+
+## Version 5.2.0 — Paper Brokerage Engine — 2026-07-01
+
+- Added an in-memory simulated account with balance, equity, realized/unrealized P/L, R performance, drawdown, and mark-to-market support.
+- Added explicit paper open/close/reset/account/position/performance APIs, including monitor-candidate resolution.
+- Added balance-based position sizing, geometry validation, duplicate limits, maximum positions, per-trade risk, daily loss, and daily profit-lock gates.
+- Added paper account and risk state to dashboard summaries and advisory recommendations.
+- No automatic monitor consumption, real broker connection, or live execution exists.
+
+## Version 5.1.0 — Live Market Monitor — 2026-07-01
+
+- Added disabled-by-default multi-symbol/timeframe monitoring through the existing provider and Analysis Engine.
+- Added deduplicated candidate events, bounded memory, optional append-only JSONL, and isolated provider errors.
+- Added monitor status, run-once, start, stop, and events endpoints plus dashboard visibility.
+- No auto-start, broker connection, execution, or paper-trade creation exists.
+
 ## Version 5.0.0 — Realistic Execution Cost Modeling — 2026-07-01
 
 - Added opt-in deterministic spread, entry-slippage, stop-slippage, commission, and latency cost research.

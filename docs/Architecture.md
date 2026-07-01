@@ -1,5 +1,25 @@
 # StructureIQ Architecture
 
+## Daily Report Boundary
+
+`DailyReportEngine` is a pure read-side projection over journal, lifecycle, brokerage, monitor, calibration, readiness, and risk state. Report generation never invokes analysis, monitoring, order evaluation, or account mutation. Dated JSON artifacts are immutable unless overwrite is explicitly requested. GPT payload export is local structured data only; no model, email, network, or broker integration exists.
+
+## Automated Paper Journal Boundary
+
+`PaperTradeJournal` observes Paper Brokerage open/close notifications and Trade Lifecycle transitions. It never owns positions, balances, routing, or management. Every update appends a complete latest snapshot to JSONL; API reads reconstruct the newest record per trade. Observer failures are swallowed by the authoritative engines so journaling cannot roll back or modify paper actions. Exports are compact research artifacts for future daily reports and contain no secrets.
+
+## Trade Lifecycle Manager Boundary
+
+`TradeLifecycleManager` orchestrates monitor candidates and paper orders but delegates every simulated open, close, balance change, and P/L calculation to `PaperBrokerageEngine`. Manual approval is the default. Pending orders are evaluated only during explicit lifecycle cycles. Same-candle stop/target ambiguity closes at the stop conservatively. Break-even and trailing rules emit advisory states without altering brokerage levels. No lifecycle path connects to a real broker or production analysis.
+
+## Paper Brokerage Boundary
+
+`PaperBrokerageEngine` owns process-local simulated account and position state. It accepts positions only through explicit paper APIs, validates geometry and account risk, and never subscribes to monitor events automatically. A monitor candidate is marked used only after a successful simulated open. Optional JSON state contains no credentials. Dashboard readers observe paper metrics but cannot open or close positions. A future Trade Lifecycle Manager may orchestrate these interfaces without changing the brokerage contract.
+
+## Live Market Monitor Boundary
+
+`LiveMarketMonitor` wraps the existing provider and `AnalysisEngine`. It may poll synchronously or in an explicitly started daemon thread, but it cannot modify analysis or create trades. Only confirmed actionable buy/sell analyses become immutable `candidate` events. Process-lifetime keys prevent duplicate symbol/timeframe/candle/action/setup events; failures are isolated per market. Optional JSONL is append-only. Dashboard consumers observe state but cannot promote candidates.
+
 ## Realistic Execution Cost Modeling Boundary
 
 `ExecutionCostModel` runs only after historical trade selection and outcome calculation. It translates bps assumptions into R using immutable entry/stop geometry, applies adverse costs, and emits a parallel realistic metric set. Baseline backtest and calibration metrics are never replaced. The dashboard reads the latest aggregate snapshot and cannot trigger modeling or alter production behavior.

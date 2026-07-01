@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `5.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, observational calibration, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `5.5.0` exposes a FastAPI HTTP interface for analysis, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ## Application Launcher
 
@@ -50,7 +50,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "5.0.0",
+  "app_version": "5.5.0",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,
@@ -92,6 +92,48 @@ Example `/dashboard/readiness` response:
 ```
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
+
+## Live Market Monitor
+
+The monitor is disabled by default and starts only through `POST /monitor/start`. `POST /monitor/run-once` performs one synchronous cycle; `POST /monitor/stop` is idempotent. `GET /monitor/status` reports configuration, running state, cycle/signal/error counts, last cycle, last signal, and last error. `GET /monitor/events` returns bounded recent candidate events.
+
+Both run-once and start accept an optional `MonitorConfig` body. Defaults monitor BTC-USD, ETH-USD, EUR-USD, and GBP-USD on 5m with 1h context, 300 candles, a 60-second poll, 500 in-memory events, and append-only `research/live_monitor_events.jsonl` output. The event file is ignored by Git.
+
+Events include the candle identity, unchanged action/setup/strategy, confidence, setup quality, score, execution guidance, levels, and reasons. A process-lifetime key of symbol, timeframe, candle timestamp, action, and setup prevents duplicates. Only actionable confirmed buy/sell results emit events; every event remains `status: candidate` and `paper_trade_created: false`. Provider errors are isolated per market and never create trades.
+
+## Paper Brokerage Engine
+
+The paper brokerage is an in-memory simulation and is never connected to a real broker. `GET /paper/account` returns balance, equity, realized/unrealized P/L, counts, R performance, drawdown, and risk status. `POST /paper/reset` accepts optional account configuration. `GET /paper/open-positions`, `/paper/closed-trades`, and `/paper/performance` expose the simulated lifecycle. Optional `latest_prices` is a JSON query object used only for deterministic mark-to-market.
+
+`POST /paper/open` accepts either complete explicit trade fields or a single recent monitor `event_id`. Explicit trades require symbol, timeframes, buy/sell action, setup, strategy, entry, stop, and target. Event opens parse the candidate entry midpoint, stop, and target; successful opens mark the event `paper_trade_created=true`. Nothing consumes monitor candidates automatically.
+
+Position risk equals current balance multiplied by the requested risk percentage. Position size is risk amount divided by entry-to-stop distance. Buy geometry requires `stop < entry < target`; sell geometry requires `target < entry < stop`. Per-trade maximum risk, daily loss, daily profit lock, maximum positions, duplicate symbol, and duplicate setup gates are enforced before opening. `POST /paper/close` accepts `trade_id` and `exit_price`, then updates balance and realized R/P&L.
+
+Paper state is process-local. Supplying `persistence_path` in account configuration writes a non-sensitive JSON snapshot; `research/paper_account_state.json` is ignored by Git. Dashboard output remains advisory and reports `paper_trading_enabled=false`; the lifecycle manager does not enable automated paper trading.
+
+## Trade Lifecycle Manager
+
+The lifecycle manager is paper-only and disabled for automatic consumption by default. `POST /lifecycle/approve-candidate` accepts a recent monitor `event_id`, an order type (`market`, `limit_retest`, or `confirmation_close`), and optional paper-risk percentage. Manual approval validates action, levels, and directional geometry, then creates a pending order. Market orders explicitly open through Paper Brokerage immediately; other types wait for `POST /lifecycle/run-once` candle evidence.
+
+Each run-once cycle evaluates pending fills, increments deterministic expiry counters, and checks lifecycle-managed open paper positions against the latest candle. If stop and target are both touched, the trade closes at the stop and records same-candle ambiguity. Optional break-even and trailing rules emit advisory eligibility states only; they do not mutate brokerage stops.
+
+Additional endpoints expose status, lifecycle events, pending orders, managed open/closed trades, manual rejection, and cancellation. Default configuration requires manual approval, expires pending orders after three evaluated candles, disables automatic monitor consumption, and bounds event memory at 1,000 transitions. Dashboard output includes lifecycle counters, state, and warnings. Paper Brokerage remains the sole account and P/L authority.
+
+## Automated Paper Trade Journal
+
+`PaperTradeJournal` subscribes to paper-brokerage open/close notifications and lifecycle events. It captures planned and actual levels, balance snapshots, risk and size, realized outcomes, close reason, lifecycle history, warnings, violations, and available monitor research context including setup quality, score, confidence calibration, ratings, symbol profile, adaptive routing, and execution intelligence.
+
+Every update appends a full latest snapshot to `research/paper_trade_journal.jsonl`; existing lines are never rewritten. API reads reconstruct the newest view per trade. `GET /paper-journal/entries`, `/summary`, and `/trade/{trade_id}` expose current views. `POST /paper-journal/rebuild-from-paper-state` replays current brokerage and lifecycle state, while `/export` returns compact JSON-compatible trade data and daily-report readiness.
+
+Journal summaries report counts, win rate, R and cash P/L, best/worst trades, setup and strategy groupings, average setup quality, warnings, and rule violations. Dashboard overview, risks, and recommendations surface journal availability and review needs. Journal observers are advisory and cannot fail, reverse, or alter authoritative paper actions.
+
+## Daily Paper Trading Reports
+
+`POST /reports/daily/generate` accepts `report_date` and `overwrite=false`. Reports are saved to `reports/daily/YYYY-MM-DD.json`; existing files return a conflict unless overwrite is explicitly true. `GET /reports/daily` lists saved artifacts, while `GET /reports/daily/{report_date}` returns one report.
+
+Status is `NO_TRADES` when no open or closed trades exist, `PASS` for positive closed R without warnings, violations, open risk, or critical state, `WATCHLIST` for unresolved warnings/open risk/flat or negative performance, and `FAIL` for violations, system errors, critical account risk, or severe drawdown. Reports include trades, open positions, monitor/lifecycle/journal summaries, available execution-cost and setup-quality research, risk/readiness context, findings, and recommended actions.
+
+`POST /reports/daily/export-gpt-payload` returns compact metrics, trades, warnings, violations, and review questions suitable for future automation. It does not contact GPT, send email, use a network, or modify any paper or production state. Dashboard overview, readiness, risks, and recommendations expose the latest saved report status.
 
 ## Symbol Normalization
 

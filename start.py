@@ -242,8 +242,28 @@ def print_future_sections() -> None:
 
     print()
     print("Future Reserved Sections:")
+    try:
+        importlib.import_module("core.paper_brokerage")
+        print("- Paper Trading: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
+    except Exception:
+        print("- Paper Trading: NOT ENABLED")
+    try:
+        importlib.import_module("core.trade_lifecycle_manager")
+        print("- Trade Lifecycle Manager: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
+    except Exception:
+        print("- Trade Lifecycle Manager: NOT ENABLED")
+    try:
+        importlib.import_module("core.paper_trade_journal")
+        print("- Automated Journal: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
+    except Exception:
+        print("- Automated Journal: NOT ENABLED")
+    try:
+        importlib.import_module("core.daily_report_engine")
+        print("- Daily Reports: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
+    except Exception:
+        print("- Daily Reports: NOT ENABLED")
     for section in (
-        "Paper Trading",
+        "Live Market Monitor",
         "Live Trading",
         "Scheduler",
         "AI Research",
