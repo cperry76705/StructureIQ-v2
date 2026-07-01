@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `4.3.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, observational calibration, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `5.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, observational calibration, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 ## Application Launcher
 
@@ -50,7 +50,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "4.3.0",
+  "app_version": "5.0.0",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,
@@ -1292,6 +1292,38 @@ Market character requires at least 30 completed trades. Preferred categories req
 `POST /analysis` adds `adaptive_strategy_router`: finalized production and profile-preferred routes, alignment, historical candidates, route confidence, sample size, warnings, and explanation. Missing profiles are unavailable, avoid/no-trade actions never suggest execution, and preferred categories under 20 trades are marked `insufficient_sample`.
 
 `POST /calibrate` adds `aggregate_adaptive_strategy_router_summary` with alignment counts, common mismatches, strongest profile-preferred categories, and a readable summary. It cannot alter routing or calibration metrics.
+
+### Setup quality intelligence (v4.4)
+
+`POST /analysis` adds `setup_quality` with `score`, `grade`, eight component scores, and a human-readable summary. Component maxima are market structure 20, liquidity 15, confirmation 15, higher-timeframe confluence 15, risk/reward 10, trend alignment 10, volatility 10, and freshness 5. Grades are A+ (95–100), A (90–94), B+ (85–89), B (80–84), C+ (75–79), C (70–74), D (65–69), and F below 65.
+
+`POST /calibrate` adds always-on `setup_quality_summary`: average/highest/lowest quality, averages by symbol/strategy/setup/regime, quality and grade distributions, correlations against outcome, R, profit proxy, drawdown, duration, confidence, and the existing trade-quality score, plus advisory recommendations. Developing and skipped setups contribute to coverage statistics; only completed trades contribute to outcome correlations.
+
+Dashboard overview adds average quality, highest-quality setup, best-quality symbol, and grade distribution. Dashboard setup rows add average quality and quality rank; quality findings also appear in dashboard recommendations. These fields never alter readiness or production behavior.
+
+### Realistic execution cost modeling (v5.0)
+
+`POST /backtest` and `POST /calibrate` accept the optional fields `execution_cost_modeling` (default `false`), `spread_bps`, `slippage_bps`, `commission_per_trade`, `stop_slippage_bps`, and `latency_ms`. When enabled without explicit bps values, the model uses documented conservative examples by asset class: crypto has higher assumed friction, Forex lower friction, and stocks/ETFs moderate friction. These are research defaults, not broker quotes.
+
+```json
+{
+  "symbol": "EUR-USD",
+  "timeframe": "5m",
+  "higher_timeframe": "1h",
+  "lookback": 300,
+  "starting_balance": 10000,
+  "risk_per_trade_percent": 1,
+  "max_trades": 50,
+  "execution_cost_modeling": true,
+  "spread_bps": 1.5,
+  "slippage_bps": 1.0,
+  "commission_per_trade": 2.0,
+  "stop_slippage_bps": 2.0,
+  "latency_ms": 100
+}
+```
+
+Backtests add `execution_cost_summary`, `realistic_metrics`, and `execution_cost_recommendations`. Calibration adds the same parallel result plus `aggregate_execution_cost_summary`, which reports baseline versus realistic R and expectancy, degradation percentage, profit-factor/drawdown impact, and the symbols, strategies, and setups most affected. Disabled requests retain null additive fields and exact baseline behavior. Dashboard overview, risks, and recommendations expose only the latest stored cost snapshot; they never rerun research or alter readiness automatically.
 
 ## v3.1 Statistical Research Laboratory
 

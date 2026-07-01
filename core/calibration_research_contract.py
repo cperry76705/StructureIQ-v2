@@ -20,6 +20,7 @@ def research_field_requirements(request: Any) -> tuple[ResearchFieldRequirement,
     oos = bool(request.out_of_sample_validation)
     monte_carlo = bool(request.monte_carlo_analysis)
     statistical = bool(request.statistical_validation_analysis)
+    execution_costs = bool(getattr(request, "execution_cost_modeling", False))
     requirements: list[ResearchFieldRequirement] = []
 
     def add(fields: tuple[str, ...], condition: str, source: str, enabled: bool) -> None:
@@ -39,7 +40,8 @@ def research_field_requirements(request: Any) -> tuple[ResearchFieldRequirement,
     add(("out_of_sample_summary", "validation_fold_results", "generalization_summary", "overfitting_summary", "stability_summary", "symbol_validation_summary", "timeframe_validation_summary", "research_pipeline_summary", "walk_forward_intelligence_summary", "strategy_robustness_rankings", "promotion_readiness_summary", "research_action_items"), "out_of_sample_validation=true", "chronological validation folds; empty folds produce controlled summaries", oos)
     add(("monte_carlo_summary", "monte_carlo_distribution", "monte_carlo_risk_summary", "monte_carlo_recommendations", "monte_carlo_report", "monte_carlo_risk_heatmap", "monte_carlo_target_probabilities", "monte_carlo_expectancy_confidence", "monte_carlo_kelly_summary", "monte_carlo_failure_reasons"), "monte_carlo_analysis=true", "closed validation trades, or completed trades without OOS; empty samples produce unavailable output", monte_carlo)
     add(("statistical_validation_summary", "losing_streak_summary", "trade_distribution_summary", "edge_decay_summary", "fold_stability_summary", "weakness_detection_summary"), "statistical_validation_analysis=true", "closed research returns; empty samples produce unavailable output", statistical)
-    add(("research_lab_summary", "research_rankings", "performance_matrices", "research_statistics", "aggregate_score_summary", "aggregate_execution_intelligence_summary", "aggregate_confidence_calibration_summary", "confidence_bucket_calibration", "strategy_rating_summary", "setup_rating_summary", "symbol_profile_summary", "aggregate_adaptive_strategy_router_summary"), "always", "all completed and skipped calibration records", True)
+    add(("execution_cost_summary", "realistic_metrics", "execution_cost_recommendations", "aggregate_execution_cost_summary"), "execution_cost_modeling=true", "completed trades with valid entry/stop geometry; empty samples produce controlled zero summaries", execution_costs)
+    add(("research_lab_summary", "research_rankings", "performance_matrices", "research_statistics", "aggregate_score_summary", "aggregate_execution_intelligence_summary", "aggregate_confidence_calibration_summary", "confidence_bucket_calibration", "strategy_rating_summary", "setup_rating_summary", "symbol_profile_summary", "aggregate_adaptive_strategy_router_summary", "setup_quality_summary"), "always", "all completed and skipped calibration records", True)
     return tuple(requirements)
 
 

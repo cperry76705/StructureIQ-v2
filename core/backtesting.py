@@ -25,10 +25,16 @@ from core.execution import (
     build_execution_diagnostics,
     calculate_execution_summary,
 )
+from core.execution_cost_model import (
+    ExecutionCostModel,
+    ExecutionCostSummary,
+    RealisticMetrics,
+)
 from core.journal import TradeOutcome
 from core.market_data import Candle, MarketDataProvider
 from core.risk import RiskRewardDiagnostics, diagnose_risk_reward
 from core.score_engine import ScoreSummary
+from core.setup_quality_engine import SetupQualityResult
 from core.execution_intelligence import ExecutionIntelligence
 from core.regime import RegimeResult
 from core.regime_forward_validation import (
@@ -127,6 +133,12 @@ class BacktestRequest(BaseModel):
     risk_per_trade_percent: float = Field(default=1.0, gt=0, le=100)
     max_trades: int = Field(default=100, ge=1, le=1000)
     execution_profile: ExecutionProfile | None = None
+    execution_cost_modeling: bool = False
+    spread_bps: float | None = Field(default=None, ge=0.0)
+    slippage_bps: float | None = Field(default=None, ge=0.0)
+    commission_per_trade: float = Field(default=0.0, ge=0.0)
+    stop_slippage_bps: float | None = Field(default=None, ge=0.0)
+    latency_ms: int | None = Field(default=None, ge=0)
     entry_timing_profile: EntryTimingProfile | None = Field(default=None, exclude=True)
 
     @field_validator("symbol")
@@ -215,6 +227,7 @@ class BacktestTrade:
     execution_intelligence: Annotated[
         ExecutionIntelligence | None, Field(exclude=True)
     ] = None
+    setup_quality: Annotated[SetupQualityResult | None, Field(exclude=True)] = None
 
 
 @dataclass(frozen=True)
@@ -366,6 +379,9 @@ class BacktestResult:
     execution_summary: ExecutionSummary = field(
         default_factory=lambda: calculate_execution_summary([])
     )
+    execution_cost_summary: ExecutionCostSummary | None = None
+    realistic_metrics: RealisticMetrics | None = None
+    execution_cost_recommendations: tuple[str, ...] | None = None
 
 
 class _AnalysisRunner(Protocol):
@@ -457,6 +473,22 @@ class BacktestingEngine:
         execution_summary = calculate_execution_summary(
             [trade.execution_diagnostics for trade in trades if trade.execution_diagnostics]
         )
+        (
+            execution_cost_summary,
+            realistic_metrics,
+            execution_cost_recommendations,
+            _,
+        ) = ExecutionCostModel().model(
+            trades,
+            enabled=request.execution_cost_modeling,
+            spread_bps=request.spread_bps,
+            slippage_bps=request.slippage_bps,
+            commission_per_trade=request.commission_per_trade,
+            stop_slippage_bps=request.stop_slippage_bps,
+            latency_ms=request.latency_ms,
+            starting_balance=request.starting_balance,
+            risk_per_trade_percent=request.risk_per_trade_percent,
+        )
         limitations = backtest_limitations()
         summary = (
             f"Backtest evaluated {len(trades)} analysis windows and produced "
@@ -478,6 +510,9 @@ class BacktestingEngine:
             trade_management_sensitivity=trade_management_sensitivity,
             setup_coverage_summary=setup_coverage_summary,
             execution_summary=execution_summary,
+            execution_cost_summary=execution_cost_summary,
+            realistic_metrics=realistic_metrics,
+            execution_cost_recommendations=execution_cost_recommendations,
         )
 
 
@@ -525,6 +560,7 @@ def build_backtest_trade(
     market_regime = getattr(analysis, "market_regime", None)
     tuned_market_regime = getattr(analysis, "tuned_market_regime", None)
     regime_tuning_evidence = getattr(analysis, "regime_tuning_evidence", None)
+    setup_quality = getattr(analysis, "setup_quality", None)
     regime_forward_observation = build_forward_observation(
         start_price=signal_close,
         future_candles=future_candles,
@@ -559,6 +595,7 @@ def build_backtest_trade(
             regime_forward_observation=regime_forward_observation,
             regime_forward_validation_observation=regime_forward_validation_observation,
             regime_tuning_evidence=regime_tuning_evidence,
+            setup_quality=setup_quality,
         )
 
     entry = parse_price_level(plan.entry_zone, midpoint=True)
@@ -595,6 +632,7 @@ def build_backtest_trade(
             regime_forward_observation=regime_forward_observation,
             regime_forward_validation_observation=regime_forward_validation_observation,
             regime_tuning_evidence=regime_tuning_evidence,
+            setup_quality=setup_quality,
         )
 
     if plan.estimated_risk_reward is None:
@@ -630,6 +668,7 @@ def build_backtest_trade(
             regime_forward_observation=regime_forward_observation,
             regime_forward_validation_observation=regime_forward_validation_observation,
             regime_tuning_evidence=regime_tuning_evidence,
+            setup_quality=setup_quality,
         )
     if plan.estimated_risk_reward < MINIMUM_ACCEPTABLE_RISK_REWARD:
         return BacktestTrade(
@@ -664,6 +703,7 @@ def build_backtest_trade(
             regime_forward_observation=regime_forward_observation,
             regime_forward_validation_observation=regime_forward_validation_observation,
             regime_tuning_evidence=regime_tuning_evidence,
+            setup_quality=setup_quality,
         )
 
     production_entry = entry
@@ -738,6 +778,7 @@ def build_backtest_trade(
                 regime_forward_observation=regime_forward_observation,
                 regime_forward_validation_observation=regime_forward_validation_observation,
                 regime_tuning_evidence=regime_tuning_evidence,
+                setup_quality=setup_quality,
             )
         entry = timing_prepared.adjusted_entry
         future_candles = list(timing_prepared.evaluation_candles)
@@ -845,6 +886,7 @@ def build_backtest_trade(
         regime_forward_observation=regime_forward_observation,
         regime_forward_validation_observation=regime_forward_validation_observation,
         regime_tuning_evidence=regime_tuning_evidence,
+        setup_quality=setup_quality,
     )
 
 
@@ -1471,6 +1513,7 @@ def _skipped_trade(
     regime_forward_observation: RegimeForwardObservation | None = None,
     regime_forward_validation_observation: RegimeForwardValidationObservation | None = None,
     regime_tuning_evidence: RegimeTuningEvidence | None = None,
+    setup_quality: SetupQualityResult | None = None,
 ) -> BacktestTrade:
     return BacktestTrade(
         timestamp=timestamp,
@@ -1501,6 +1544,7 @@ def _skipped_trade(
         regime_forward_observation=regime_forward_observation,
         regime_forward_validation_observation=regime_forward_validation_observation,
         regime_tuning_evidence=regime_tuning_evidence,
+        setup_quality=setup_quality,
     )
 
 

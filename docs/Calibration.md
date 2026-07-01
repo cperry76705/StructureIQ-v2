@@ -1,5 +1,9 @@
 # Validation and Calibration
 
+## Execution Cost Modeling
+
+Set `execution_cost_modeling=true` to calculate a parallel deterministic realistic result. Optional `spread_bps`, `slippage_bps`, `commission_per_trade`, `stop_slippage_bps`, and `latency_ms` assumptions override conservative asset-class examples. Costs can only degrade completed trades. Calibration returns baseline/realistic totals and expectancy, profit-factor reduction, drawdown impact, cost-sensitive symbols/strategies/setups, and advisory warnings. When disabled, new fields remain null and established metrics are identical.
+
 ## Purpose
 
 StructureIQ provides deterministic tools for observing whether current decision thresholds, setup qualification, strategy ranking, and risk assumptions appear too conservative, too aggressive, or reasonably balanced over historical samples. Version 1.1 explains why records fail to become actionable before any threshold is changed.

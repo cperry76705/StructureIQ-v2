@@ -1,5 +1,19 @@
 # Changelog
 
+## Version 5.0.0 — Realistic Execution Cost Modeling — 2026-07-01
+
+- Added opt-in deterministic spread, entry-slippage, stop-slippage, commission, and latency cost research.
+- Added backtest/calibration realistic metrics, aggregate symbol/strategy/setup sensitivity, and dashboard cost-risk reporting.
+- Added conservative example defaults for crypto, Forex, and stocks/ETFs when explicit bps assumptions are omitted.
+- Preserved baseline metrics and every production decision, setup, route, level, score, and execution behavior.
+
+## Version 4.4.0 — Setup Quality Intelligence Engine — 2026-07-01
+
+- Added research-only 0–100 setup scoring with eight transparent weighted components and A+ through F grades.
+- Added `setup_quality` to `/analysis` and `setup_quality_summary` to `/calibrate` without changing production behavior or metrics.
+- Added grouped quality analytics, outcome correlations, quality distributions, and advisory recommendations.
+- Extended dashboard overview and setup rankings with quality evidence.
+
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
 ## Version 4.3.0 — Research Dashboard API — 2026-07-01

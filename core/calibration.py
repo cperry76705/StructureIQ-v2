@@ -38,6 +38,12 @@ from core.execution import (
     FillModel,
     calculate_execution_summary,
 )
+from core.execution_cost_model import (
+    AggregateExecutionCostSummary,
+    ExecutionCostModel,
+    ExecutionCostSummary,
+    RealisticMetrics,
+)
 from core.entry_timing import EntryTimingProfile
 from core.confidence_calibration_engine import (
     AggregateConfidenceCalibrationSummary,
@@ -119,6 +125,7 @@ from core.research_lab import (
 from core.research_pipeline import ResearchPipelineSummary, build_research_pipeline
 from core.setup_engine import MINIMUM_ACCEPTABLE_RISK_REWARD
 from core.score_engine import ScoreEngine, ScoreSummary
+from core.setup_quality_engine import SetupQualityEngine, SetupQualitySummary
 from core.statistical_validation import (
     EdgeDecaySummary,
     LosingStreakSummary,
@@ -199,6 +206,12 @@ class CalibrationRequest(BaseModel):
     risk_per_trade_percent: float = Field(default=1.0, gt=0, le=100)
     starting_balance: float = Field(default=10_000.0, gt=0)
     execution_profile: ExecutionProfile | None = None
+    execution_cost_modeling: bool = False
+    spread_bps: float | None = Field(default=None, ge=0.0)
+    slippage_bps: float | None = Field(default=None, ge=0.0)
+    commission_per_trade: float = Field(default=0.0, ge=0.0)
+    stop_slippage_bps: float | None = Field(default=None, ge=0.0)
+    latency_ms: int | None = Field(default=None, ge=0)
     execution_sensitivity_profiles: list[ExecutionSensitivityProfile] | None = Field(
         default=None, max_length=20
     )
@@ -440,6 +453,11 @@ class CalibrationResult:
     aggregate_adaptive_strategy_router_summary: (
         AggregateAdaptiveStrategyRouterSummary | None
     ) = None
+    setup_quality_summary: SetupQualitySummary | None = None
+    execution_cost_summary: ExecutionCostSummary | None = None
+    realistic_metrics: RealisticMetrics | None = None
+    execution_cost_recommendations: tuple[str, ...] | None = None
+    aggregate_execution_cost_summary: AggregateExecutionCostSummary | None = None
 
 
 class _BacktestRunner(Protocol):
@@ -509,6 +527,12 @@ class CalibrationEngine:
                         risk_per_trade_percent=request.risk_per_trade_percent,
                         max_trades=request.max_trades_per_run,
                         execution_profile=request.execution_profile,
+                        execution_cost_modeling=request.execution_cost_modeling,
+                        spread_bps=request.spread_bps,
+                        slippage_bps=request.slippage_bps,
+                        commission_per_trade=request.commission_per_trade,
+                        stop_slippage_bps=request.stop_slippage_bps,
+                        latency_ms=request.latency_ms,
                     )
                     try:
                         result = self._backtester.run(backtest_request)
@@ -584,6 +608,27 @@ class CalibrationEngine:
         aggregate_setup_coverage_summary = calculate_setup_coverage_summary(all_trades)
         aggregate_execution_summary = calculate_execution_summary(
             [trade.execution_diagnostics for trade in all_trades if trade.execution_diagnostics]
+        )
+        cost_model = ExecutionCostModel()
+        (
+            execution_cost_summary,
+            realistic_metrics,
+            execution_cost_recommendations,
+            costed_trades,
+        ) = cost_model.model(
+            all_trades,
+            enabled=request.execution_cost_modeling,
+            spread_bps=request.spread_bps,
+            slippage_bps=request.slippage_bps,
+            commission_per_trade=request.commission_per_trade,
+            stop_slippage_bps=request.stop_slippage_bps,
+            latency_ms=request.latency_ms,
+            starting_balance=request.starting_balance,
+            risk_per_trade_percent=request.risk_per_trade_percent,
+        )
+        aggregate_execution_cost_summary = (
+            cost_model.aggregate(costed_trades, execution_cost_summary)
+            if execution_cost_summary is not None else None
         )
         execution_sensitivity_summary = (
             _run_execution_sensitivity(self._backtester, request)
@@ -896,6 +941,7 @@ class CalibrationEngine:
         aggregate_adaptive_strategy_router_summary = adaptive_router_engine.summarize(
             adaptive_route_results
         )
+        setup_quality_summary = SetupQualityEngine().summarize(all_trades)
         aggregate_execution_intelligence_summary = (
             ExecutionIntelligenceEngine().aggregate(
                 tuple(
@@ -1065,6 +1111,11 @@ class CalibrationEngine:
             aggregate_adaptive_strategy_router_summary=(
                 aggregate_adaptive_strategy_router_summary
             ),
+            setup_quality_summary=setup_quality_summary,
+            execution_cost_summary=execution_cost_summary,
+            realistic_metrics=realistic_metrics,
+            execution_cost_recommendations=execution_cost_recommendations,
+            aggregate_execution_cost_summary=aggregate_execution_cost_summary,
         )
         _assert_out_of_sample_result(request, result)
         validate_research_population(request, result)

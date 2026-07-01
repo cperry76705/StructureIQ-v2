@@ -1,5 +1,13 @@
 # StructureIQ Architecture
 
+## Realistic Execution Cost Modeling Boundary
+
+`ExecutionCostModel` runs only after historical trade selection and outcome calculation. It translates bps assumptions into R using immutable entry/stop geometry, applies adverse costs, and emits a parallel realistic metric set. Baseline backtest and calibration metrics are never replaced. The dashboard reads the latest aggregate snapshot and cannot trigger modeling or alter production behavior.
+
+## Setup Quality Intelligence Boundary
+
+The research-only `SetupQualityEngine` observes already-computed structure, liquidity, confirmation, multi-timeframe, risk/reward, volatility, and freshness evidence. It emits a score and grade after setup selection and is never consumed by decision, setup, strategy, risk, execution, or readiness paths. Calibration aggregates immutable snapshots and the dashboard renders those aggregates. Its stable interface permits a future statistical or ML scorer without changing public response shapes.
+
 ## Architectural Goal
 
 StructureIQ is evolving from a raw market-analysis API into a trader-facing decision-support platform. Its architecture separates deterministic market intelligence from the language and plans presented to a trader.

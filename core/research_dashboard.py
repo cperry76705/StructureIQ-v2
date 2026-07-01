@@ -31,6 +31,15 @@ class DashboardOverview:
     paper_trading_readiness: str
     major_warnings: tuple[str, ...]
     human_readable_summary: str
+    average_quality_score: float | None = None
+    highest_quality_setup: str | None = None
+    best_quality_symbol: str | None = None
+    quality_grade_distribution: dict[str, int] | None = None
+    execution_cost_status: str = "disabled"
+    baseline_total_r_after_cost_model: float | None = None
+    realistic_total_r: float | None = None
+    execution_degradation_r: float | None = None
+    highest_cost_sensitivity: str | None = None
 
 
 @dataclass(frozen=True)
@@ -72,6 +81,8 @@ class DashboardRatingRow:
     overfit_risk: str
     readiness_status: str
     recommendation: str
+    average_quality: float | None = None
+    quality_rank: int | None = None
 
 
 @dataclass(frozen=True)
@@ -115,6 +126,10 @@ class DashboardRisks:
     data_availability_summary: Any | None
     risk_grade: str
     human_readable_summary: str
+    execution_cost_warnings: tuple[str, ...] = ()
+    execution_cost_status: str = "disabled"
+    execution_degradation_r: float | None = None
+    highest_cost_sensitivity: str | None = None
 
 
 @dataclass(frozen=True)
@@ -196,6 +211,11 @@ class ResearchDashboardService:
             )
         )[:10]
         available = self.calibration is not None or bool(profiles)
+        quality = getattr(self.calibration, "setup_quality_summary", None)
+        quality_setups = getattr(quality, "average_quality_by_setup", ()) or ()
+        quality_symbols = getattr(quality, "average_quality_by_symbol", ()) or ()
+        costs = getattr(self.calibration, "aggregate_execution_cost_summary", None)
+        sensitivities = getattr(costs, "symbols_most_affected", ()) or ()
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -219,6 +239,17 @@ class ResearchDashboardService:
                 if available
                 else "Dashboard is unavailable until calibration or symbol-profile research exists."
             ),
+            average_quality_score=getattr(quality, "average_quality_score", None),
+            highest_quality_setup=(quality_setups[0].name if quality_setups else None),
+            best_quality_symbol=(quality_symbols[0].name if quality_symbols else None),
+            quality_grade_distribution=(
+                getattr(quality, "grade_distribution", None) if quality else None
+            ),
+            execution_cost_status="enabled" if costs is not None else "disabled",
+            baseline_total_r_after_cost_model=getattr(costs, "baseline_total_r", None),
+            realistic_total_r=getattr(costs, "realistic_total_r", None),
+            execution_degradation_r=getattr(costs, "total_degradation_r", None),
+            highest_cost_sensitivity=(sensitivities[0].name if sensitivities else None),
         )
 
     def symbols(self) -> DashboardSymbols:
@@ -251,7 +282,14 @@ class ResearchDashboardService:
         )
 
     def setups(self) -> DashboardSetups:
-        rows = _rating_rows(getattr(self.calibration, "setup_rating_summary", None))
+        rows = _rating_rows(
+            getattr(self.calibration, "setup_rating_summary", None),
+            quality_groups=getattr(
+                getattr(self.calibration, "setup_quality_summary", None),
+                "average_quality_by_setup",
+                (),
+            ),
+        )
         return DashboardSetups(
             setups=rows,
             human_readable_summary=(
@@ -340,8 +378,11 @@ class ResearchDashboardService:
         confidence = self._confidence_warnings()
         provider = self._provider_failure_messages()
         drawdown = self._drawdown_warnings()
+        execution_costs = getattr(self.calibration, "aggregate_execution_cost_summary", None)
+        execution_warnings = tuple(getattr(execution_costs, "warnings", ()) or ())
+        cost_sensitivities = getattr(execution_costs, "symbols_most_affected", ()) or ()
         top = tuple(
-            dict.fromkeys((*overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
+            dict.fromkeys((*execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
         )[:12]
         risk_grade = _risk_grade(top, overfit, drawdown)
         return DashboardRisks(
@@ -359,6 +400,10 @@ class ResearchDashboardService:
             human_readable_summary=(
                 f"Dashboard risk grade is {risk_grade} based on existing research."
             ),
+            execution_cost_warnings=execution_warnings,
+            execution_cost_status="enabled" if execution_costs is not None else "disabled",
+            execution_degradation_r=getattr(execution_costs, "total_degradation_r", None),
+            highest_cost_sensitivity=(cost_sensitivities[0].name if cost_sensitivities else None),
         )
 
     def recommendations(self) -> DashboardRecommendations:
@@ -537,6 +582,24 @@ class ResearchDashboardService:
                 "Review sequence and drawdown risk before paper-trading review.",
                 "Monte Carlo report",
             )
+        quality = getattr(self.calibration, "setup_quality_summary", None)
+        for message in getattr(quality, "recommendations", ()) or ():
+            yield (
+                "setup_quality",
+                str(message),
+                "low",
+                "Review setup-quality evidence; do not alter production rules automatically.",
+                "Setup Quality Intelligence Engine",
+            )
+        costs = getattr(self.calibration, "aggregate_execution_cost_summary", None)
+        for message in getattr(costs, "warnings", ()) or ():
+            yield (
+                "execution_cost",
+                str(message),
+                "high" if getattr(costs, "degradation_percent", 0) >= 50 else "medium",
+                "Validate venue-specific cost assumptions and execution feasibility before paper trading.",
+                "Realistic Execution Cost Model",
+            )
 
 
 def _symbol_row(profile) -> DashboardSymbolRow:
@@ -567,7 +630,8 @@ def _symbol_row(profile) -> DashboardSymbolRow:
     )
 
 
-def _rating_rows(summary) -> tuple[DashboardRatingRow, ...]:
+def _rating_rows(summary, quality_groups=()) -> tuple[DashboardRatingRow, ...]:
+    quality = {getattr(item, "name", ""): item for item in quality_groups or ()}
     rows = [
         DashboardRatingRow(
             name=getattr(grade, "name", "unknown"),
@@ -582,9 +646,33 @@ def _rating_rows(summary) -> tuple[DashboardRatingRow, ...]:
             overfit_risk=str(getattr(grade, "overfit_risk", "unavailable")),
             readiness_status=_rating_readiness(grade),
             recommendation=str(getattr(grade, "recommendation", "Unavailable.")),
+            average_quality=getattr(quality.get(getattr(grade, "name", "")), "average_quality", None),
+            quality_rank=getattr(quality.get(getattr(grade, "name", "")), "quality_rank", None),
         )
         for grade in getattr(summary, "grades", ()) or ()
     ]
+    rated_names = {item.name for item in rows}
+    for name, item in quality.items():
+        if name in rated_names:
+            continue
+        rows.append(
+            DashboardRatingRow(
+                name=name,
+                grade=getattr(item, "grade", None),
+                sample_size=int(getattr(item, "records", 0)),
+                sample_quality="research_only",
+                win_rate=float(getattr(item, "win_rate", 0.0)),
+                expectancy=float(getattr(item, "expectancy", 0.0)),
+                total_r=0.0,
+                profit_factor=getattr(item, "profit_factor", None),
+                max_drawdown=float(getattr(item, "max_drawdown", 0.0)),
+                overfit_risk="unavailable",
+                readiness_status="RESEARCH_ONLY",
+                recommendation="Review quality evidence without changing setup selection.",
+                average_quality=float(getattr(item, "average_quality", 0.0)),
+                quality_rank=int(getattr(item, "quality_rank", 0)),
+            )
+        )
     return tuple(
         sorted(
             rows,

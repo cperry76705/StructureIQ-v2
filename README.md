@@ -52,6 +52,7 @@ The platform includes:
 - **Adaptive Strategy Router Laboratory** — compares unchanged production routes with symbol-profile preferences without rerouting trades.
 - **Application Launcher** — validates the local environment, writes startup logs, displays diagnostics, and starts the unchanged FastAPI app through uvicorn.
 - **Research Dashboard API** — returns compact read-only summaries for research status, symbols, ratings, readiness, risks, and recommendations.
+- **Setup Quality Intelligence Engine** — independently grades detected setups from 0–100 and studies whether quality relates to historical outcomes; advisory only.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -124,7 +125,7 @@ Tests use deterministic fixtures and do not require live market-data access.
 }
 ```
 
-The response preserves established top-level fields and adds typed internal blocks (`multi_timeframe`, `decision`, `setup_plan`, and `strategy`) plus the trader-facing `trader_analysis` block.
+The response preserves established top-level fields and adds typed internal blocks (`multi_timeframe`, `decision`, `setup_plan`, and `strategy`), the trader-facing `trader_analysis` block, and the advisory `setup_quality` score.
 
 ### Backtest Request
 
@@ -219,7 +220,7 @@ Version 4.3 adds dashboard-friendly endpoints under `/dashboard/*`. These endpoi
 
 ## Roadmap and Release Information
 
-Version `4.3.0` adds the read-only Research Dashboard API for compact review of existing research evidence. Production behavior remains unchanged.
+Version `5.0.0` adds opt-in Realistic Execution Cost Modeling for backtests and calibration. Spread, entry slippage, adverse stop slippage, fixed commissions, and advisory latency impact are converted into R using each trade's risk geometry. Explicit basis-point assumptions may be supplied; otherwise conservative examples distinguish crypto, Forex, and stocks/ETFs. Baseline metrics remain untouched while realistic metrics, sensitivity analytics, dashboard warnings, and advisory actions are additive. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

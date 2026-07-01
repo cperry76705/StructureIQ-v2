@@ -1,5 +1,17 @@
 # StructureIQ Roadmap
 
+## Version 5.0 — Realistic Execution Cost Modeling (implemented)
+
+- Opt-in deterministic execution-cost research with asset-class defaults.
+- Baseline-versus-realistic R, expectancy, profit factor, and drawdown reporting.
+- Symbol, strategy, and setup cost sensitivity plus dashboard risk intelligence.
+
+## Version 4.4 — Setup Quality Intelligence Engine (implemented)
+
+- Independent weighted setup-quality scoring and grade mapping.
+- Calibration distributions, grouped analytics, correlations, and advisory findings.
+- Research Dashboard quality reporting and a stable future-model extension point.
+
 ## Product Direction
 
 StructureIQ is moving from a raw analysis API toward a trader-facing decision-support platform. Development proceeds in two layers:

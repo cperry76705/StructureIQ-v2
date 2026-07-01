@@ -16,6 +16,7 @@ from core.symbol_profile_engine import (
     get_global_symbol_profile_engine,
 )
 from core.adaptive_strategy_router import AdaptiveStrategyRouterEngine
+from core.setup_quality_engine import SetupQualityEngine
 from core.risk import diagnose_risk_reward
 from core.regime import MarketRegimeEngine, TunedMarketRegimeEngine
 from core.regime_tuning import build_regime_tuning_evidence
@@ -54,6 +55,7 @@ class AnalysisEngine:
         strategy_rating_engine: StrategyRatingEngine | None = None,
         symbol_profile_engine: SymbolProfileEngine | None = None,
         adaptive_strategy_router_engine: AdaptiveStrategyRouterEngine | None = None,
+        setup_quality_engine: SetupQualityEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -80,6 +82,7 @@ class AnalysisEngine:
         self._adaptive_strategy_router_engine = (
             adaptive_strategy_router_engine or AdaptiveStrategyRouterEngine()
         )
+        self._setup_quality_engine = setup_quality_engine or SetupQualityEngine()
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
         entry_candles = self._market_data.get_candles(
@@ -107,6 +110,7 @@ class AnalysisEngine:
             self._strategy_rating_engine,
             self._symbol_profile_engine,
             self._adaptive_strategy_router_engine,
+            self._setup_quality_engine,
         )
 
 
@@ -128,6 +132,7 @@ def _build_analysis(
     strategy_rating_engine: StrategyRatingEngine,
     symbol_profile_engine: SymbolProfileEngine,
     adaptive_strategy_router_engine: AdaptiveStrategyRouterEngine,
+    setup_quality_engine: SetupQualityEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -275,6 +280,14 @@ def _build_analysis(
         execution_intelligence=execution_intelligence,
         symbol_profile=historical_symbol_profile,
     )
+    setup_quality = setup_quality_engine.score(
+        market_structure=entry_structure,
+        multi_timeframe=multi_timeframe,
+        setup_plan=setup_plan,
+        market_regime=market_regime,
+        decision=decision,
+        candles=entry_candles,
+    )
     trader_analysis = explanation_engine.analyze(
         symbol=request.symbol,
         market_structure=entry_structure,
@@ -320,4 +333,5 @@ def _build_analysis(
         current_setup_rating=current_setup_rating,
         symbol_profile=symbol_profile,
         adaptive_strategy_router=adaptive_strategy_router,
+        setup_quality=setup_quality,
     )
