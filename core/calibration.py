@@ -135,6 +135,10 @@ from core.symbol_profile_engine import (
     SymbolProfileSummary,
     get_global_symbol_profile_engine,
 )
+from core.adaptive_strategy_router import (
+    AdaptiveStrategyRouterEngine,
+    AggregateAdaptiveStrategyRouterSummary,
+)
 from core.symbols import normalize_yahoo_symbol
 from core.walk_forward_intelligence import (
     PromotionReadinessSummary,
@@ -432,6 +436,9 @@ class CalibrationResult:
     strategy_rating_summary: RatingSummary | None = None
     setup_rating_summary: RatingSummary | None = None
     symbol_profile_summary: SymbolProfileSummary | None = None
+    aggregate_adaptive_strategy_router_summary: (
+        AggregateAdaptiveStrategyRouterSummary | None
+    ) = None
 
 
 class _BacktestRunner(Protocol):
@@ -874,6 +881,24 @@ class CalibrationEngine:
             confidence_bucket_calibration=confidence_bucket_calibration,
         )
         symbol_profile_summary = self._symbol_profile_engine.update(all_trades)
+        adaptive_router_engine = AdaptiveStrategyRouterEngine()
+        adaptive_route_results = tuple(
+            adaptive_router_engine.analyze(
+                symbol=trade.symbol,
+                production_setup=trade.setup_type,
+                production_strategy=trade.strategy_type,
+                action=trade.action,
+                score_summary=trade.score_summary,
+                execution_intelligence=trade.execution_intelligence,
+                symbol_profile=self._symbol_profile_engine.get_profile(trade.symbol),
+                strategy_rating_summary=rating_result.strategy_rating_summary,
+                setup_rating_summary=rating_result.setup_rating_summary,
+            )
+            for trade in all_trades
+        )
+        aggregate_adaptive_strategy_router_summary = adaptive_router_engine.summarize(
+            adaptive_route_results
+        )
         aggregate_execution_intelligence_summary = (
             ExecutionIntelligenceEngine().aggregate(
                 tuple(
@@ -1040,6 +1065,9 @@ class CalibrationEngine:
             strategy_rating_summary=rating_result.strategy_rating_summary,
             setup_rating_summary=rating_result.setup_rating_summary,
             symbol_profile_summary=symbol_profile_summary,
+            aggregate_adaptive_strategy_router_summary=(
+                aggregate_adaptive_strategy_router_summary
+            ),
         )
         _assert_out_of_sample_result(request, result)
         # Continuous research observes the completed calibration output only.

@@ -137,6 +137,10 @@ Each profile reports trade outcomes, win rate, expectancy, average/total R, prof
 
 Market character requires 30 trades and sufficient dominance confidence. Strategy and setup preferences require 20 category trades, positive expectancy, and profit factor at least 1. If these conditions fail, the profile reports `insufficient_data` or no preference. `symbol_profile_summary` is additive and cannot alter calibration metrics or production behavior.
 
+## Adaptive Route Diagnostics
+
+Version 4.1 compares finalized calibration routes with persisted symbol preferences. `aggregate_adaptive_strategy_router_summary` reports alignment counts, common mismatches, and dominant preferred categories. It runs after production backtest output is fixed and never feeds selection, scoring, levels, or execution.
+
 ## Aggregate Metrics
 
 `CalibrationMetrics` reports:

@@ -49,6 +49,7 @@ The platform includes:
 - **Confidence Calibration Engine** — maps immutable raw decision scores to empirical historical win probabilities while preserving identity output when evidence is insufficient.
 - **Strategy Rating Engine** — grades observed setups and strategies from historical performance, OOS consistency, sample quality, drawdown, significance, and research risk.
 - **Adaptive Symbol Profile Engine** — persistently learns symbol-level performance, market character, and historically preferred rated categories from completed calibration trades.
+- **Adaptive Strategy Router Laboratory** — compares unchanged production routes with symbol-profile preferences without rerouting trades.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -195,7 +196,7 @@ Version 4.0 persistently merges completed calibration observations into local sy
 
 ## Roadmap and Release Information
 
-Version `4.0.0` adds persistent adaptive symbol intelligence built solely from completed calibration history. Production behavior remains unchanged.
+Version `4.1.0` adds an observational adaptive-route comparator on top of persistent symbol intelligence. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

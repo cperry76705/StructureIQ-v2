@@ -15,6 +15,7 @@ from core.symbol_profile_engine import (
     SymbolProfileEngine,
     get_global_symbol_profile_engine,
 )
+from core.adaptive_strategy_router import AdaptiveStrategyRouterEngine
 from core.risk import diagnose_risk_reward
 from core.regime import MarketRegimeEngine, TunedMarketRegimeEngine
 from core.regime_tuning import build_regime_tuning_evidence
@@ -52,6 +53,7 @@ class AnalysisEngine:
         confidence_calibration_engine: ConfidenceCalibrationEngine | None = None,
         strategy_rating_engine: StrategyRatingEngine | None = None,
         symbol_profile_engine: SymbolProfileEngine | None = None,
+        adaptive_strategy_router_engine: AdaptiveStrategyRouterEngine | None = None,
     ) -> None:
         self._market_data = market_data
         self._structure_engine = structure_engine or MarketStructureEngine()
@@ -74,6 +76,9 @@ class AnalysisEngine:
         self._strategy_rating_engine = strategy_rating_engine or StrategyRatingEngine()
         self._symbol_profile_engine = (
             symbol_profile_engine or get_global_symbol_profile_engine()
+        )
+        self._adaptive_strategy_router_engine = (
+            adaptive_strategy_router_engine or AdaptiveStrategyRouterEngine()
         )
 
     def analyze(self, request: AnalysisRequest) -> AnalysisResponse:
@@ -101,6 +106,7 @@ class AnalysisEngine:
             self._confidence_calibration_engine,
             self._strategy_rating_engine,
             self._symbol_profile_engine,
+            self._adaptive_strategy_router_engine,
         )
 
 
@@ -121,6 +127,7 @@ def _build_analysis(
     confidence_calibration_engine: ConfidenceCalibrationEngine,
     strategy_rating_engine: StrategyRatingEngine,
     symbol_profile_engine: SymbolProfileEngine,
+    adaptive_strategy_router_engine: AdaptiveStrategyRouterEngine,
 ) -> AnalysisResponse:
     higher_structure = structure_engine.analyze(higher_candles)
     entry_structure = structure_engine.analyze(entry_candles)
@@ -257,7 +264,17 @@ def _build_analysis(
     current_setup_rating = strategy_rating_engine.unavailable(
         setup_plan.setup_type.value
     )
+    historical_symbol_profile = symbol_profile_engine.get_profile(request.symbol)
     symbol_profile = symbol_profile_engine.get_view(request.symbol)
+    adaptive_strategy_router = adaptive_strategy_router_engine.analyze(
+        symbol=request.symbol,
+        production_setup=setup_plan.setup_type,
+        production_strategy=strategy.preferred_strategy,
+        action=action,
+        score_summary=score_summary,
+        execution_intelligence=execution_intelligence,
+        symbol_profile=historical_symbol_profile,
+    )
     trader_analysis = explanation_engine.analyze(
         symbol=request.symbol,
         market_structure=entry_structure,
@@ -302,4 +319,5 @@ def _build_analysis(
         current_strategy_rating=current_strategy_rating,
         current_setup_rating=current_setup_rating,
         symbol_profile=symbol_profile,
+        adaptive_strategy_router=adaptive_strategy_router,
     )

@@ -2,6 +2,19 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 4.1.0 — Adaptive Strategy Router Laboratory — 2026-06-30
+
+### Added
+
+- Research-only production-route versus symbol-profile comparison.
+- Additive `/analysis` route alignment, candidate rankings, sample warnings, and explanations.
+- Additive `/calibrate` alignment and misalignment aggregation.
+
+### Safety
+
+- Missing profiles, avoid/no-trade actions, and preferred routes below 20 trades cannot produce actionable suggestions.
+- Decisions, strategy routing, setup selection, confidence, levels, risk, execution, and management remain unchanged.
+
 ## Version 4.0.0 — Adaptive Symbol Profile Engine — 2026-06-30
 
 ### Added

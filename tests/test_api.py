@@ -66,6 +66,7 @@ def test_analysis_contract_keeps_legacy_fields_and_adds_engine_results() -> None
         "current_strategy_rating",
         "current_setup_rating",
         "symbol_profile",
+        "adaptive_strategy_router",
     }
     assert set(payload["market_regime"]) == {
         "market_regime",

@@ -510,6 +510,14 @@ Every version must preserve automated tests, stable contracts, explainability, a
 
 **Outcome:** StructureIQ can accumulate durable symbol-specific intelligence while keeping every production engine independent from that research.
 
-## Beyond Version 4.0
+## Version 4.1 — Adaptive Strategy Router Laboratory
+
+**Status:** implemented.
+
+- Compare production routes with persisted symbol preferences.
+- Report route alignment, low-sample warnings, candidates, and aggregate mismatch diagnostics.
+- Preserve all production routing and trade behavior.
+
+## Beyond Version 4.1
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

@@ -239,7 +239,7 @@ def test_calibration_updates_profile_and_returns_summary(tmp_path) -> None:
     )
 
     assert result.symbol_profile_summary is not None
+    assert result.aggregate_adaptive_strategy_router_summary is not None
     assert result.symbol_profile_summary.updated_symbols == ("BTC-USD",)
     assert profiles.get_profile("BTC-USD").total_trades == 1
     assert result.aggregate_metrics.total_trades == 1
-

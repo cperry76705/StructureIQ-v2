@@ -260,6 +260,10 @@ Live analysis cannot access the calibration research store, so it returns unavai
 
 Version 4.0 owns a durable local observation store containing only completed calibration trade facts: symbol, timestamp, outcome, realized R, confidence, setup, strategy, and regime. On every calibration it appends new observations, rebuilds deterministic symbol/category statistics, and delegates category grades to Strategy Rating Engine.
 
+#### Adaptive Strategy Router Laboratory
+
+Version 4.1 compares the already-selected production setup/strategy with persisted symbol preferences. It is downstream of routing: calibration compares finalized records after profiles update, and analysis exposes read-only diagnostics. No output flows into Decision, Setup, Strategy, Risk, or Execution engines.
+
 Analysis has read-only access to the resulting profile view. The profile is constructed after historical calibration and has no dependency path into Market Structure, Decision, Setup, Strategy, Confidence, Risk, Execution, or Trade Management. Persistence uses an atomic local JSON replacement and preserves previous observations across service restarts.
 
 ### Validation and Calibration Layer

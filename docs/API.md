@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `4.0.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `4.1.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 
@@ -1199,6 +1199,12 @@ Example available response:
 `POST /calibrate` adds `symbol_profile_summary`, containing every persisted profile, symbols updated by the current request, profile count, and summary. Each profile includes outcomes, R statistics, profit factor, drawdown, confidence, market character, preferred categories, grades, timestamps, and complete strategy/setup rankings.
 
 Market character requires at least 30 completed trades. Preferred categories require at least 20 category trades, positive expectancy, and profit factor of at least 1. Profiles are stored locally in `research/symbol_profiles.json` and merged across calibration runs. Profile output is never consumed by production analysis.
+
+### v4.1 Adaptive Strategy Router Laboratory
+
+`POST /analysis` adds `adaptive_strategy_router`: finalized production and profile-preferred routes, alignment, historical candidates, route confidence, sample size, warnings, and explanation. Missing profiles are unavailable, avoid/no-trade actions never suggest execution, and preferred categories under 20 trades are marked `insufficient_sample`.
+
+`POST /calibrate` adds `aggregate_adaptive_strategy_router_summary` with alignment counts, common mismatches, strongest profile-preferred categories, and a readable summary. It cannot alter routing or calibration metrics.
 
 ## v3.1 Statistical Research Laboratory
 
