@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `5.5.0` exposes a FastAPI HTTP interface for analysis, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `5.8.0` exposes a FastAPI HTTP interface for analysis, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ## Application Launcher
 
@@ -50,7 +50,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "5.5.0",
+  "app_version": "5.8.0",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,
@@ -134,6 +134,28 @@ Journal summaries report counts, win rate, R and cash P/L, best/worst trades, se
 Status is `NO_TRADES` when no open or closed trades exist, `PASS` for positive closed R without warnings, violations, open risk, or critical state, `WATCHLIST` for unresolved warnings/open risk/flat or negative performance, and `FAIL` for violations, system errors, critical account risk, or severe drawdown. Reports include trades, open positions, monitor/lifecycle/journal summaries, available execution-cost and setup-quality research, risk/readiness context, findings, and recommended actions.
 
 `POST /reports/daily/export-gpt-payload` returns compact metrics, trades, warnings, violations, and review questions suitable for future automation. It does not contact GPT, send email, use a network, or modify any paper or production state. Dashboard overview, readiness, risks, and recommendations expose the latest saved report status.
+
+## End-to-End Paper Trading Orchestrator
+
+`POST /paper-trading/run-cycle` runs one synchronous monitor → candidate review → lifecycle → brokerage → journal → report cycle. Defaults are disabled and observe-only: `auto_approve_candidates=false`, `require_manual_approval=true`, and market orders are disallowed. Manual approval remains available through lifecycle APIs.
+
+Auto-approval requires explicit `auto_approve_candidates=true` and `require_manual_approval=false`. Candidates must be buy/sell, carry eligible setup quality, have valid risk geometry, contain no execution blockers, remain unused, and pass Paper Brokerage risk/position/duplicate rules. D/F or missing quality is blocked unless missing quality is explicitly permitted. Candidate and new-trade caps apply per cycle.
+
+`POST /paper-trading/start` and `/stop` control an opt-in daemon loop. Repeated errors pause it at the configured threshold. Status, recent cycles, and approval/block actions are available through GET endpoints. Optional cycle persistence appends to `reports/paper_trading_cycles.jsonl`. Dashboard views expose orchestrator state, counts, and warnings. No cycle can access a real broker, GPT, email, or production decision path.
+
+## Scheduled Daily Report Automation
+
+`POST /reports/scheduler/run-now` generates the previous day in the configured timezone by default or accepts an explicit `report_date`. Its optional `overwrite` value overrides scheduler policy for that run. Existing reports are returned as `skipped_existing` unless overwrite is enabled.
+
+`POST /reports/scheduler/start` and `/stop` control a local daemon scheduler; it never auto-starts with the API. `GET /reports/scheduler/status` reports running, enabled, paused, last/next run, last report, counts, and errors. `/history` returns append-only run records stored in `reports/daily_scheduler_history.jsonl`. The default is 06:00 America/Chicago, previous day, weekends included, and overwrite disabled. Repeated failures pause scheduling. Dashboard responses expose scheduler readiness and warnings. No external service, GPT, email, broker, or trading call exists.
+
+## System Health and Observability
+
+`GET /system/health` returns the complete graded report with uptime, dimensions, warnings, blockers, operational readiness, and recommended actions. Dimensions cover application, configuration, provider wiring, monitor, paper brokerage, lifecycle, journal, daily reports, scheduler, orchestrator, dashboard, storage, logs, research files, reports, and a deliberately unavailable runtime test placeholder.
+
+`GET /system/readiness` returns compact paper operational readiness. `/errors` aggregates known monitor, lifecycle, scheduler, and orchestrator errors. `/storage` verifies or creates required local folders and tests write access with immediately removed probes. `/components` lists dimension results. Optional missing state files are allowed; inaccessible storage, corrupted paper-account JSON, required import failure, or an error-paused orchestrator can fail health.
+
+Every full check appends to `logs/system_health.jsonl`. Health endpoints do not fetch candles, invoke analysis, advance paper state, generate reports, contact external services, or trade. Dashboard overview, readiness, risks, and recommendations reflect the latest completed health snapshot.
 
 ## Symbol Normalization
 

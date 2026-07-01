@@ -1,5 +1,17 @@
 # StructureIQ Architecture
 
+## System Health Boundary
+
+`SystemHealthEngine` is a read-only observer over configured runtime services and local storage. It never polls providers, runs analysis, advances lifecycle state, or generates reports. Storage checks may create required directories and temporary write probes, which are immediately removed. Health snapshots append locally to `logs/system_health.jsonl`; no credentials, external APIs, brokers, or production behavior are involved.
+
+## Daily Report Scheduler Boundary
+
+`DailyReportScheduler` is a local clock-and-thread wrapper around `DailyReportEngine`. It is never auto-started by application import or launch. Scheduled and manual runs only request dated report generation; duplicate artifacts are skipped unless overwrite is explicit. History is append-only, repeated errors pause the worker, and no network, GPT, email, broker, analysis, or trading path exists.
+
+## Paper Trading Orchestrator Boundary
+
+`PaperTradingOrchestrator` coordinates existing paper services but owns none of their domain state. LiveMarketMonitor remains the candidate source, TradeLifecycleManager owns order transitions, PaperBrokerage owns positions and P/L, PaperTradeJournal owns journal views, and DailyReportEngine owns dated reports. Default cycles only observe candidates. Auto-approval requires explicit configuration and all safety gates. The background loop is opt-in, pauses after repeated errors, and has no real broker, network, GPT, email, or production decision path.
+
 ## Daily Report Boundary
 
 `DailyReportEngine` is a pure read-side projection over journal, lifecycle, brokerage, monitor, calibration, readiness, and risk state. Report generation never invokes analysis, monitoring, order evaluation, or account mutation. Dated JSON artifacts are immutable unless overwrite is explicitly requested. GPT payload export is local structured data only; no model, email, network, or broker integration exists.

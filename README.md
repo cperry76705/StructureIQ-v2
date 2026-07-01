@@ -143,6 +143,22 @@ Tests use deterministic fixtures and do not require live market-data access.
 | `POST` | `/reports/daily/generate` | Generate and persist a dated report |
 | `GET` | `/reports/daily/{report_date}` | Read a saved dated report |
 | `POST` | `/reports/daily/export-gpt-payload` | Export compact future-review payload |
+| `GET` | `/paper-trading/status` | Read paper orchestrator state and counters |
+| `POST` | `/paper-trading/run-cycle` | Run one controlled end-to-end paper cycle |
+| `POST` | `/paper-trading/start` | Explicitly start background paper cycles |
+| `POST` | `/paper-trading/stop` | Stop background paper cycles safely |
+| `GET` | `/paper-trading/cycles` | List recent cycle summaries |
+| `GET` | `/paper-trading/recent-actions` | List approval and blocking actions |
+| `GET` | `/reports/scheduler/status` | Read local report scheduler state |
+| `POST` | `/reports/scheduler/start` | Explicitly start scheduled reporting |
+| `POST` | `/reports/scheduler/stop` | Stop scheduled reporting safely |
+| `POST` | `/reports/scheduler/run-now` | Generate a requested or previous-day report now |
+| `GET` | `/reports/scheduler/history` | List append-only scheduler run history |
+| `GET` | `/system/health` | Full system health report |
+| `GET` | `/system/readiness` | Compact paper operational readiness |
+| `GET` | `/system/errors` | Aggregate known component errors |
+| `GET` | `/system/storage` | Verify required local storage |
+| `GET` | `/system/components` | List every health dimension |
 
 ### Analysis Request
 
@@ -250,7 +266,7 @@ Version 4.3 adds dashboard-friendly endpoints under `/dashboard/*`. These endpoi
 
 ## Roadmap and Release Information
 
-Version `5.5.0` adds the Daily Paper Trading Report Engine. It creates immutable dated JSON reports from paper journal, lifecycle, brokerage, monitor, execution-cost, setup-quality, readiness, and risk evidence; applies deterministic PASS/WATCHLIST/FAIL/NO_TRADES rules; and exports compact payloads for future GPT review. It makes no external calls, sends no email, and cannot trigger trading behavior.
+Version `5.8.0` adds local System Health and Observability. It grades application, configuration, provider wiring, paper services, dashboard, storage, logs, research files, and reports; aggregates known runtime errors; verifies writable local paths; computes paper operational readiness; logs JSONL health snapshots; and feeds compact dashboard status. Checks never fetch market data or invoke operational workflows.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

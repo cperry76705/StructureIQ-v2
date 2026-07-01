@@ -14,6 +14,9 @@ from core.paper_brokerage import current_paper_brokerage
 from core.trade_lifecycle_manager import current_trade_lifecycle_manager
 from core.paper_trade_journal import current_paper_trade_journal
 from core.daily_report_engine import current_daily_report_engine
+from core.paper_trading_orchestrator import current_paper_trading_orchestrator
+from core.daily_report_scheduler import current_daily_report_scheduler
+from core.system_health import latest_system_health
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -80,6 +83,29 @@ class DashboardOverview:
     daily_report_rule_violation_count: int = 0
     daily_report_total_r: float = 0.0
     daily_report_summary: str | None = None
+    paper_trading_orchestrator_status: str = "unavailable"
+    last_paper_trading_cycle: str | None = None
+    orchestrator_running: bool = False
+    orchestrator_paused: bool = False
+    total_cycles: int = 0
+    total_candidates_seen: int = 0
+    total_trades_opened: int = 0
+    total_reports_generated: int = 0
+    orchestrator_warnings: tuple[str, ...] = ()
+    daily_report_scheduler_running: bool = False
+    daily_report_scheduler_paused: bool = False
+    daily_report_scheduler_last_run: str | None = None
+    daily_report_scheduler_next_run: str | None = None
+    daily_report_scheduler_last_status: str | None = None
+    daily_report_scheduler_error_count: int = 0
+    scheduled_reporting_ready: bool = False
+    system_health_status: str = "unavailable"
+    system_health_score: float = 0.0
+    system_blocking_issue_count: int = 0
+    system_warning_count: int = 0
+    paper_trading_operational_readiness: str = "NOT_READY"
+    latest_health_check_at: str | None = None
+    health_recommended_actions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -163,6 +189,16 @@ class DashboardReadiness:
     lifecycle_warnings: tuple[str, ...] = ()
     latest_daily_report_status: str = "unavailable"
     daily_report_ready: bool = False
+    paper_trading_orchestrator_status: str = "unavailable"
+    orchestrator_paused: bool = False
+    orchestrator_warnings: tuple[str, ...] = ()
+    daily_report_scheduler_running: bool = False
+    daily_report_scheduler_paused: bool = False
+    scheduled_reporting_ready: bool = False
+    system_health_status: str = "unavailable"
+    system_health_score: float = 0.0
+    paper_trading_operational_readiness: str = "NOT_READY"
+    health_recommended_actions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -192,6 +228,14 @@ class DashboardRisks:
     journal_rule_violations: int = 0
     latest_daily_report_status: str = "unavailable"
     daily_report_warnings: tuple[str, ...] = ()
+    paper_trading_orchestrator_status: str = "unavailable"
+    orchestrator_warnings: tuple[str, ...] = ()
+    daily_report_scheduler_error_count: int = 0
+    daily_report_scheduler_last_status: str | None = None
+    scheduler_warnings: tuple[str, ...] = ()
+    system_health_status: str = "unavailable"
+    system_blocking_issues: tuple[str, ...] = ()
+    system_health_warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -288,6 +332,15 @@ class ResearchDashboardService:
         journal_entries = journal.entries() if journal is not None else ()
         report_engine = current_daily_report_engine()
         latest_report = report_engine.latest() if report_engine is not None else None
+        orchestrator = current_paper_trading_orchestrator()
+        orchestrator_status = orchestrator.status() if orchestrator is not None else None
+        orchestrator_warnings = (
+            (str(orchestrator_status.last_error),)
+            if orchestrator_status is not None and orchestrator_status.last_error else ()
+        )
+        scheduler = current_daily_report_scheduler()
+        scheduler_status = scheduler.status() if scheduler is not None else None
+        health = latest_system_health()
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -359,6 +412,33 @@ class ResearchDashboardService:
             daily_report_rule_violation_count=int(getattr(getattr(latest_report, "summary", None), "rule_violations", 0) or 0),
             daily_report_total_r=float(getattr(getattr(latest_report, "summary", None), "total_r", 0.0) or 0.0),
             daily_report_summary=getattr(latest_report, "human_readable_summary", None),
+            paper_trading_orchestrator_status=(
+                "paused" if orchestrator_status and orchestrator_status.paused
+                else "running" if orchestrator_status and orchestrator_status.running
+                else "stopped_advisory" if orchestrator_status else "unavailable"
+            ),
+            last_paper_trading_cycle=getattr(orchestrator_status, "last_cycle_id", None),
+            orchestrator_running=bool(getattr(orchestrator_status, "running", False)),
+            orchestrator_paused=bool(getattr(orchestrator_status, "paused", False)),
+            total_cycles=int(getattr(orchestrator_status, "cycle_count", 0) or 0),
+            total_candidates_seen=int(getattr(orchestrator_status, "total_candidates_seen", 0) or 0),
+            total_trades_opened=int(getattr(orchestrator_status, "total_trades_opened", 0) or 0),
+            total_reports_generated=int(getattr(orchestrator_status, "total_reports_generated", 0) or 0),
+            orchestrator_warnings=orchestrator_warnings,
+            daily_report_scheduler_running=bool(getattr(scheduler_status, "running", False)),
+            daily_report_scheduler_paused=bool(getattr(scheduler_status, "paused", False)),
+            daily_report_scheduler_last_run=getattr(scheduler_status, "last_run_at", None),
+            daily_report_scheduler_next_run=getattr(scheduler_status, "next_run_at", None),
+            daily_report_scheduler_last_status=getattr(scheduler_status, "last_report_status", None),
+            daily_report_scheduler_error_count=int(getattr(scheduler_status, "error_count", 0) or 0),
+            scheduled_reporting_ready=bool(scheduler_status is not None and not scheduler_status.paused),
+            system_health_status=str(getattr(health, "status", "unavailable")),
+            system_health_score=float(getattr(health, "score", 0.0) or 0.0),
+            system_blocking_issue_count=len(getattr(health, "blocking_issues", ()) or ()),
+            system_warning_count=len(getattr(health, "warnings", ()) or ()),
+            paper_trading_operational_readiness=str(getattr(health, "paper_trading_operational_readiness", "NOT_READY")),
+            latest_health_check_at=getattr(health, "checked_at", None),
+            health_recommended_actions=tuple(getattr(health, "recommended_actions", ()) or ()),
         )
 
     def symbols(self) -> DashboardSymbols:
@@ -503,6 +583,25 @@ class ResearchDashboardService:
             daily_report_ready=(
                 current_daily_report_engine() is not None and current_daily_report_engine().latest() is not None
             ),
+            paper_trading_orchestrator_status=(
+                "paused" if (orchestrator := current_paper_trading_orchestrator()) is not None and orchestrator.status().paused
+                else "running" if orchestrator is not None and orchestrator.status().running
+                else "stopped_advisory" if orchestrator is not None else "unavailable"
+            ),
+            orchestrator_paused=bool(orchestrator is not None and orchestrator.status().paused),
+            orchestrator_warnings=(
+                (str(orchestrator.status().last_error),)
+                if orchestrator is not None and orchestrator.status().last_error else ()
+            ),
+            daily_report_scheduler_running=bool(
+                (scheduler := current_daily_report_scheduler()) is not None and scheduler.status().running
+            ),
+            daily_report_scheduler_paused=bool(scheduler is not None and scheduler.status().paused),
+            scheduled_reporting_ready=bool(scheduler is not None and not scheduler.status().paused),
+            system_health_status=str(getattr((health := latest_system_health()), "status", "unavailable")),
+            system_health_score=float(getattr(health, "score", 0.0) or 0.0),
+            paper_trading_operational_readiness=str(getattr(health, "paper_trading_operational_readiness", "NOT_READY")),
+            health_recommended_actions=tuple(getattr(health, "recommended_actions", ()) or ()),
         )
 
     def risks(self) -> DashboardRisks:
@@ -541,8 +640,23 @@ class ResearchDashboardService:
             str(item) for item in getattr(latest_report, "key_findings", ())
             if "warning" in str(item).lower() or "error" in str(item).lower() or "risk" in str(item).lower()
         )
+        orchestrator = current_paper_trading_orchestrator()
+        orchestrator_status = orchestrator.status() if orchestrator is not None else None
+        orchestrator_warnings = (
+            (str(orchestrator_status.last_error),)
+            if orchestrator_status is not None and orchestrator_status.last_error else ()
+        )
+        scheduler = current_daily_report_scheduler()
+        scheduler_status = scheduler.status() if scheduler is not None else None
+        scheduler_warnings = (
+            (str(scheduler_status.last_error),)
+            if scheduler_status is not None and scheduler_status.last_error else ()
+        )
+        health = latest_system_health()
+        health_blockers = tuple(getattr(health, "blocking_issues", ()) or ())
+        health_warnings = tuple(getattr(health, "warnings", ()) or ())
         top = tuple(
-            dict.fromkeys((*journal_warnings, *lifecycle_warnings, *paper_warnings, *monitor_errors, *execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
+            dict.fromkeys((*health_blockers, *health_warnings, *scheduler_warnings, *orchestrator_warnings, *journal_warnings, *lifecycle_warnings, *paper_warnings, *monitor_errors, *execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
         )[:12]
         risk_grade = _risk_grade(top, overfit, drawdown)
         return DashboardRisks(
@@ -575,6 +689,18 @@ class ResearchDashboardService:
             journal_rule_violations=int(getattr(journal_summary, "rule_violation_count", 0) or 0),
             latest_daily_report_status=str(getattr(latest_report, "status", "unavailable")),
             daily_report_warnings=daily_warnings,
+            paper_trading_orchestrator_status=(
+                "paused" if orchestrator_status and orchestrator_status.paused
+                else "running" if orchestrator_status and orchestrator_status.running
+                else "stopped_advisory" if orchestrator_status else "unavailable"
+            ),
+            orchestrator_warnings=orchestrator_warnings,
+            daily_report_scheduler_error_count=int(getattr(scheduler_status, "error_count", 0) or 0),
+            daily_report_scheduler_last_status=getattr(scheduler_status, "last_report_status", None),
+            scheduler_warnings=scheduler_warnings,
+            system_health_status=str(getattr(health, "status", "unavailable")),
+            system_blocking_issues=health_blockers,
+            system_health_warnings=health_warnings,
         )
 
     def recommendations(self) -> DashboardRecommendations:
@@ -821,6 +947,37 @@ class ResearchDashboardService:
                 "high" if latest_report.status == "FAIL" else "medium",
                 "Review the saved daily report findings before the next paper session.",
                 "Daily Paper Trading Report Engine",
+            )
+        orchestrator = current_paper_trading_orchestrator()
+        if orchestrator is not None:
+            state = orchestrator.status()
+            if state.paused or state.last_error:
+                yield (
+                    "paper_trading_orchestrator",
+                    f"Paper orchestrator is {'paused' if state.paused else 'degraded'}; last error is {state.last_error or 'none'}.",
+                    "high" if state.paused else "medium",
+                    "Keep auto-approval disabled and review recent cycle actions and errors.",
+                    "End-to-End Paper Trading Orchestrator",
+                )
+        scheduler = current_daily_report_scheduler()
+        if scheduler is not None:
+            state = scheduler.status()
+            if state.paused or state.last_error:
+                yield (
+                    "daily_report_scheduler",
+                    f"Daily report scheduler is {'paused' if state.paused else 'degraded'}; last error is {state.last_error or 'none'}.",
+                    "high" if state.paused else "medium",
+                    "Review local report generation and scheduler history before restarting.",
+                    "Scheduled Daily Report Automation",
+                )
+        health = latest_system_health()
+        if health is not None and health.status in {"WATCHLIST", "FAIL"}:
+            yield (
+                "system_health",
+                health.human_readable_summary,
+                "high" if health.status == "FAIL" else "medium",
+                health.recommended_actions[0] if health.recommended_actions else "Review system health dimensions.",
+                "System Health and Observability",
             )
         if monitor is not None and monitor.signal_count and not monitor.last_error:
             yield (

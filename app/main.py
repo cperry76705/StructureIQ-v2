@@ -59,6 +59,29 @@ from core.daily_report_engine import (
     DailyReportListItem,
     get_global_daily_report_engine,
 )
+from core.paper_trading_orchestrator import (
+    OrchestratorAction,
+    PaperTradingCycleResult,
+    PaperTradingOrchestrator,
+    PaperTradingOrchestratorConfig,
+    PaperTradingOrchestratorStatus,
+    get_global_paper_trading_orchestrator,
+)
+from core.daily_report_scheduler import (
+    DailyReportScheduler,
+    DailyReportSchedulerConfig,
+    DailyReportSchedulerStatus,
+    SchedulerHistoryItem,
+    SchedulerRunNowRequest,
+    get_global_daily_report_scheduler,
+)
+from core.system_health import (
+    HealthDimension,
+    SystemErrors,
+    SystemHealthEngine,
+    SystemHealthReport,
+    SystemReadiness,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -180,6 +203,43 @@ def get_daily_report_engine(
         calibration_result=latest_calibration(),
         readiness_context=dashboard.readiness(),
         risk_context=dashboard.risks(),
+    )
+
+
+def get_paper_trading_orchestrator(
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+    daily_reports: DailyReportEngine = Depends(get_daily_report_engine),
+) -> PaperTradingOrchestrator:
+    return get_global_paper_trading_orchestrator(
+        monitor, lifecycle, broker, journal, daily_reports
+    )
+
+
+def get_daily_report_scheduler(
+    reports: DailyReportEngine = Depends(get_daily_report_engine),
+) -> DailyReportScheduler:
+    return get_global_daily_report_scheduler(reports)
+
+
+def get_system_health_engine(
+    provider: MarketDataProvider = Depends(get_market_data_provider),
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+    reports: DailyReportEngine = Depends(get_daily_report_engine),
+    scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler),
+    orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator),
+) -> SystemHealthEngine:
+    return SystemHealthEngine(
+        market_data_provider=provider, live_monitor=monitor,
+        paper_brokerage=broker, trade_lifecycle_manager=lifecycle,
+        paper_trade_journal=journal, daily_report_engine=reports,
+        daily_report_scheduler=scheduler,
+        paper_trading_orchestrator=orchestrator,
     )
 
 
@@ -731,6 +791,101 @@ def daily_report_by_date(report_date: str, engine: DailyReportEngine = Depends(g
     if report is None:
         raise HTTPException(status_code=404, detail="daily report was not found")
     return report
+
+
+@app.get("/paper-trading/status", response_model=PaperTradingOrchestratorStatus, tags=["paper-trading"])
+def paper_trading_status(orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator)) -> PaperTradingOrchestratorStatus:
+    return orchestrator.status()
+
+
+@app.post("/paper-trading/run-cycle", response_model=PaperTradingCycleResult, tags=["paper-trading"])
+def paper_trading_run_cycle(config: PaperTradingOrchestratorConfig | None = None, orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator)) -> PaperTradingCycleResult:
+    try:
+        return orchestrator.run_cycle(config)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/paper-trading/start", response_model=PaperTradingOrchestratorStatus, tags=["paper-trading"])
+def paper_trading_start(config: PaperTradingOrchestratorConfig | None = None, orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator)) -> PaperTradingOrchestratorStatus:
+    try:
+        return orchestrator.start(config)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/paper-trading/stop", response_model=PaperTradingOrchestratorStatus, tags=["paper-trading"])
+def paper_trading_stop(orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator)) -> PaperTradingOrchestratorStatus:
+    return orchestrator.stop()
+
+
+@app.get("/paper-trading/cycles", response_model=list[PaperTradingCycleResult], tags=["paper-trading"])
+def paper_trading_cycles(limit: int | None = None, orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator)) -> list[PaperTradingCycleResult]:
+    if limit is not None and not 1 <= limit <= 10_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(orchestrator.cycles(limit))
+
+
+@app.get("/paper-trading/recent-actions", response_model=list[OrchestratorAction], tags=["paper-trading"])
+def paper_trading_recent_actions(limit: int | None = None, orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator)) -> list[OrchestratorAction]:
+    if limit is not None and not 1 <= limit <= 10_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(orchestrator.recent_actions(limit))
+
+
+@app.get("/reports/scheduler/status", response_model=DailyReportSchedulerStatus, tags=["reports"])
+def report_scheduler_status(scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler)) -> DailyReportSchedulerStatus:
+    return scheduler.status()
+
+
+@app.post("/reports/scheduler/start", response_model=DailyReportSchedulerStatus, tags=["reports"])
+def report_scheduler_start(config: DailyReportSchedulerConfig | None = None, scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler)) -> DailyReportSchedulerStatus:
+    try:
+        return scheduler.start(config)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/reports/scheduler/stop", response_model=DailyReportSchedulerStatus, tags=["reports"])
+def report_scheduler_stop(scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler)) -> DailyReportSchedulerStatus:
+    return scheduler.stop()
+
+
+@app.post("/reports/scheduler/run-now", response_model=SchedulerHistoryItem, tags=["reports"])
+def report_scheduler_run_now(request: SchedulerRunNowRequest, scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler)) -> SchedulerHistoryItem:
+    return scheduler.run_now(request.report_date, request.overwrite)
+
+
+@app.get("/reports/scheduler/history", response_model=list[SchedulerHistoryItem], tags=["reports"])
+def report_scheduler_history(limit: int | None = None, scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler)) -> list[SchedulerHistoryItem]:
+    if limit is not None and not 1 <= limit <= 10_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(scheduler.history(limit))
+
+
+@app.get("/system/health", response_model=SystemHealthReport, tags=["system"])
+def system_health(engine: SystemHealthEngine = Depends(get_system_health_engine)) -> SystemHealthReport:
+    return engine.check()
+
+
+@app.get("/system/readiness", response_model=SystemReadiness, tags=["system"])
+def system_readiness(engine: SystemHealthEngine = Depends(get_system_health_engine)) -> SystemReadiness:
+    return engine.readiness()
+
+
+@app.get("/system/errors", response_model=SystemErrors, tags=["system"])
+def system_errors(engine: SystemHealthEngine = Depends(get_system_health_engine)) -> SystemErrors:
+    return engine.errors()
+
+
+@app.get("/system/storage", response_model=HealthDimension, tags=["system"])
+def system_storage(engine: SystemHealthEngine = Depends(get_system_health_engine)) -> HealthDimension:
+    return engine.storage()
+
+
+@app.get("/system/components", response_model=list[HealthDimension], tags=["system"])
+def system_components(engine: SystemHealthEngine = Depends(get_system_health_engine)) -> list[HealthDimension]:
+    return list(engine.components())
 
 
 def _parse_latest_prices(value: str | None) -> dict[str, float]:

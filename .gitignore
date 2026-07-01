@@ -22,4 +22,7 @@ research/live_monitor_events.jsonl
 research/paper_account_state.json
 research/paper_trade_journal.jsonl
 reports/daily/*.json
+reports/paper_trading_cycles.jsonl
+reports/daily_scheduler_history.jsonl
 logs/*.log
+logs/system_health.jsonl

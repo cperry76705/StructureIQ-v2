@@ -1,5 +1,23 @@
 # StructureIQ Roadmap
 
+## Version 5.8 — System Health and Observability (implemented)
+
+- Unified runtime, service, storage, error, and operational-readiness health reporting.
+- Local JSONL health history and dashboard health intelligence.
+- Startup System Health import validation and advisory availability display.
+
+## Version 5.7 — Scheduled Daily Report Automation (implemented)
+
+- Local previous-day report scheduling with explicit controls and overwrite protection.
+- Timezone/weekend configuration, next-run state, error pausing, and append-only history.
+- Dashboard scheduled-reporting readiness and warnings.
+
+## Version 5.6 — End-to-End Paper Trading Orchestrator (implemented)
+
+- Controlled monitor → lifecycle → brokerage → journal → daily-report cycles.
+- Manual-by-default approvals with conservative explicit auto-approval gates.
+- Background start/stop, error pause, cycle history, actions, persistence, and dashboard state.
+
 ## Version 5.5 — Daily Paper Trading Report Engine (implemented)
 
 - Dated detailed and compact reports over existing paper/research evidence.

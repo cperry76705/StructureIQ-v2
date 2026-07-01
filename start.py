@@ -174,6 +174,12 @@ def run_startup_checks(project_root: Path = PROJECT_ROOT) -> StartupHealth:
     except Exception as exc:
         health.add("FastAPI import", False, f"Could not import app.main: {exc}")
 
+    try:
+        importlib.import_module("core.system_health")
+        health.add("System Health module", True, "System Health is available")
+    except Exception as exc:
+        health.add("System Health module", False, f"Could not import System Health: {exc}")
+
     return health
 
 
@@ -262,6 +268,21 @@ def print_future_sections() -> None:
         print("- Daily Reports: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
     except Exception:
         print("- Daily Reports: NOT ENABLED")
+    try:
+        importlib.import_module("core.paper_trading_orchestrator")
+        print("- Paper Trading Orchestrator: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
+    except Exception:
+        print("- Paper Trading Orchestrator: NOT ENABLED")
+    try:
+        importlib.import_module("core.daily_report_scheduler")
+        print("- Scheduled Reports: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
+    except Exception:
+        print("- Scheduled Reports: NOT ENABLED")
+    try:
+        importlib.import_module("core.system_health")
+        print("- System Health: AVAILABLE/ADVISORY")
+    except Exception:
+        print("- System Health: NOT ENABLED")
     for section in (
         "Live Market Monitor",
         "Live Trading",

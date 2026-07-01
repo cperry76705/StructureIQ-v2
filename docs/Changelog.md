@@ -1,5 +1,29 @@
 # Changelog
 
+## Version 5.8.0 — System Health and Observability — 2026-07-01
+
+- Added graded health dimensions across runtime, paper services, dashboard, storage, logs, research, and reports.
+- Added full health, compact readiness, recent errors, storage, and component endpoints.
+- Added local folder creation, writable probes, optional-file checks, paper-state corruption detection, uptime, and append-only health logs.
+- Added health status, readiness, warnings, blockers, and recommended actions to dashboard views and launcher health checks.
+- No external service, market-data request, broker, or production trading behavior was added.
+
+## Version 5.7.0 — Scheduled Daily Report Automation — 2026-07-01
+
+- Added disabled-by-default local previous-day report scheduling with explicit start, stop, and run-now controls.
+- Added timezone-aware next-run calculation, weekend policy, overwrite protection, error pause, and scheduler state.
+- Added append-only local scheduler history and dashboard scheduling status/warnings.
+- Added a dependency-free America/Chicago fallback for Windows environments without IANA timezone data.
+- No external API, GPT, email, broker, or production trading behavior was added.
+
+## Version 5.6.0 — End-to-End Paper Trading Orchestrator — 2026-07-01
+
+- Added explicit synchronous and optional background monitor-to-report paper workflow orchestration.
+- Added observe-only defaults and guarded auto-approval for quality, geometry, execution blockers, paper risk, duplicates, and cycle caps.
+- Added recent cycle/action state, optional append-only cycle JSONL, error capture, and automatic pause threshold.
+- Added orchestrator status, counters, and warnings to dashboard readiness and risk views.
+- No live broker, GPT, email, external API, or production decision behavior was added.
+
 ## Version 5.5.0 — Daily Paper Trading Report Engine — 2026-07-01
 
 - Added date-based detailed daily reports with deterministic PASS, WATCHLIST, FAIL, and NO_TRADES statuses.
