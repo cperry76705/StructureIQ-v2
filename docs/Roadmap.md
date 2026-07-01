@@ -518,6 +518,18 @@ Every version must preserve automated tests, stable contracts, explainability, a
 - Report route alignment, low-sample warnings, candidates, and aggregate mismatch diagnostics.
 - Preserve all production routing and trade behavior.
 
-## Beyond Version 4.1
+## Version 4.2 — Application Launcher
+
+**Status:** implemented.
+
+- Add `start.py` as the official startup entry point.
+- Validate Python version, dependencies, folders, configuration files, and FastAPI import health.
+- Print the current application version, startup diagnostics, API URL, Swagger path, and future disabled sections.
+- Launch the unchanged FastAPI app through uvicorn as a subprocess.
+- Write startup events to `logs/startup.log` and handle Ctrl+C gracefully.
+
+**Outcome:** StructureIQ has a professional local startup path without changing any production trading or research behavior.
+
+## Beyond Version 4.2
 
 Future work may validate one tuning hypothesis out of sample before any production classifier change. It may also improve data coverage, alerting, portfolio context, personalization, and research workflows. Any execution integration would require a separate architecture, explicit authorization, and independent safety controls; it is not implied by this roadmap.

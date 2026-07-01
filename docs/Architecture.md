@@ -10,6 +10,12 @@ The separation protects three principles:
 2. Trader-facing output remains traceable to structured evidence rather than invented narrative.
 3. Decision support remains separate from broker execution and live trading.
 
+## Application Launcher Boundary
+
+Version 4.2 adds `start.py` as the official startup entry point. The launcher is outside the trading and research pipeline. It validates the local Python/runtime environment, confirms required project folders and configuration files, imports `app.main`, prints startup diagnostics, creates `logs/startup.log`, and delegates serving to uvicorn as a subprocess.
+
+The launcher does not contain FastAPI route logic, domain scoring, calibration behavior, or trading rules. Its future sections for Paper Trading, Live Trading, Scheduler, AI Research, Broker Connections, and Web Dashboard are displayed as `NOT ENABLED` placeholders only.
+
 ## Output Boundaries
 
 ### Internal Engine Output
@@ -303,6 +309,7 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 | How closely do raw confidence scores match historical win probabilities? | Confidence Calibration Engine |
 | Which historical setups and strategies appear strongest, weakest, or under-tested? | Strategy Rating Engine |
 | How has each symbol behaved historically, and which rated categories fit it best? | Adaptive Symbol Profile Engine |
+| How should the local application validate and start? | Application Launcher |
 | Does sampled system performance survive completely unseen chronological data? | Out-of-Sample Validation Laboratory |
 | Why does sampled performance vary across symbols, setups, regimes, time, and execution assumptions? | Statistical Research Laboratory |
 
@@ -319,4 +326,4 @@ Calibration cannot mutate Decision Engine weights, Setup Engine thresholds, Stra
 
 ## Current Platform State
 
-Versions 0.1 through 3.1 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, independent validation, and automatic statistical research. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.
+Versions 0.1 through 4.2 provide the FastAPI foundation, provider abstraction and symbol normalization, typed structure and timeframe analysis, weighted decisions, setup and strategy qualification, trader-facing explanations, journaling, deterministic historical evaluation, calibration diagnostics, execution and timing laboratories, market-regime research, independent validation, automatic statistical research, durable symbol profiles, adaptive-route diagnostics, and an official startup launcher. StructureIQ remains decision-support and research software; none of these layers connect to a broker or place trades.

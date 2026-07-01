@@ -2,7 +2,33 @@
 
 ## Overview
 
-StructureIQ `4.1.1` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+StructureIQ `4.2.0` exposes a FastAPI HTTP interface for analysis, local journaling, simplified backtesting, and observational calibration. The API provides market intelligence only. It does not expose endpoints for broker authentication, order placement, position management, or live execution.
+
+## Application Launcher
+
+The official local startup entry point is:
+
+```powershell
+python start.py
+```
+
+The launcher performs environment checks, prints the current version, writes `logs/startup.log`, displays reserved future components as `NOT ENABLED`, and starts the unchanged FastAPI application through:
+
+```powershell
+python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+Supported launcher commands:
+
+| Command | Behavior |
+| --- | --- |
+| `python start.py` | Run health checks, display the startup banner, and launch the API. |
+| `python start.py --api` | Start only the API process after validation. |
+| `python start.py --version` | Print the version from `app/config.py` and exit. |
+| `python start.py --health` | Validate Python, folders, files, packages, config import, and `app.main` import without launching uvicorn. |
+| `python start.py --help` | Display launcher options. |
+
+The launcher is not an API endpoint and does not modify request or response contracts.
 
 Interactive OpenAPI documentation is available at `/docs` and the machine-readable schema at `/openapi.json` when the service is running. Public endpoints use explicit response models; validation failures use FastAPI's standard `422` detail format. `/analysis` and `/backtest` provider failures return `503`; `/calibrate` isolates failures per run and returns availability diagnostics.
 

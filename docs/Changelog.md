@@ -2,6 +2,23 @@
 
 All notable changes to StructureIQ are documented in this file. The project follows an incremental roadmap toward an explainable market intelligence platform.
 
+## Version 4.2.0 — Application Launcher — 2026-07-01
+
+### Added
+
+- Added `start.py` as the official application startup entry point.
+- Added startup validation for Python version, required packages, required folders, required files, `app.config`, and `app.main`.
+- Added a friendly startup banner with API URL, Swagger path, status, and disabled future sections.
+- Added subprocess-based uvicorn launch using `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`.
+- Added `--api`, `--version`, `--health`, and `--help` CLI support.
+- Added `logs/startup.log` creation and startup/shutdown event logging.
+- Added launcher regression tests covering health checks, command generation, logging, Ctrl+C, successful startup, and failure handling.
+
+### Safety
+
+- The launcher delegates to the existing FastAPI app and does not duplicate API logic.
+- Analysis, decision, calibration, setup, strategy, execution, research, risk, and trade-management behavior are unchanged.
+
 ## Version 4.1.1 — Research Summary Population Fix — 2026-07-01
 
 ### Fixed

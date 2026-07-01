@@ -50,6 +50,7 @@ The platform includes:
 - **Strategy Rating Engine** — grades observed setups and strategies from historical performance, OOS consistency, sample quality, drawdown, significance, and research risk.
 - **Adaptive Symbol Profile Engine** — persistently learns symbol-level performance, market character, and historically preferred rated categories from completed calibration trades.
 - **Adaptive Strategy Router Laboratory** — compares unchanged production routes with symbol-profile preferences without rerouting trades.
+- **Application Launcher** — validates the local environment, writes startup logs, displays diagnostics, and starts the unchanged FastAPI app through uvicorn.
 - **Calibration Engine** — aggregates backtests and recommends areas for human review without tuning automatically.
 
 See [Architecture](docs/Architecture.md), [API reference](docs/API.md), and the [project blueprint](docs/Vision.md) for details.
@@ -62,10 +63,22 @@ Python 3.11 or newer is recommended.
 python -m venv .venv
 .venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+python start.py
 ```
 
 The API is available at `http://127.0.0.1:8000`; interactive OpenAPI documentation is at `/docs`.
+
+The official launcher supports:
+
+```powershell
+python start.py              # Validate startup health and launch the API
+python start.py --api         # Start only the API process after validation
+python start.py --health      # Run startup checks without launching uvicorn
+python start.py --version     # Print the current StructureIQ version
+python start.py --help        # Show launcher options
+```
+
+The launcher reads the version from `app/config.py`, verifies Python, package, folder, file, configuration, and `app.main` import health, creates `logs/` if needed, and appends startup events to `logs/startup.log`. It delegates API serving to `python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`; FastAPI behavior remains unchanged.
 
 ## Running Tests
 
@@ -196,7 +209,7 @@ Version 4.0 persistently merges completed calibration observations into local sy
 
 ## Roadmap and Release Information
 
-Version `4.1.1` enforces calibration research-population contracts so enabled laboratories cannot silently serialize as null. Production behavior remains unchanged.
+Version `4.2.0` adds the official application launcher and startup health checks. Production behavior remains unchanged.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)
