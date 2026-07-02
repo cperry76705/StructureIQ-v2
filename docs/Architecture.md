@@ -1,5 +1,9 @@
 # StructureIQ Architecture
 
+## System Validation Boundary
+
+`SystemValidationHarness` is a test-oriented coordinator over health, configuration, storage, synthetic analysis, and paper-service readiness. Each timed component is exception-isolated, so failures are reported without aborting later checks. Analysis and orchestrator probes use deterministic in-memory candles and isolated temporary paper state. The harness never fetches external data, changes production configuration, or connects to brokers, GPT, email, or live execution. Completed results append to `reports/system_validation_history.jsonl` and feed read-only dashboard projections.
+
 ## System Health Boundary
 
 `SystemHealthEngine` is a read-only observer over configured runtime services and local storage. It never polls providers, runs analysis, advances lifecycle state, or generates reports. Storage checks may create required directories and temporary write probes, which are immediately removed. Health snapshots append locally to `logs/system_health.jsonl`; no credentials, external APIs, brokers, or production behavior are involved.

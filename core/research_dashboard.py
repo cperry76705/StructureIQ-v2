@@ -17,6 +17,7 @@ from core.daily_report_engine import current_daily_report_engine
 from core.paper_trading_orchestrator import current_paper_trading_orchestrator
 from core.daily_report_scheduler import current_daily_report_scheduler
 from core.system_health import latest_system_health
+from core.system_validation import latest_system_validation
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -106,6 +107,13 @@ class DashboardOverview:
     paper_trading_operational_readiness: str = "NOT_READY"
     latest_health_check_at: str | None = None
     health_recommended_actions: tuple[str, ...] = ()
+    latest_validation_status: str = "unavailable"
+    validation_score: float = 0.0
+    validation_timestamp: str | None = None
+    continuous_runtime_ready: bool = False
+    validation_paper_trading_ready: bool = False
+    validation_blocking_issue_count: int = 0
+    validation_recommendations: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -199,6 +207,11 @@ class DashboardReadiness:
     system_health_score: float = 0.0
     paper_trading_operational_readiness: str = "NOT_READY"
     health_recommended_actions: tuple[str, ...] = ()
+    latest_validation_status: str = "unavailable"
+    validation_score: float = 0.0
+    continuous_runtime_ready: bool = False
+    validation_paper_trading_ready: bool = False
+    validation_recommendations: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -236,6 +249,9 @@ class DashboardRisks:
     system_health_status: str = "unavailable"
     system_blocking_issues: tuple[str, ...] = ()
     system_health_warnings: tuple[str, ...] = ()
+    latest_validation_status: str = "unavailable"
+    validation_blocking_issues: tuple[str, ...] = ()
+    validation_warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -341,6 +357,7 @@ class ResearchDashboardService:
         scheduler = current_daily_report_scheduler()
         scheduler_status = scheduler.status() if scheduler is not None else None
         health = latest_system_health()
+        validation = latest_system_validation()
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -439,6 +456,13 @@ class ResearchDashboardService:
             paper_trading_operational_readiness=str(getattr(health, "paper_trading_operational_readiness", "NOT_READY")),
             latest_health_check_at=getattr(health, "checked_at", None),
             health_recommended_actions=tuple(getattr(health, "recommended_actions", ()) or ()),
+            latest_validation_status=str(getattr(validation, "validation_status", "unavailable")),
+            validation_score=float(getattr(validation, "overall_score", 0.0) or 0.0),
+            validation_timestamp=getattr(validation, "completed_at", None),
+            continuous_runtime_ready=bool(getattr(validation, "continuous_runtime_ready", False)),
+            validation_paper_trading_ready=bool(getattr(validation, "paper_trading_ready", False)),
+            validation_blocking_issue_count=len(getattr(validation, "blocking_issues", ()) or ()),
+            validation_recommendations=tuple(getattr(validation, "recommendations", ()) or ()),
         )
 
     def symbols(self) -> DashboardSymbols:
@@ -602,6 +626,11 @@ class ResearchDashboardService:
             system_health_score=float(getattr(health, "score", 0.0) or 0.0),
             paper_trading_operational_readiness=str(getattr(health, "paper_trading_operational_readiness", "NOT_READY")),
             health_recommended_actions=tuple(getattr(health, "recommended_actions", ()) or ()),
+            latest_validation_status=str(getattr((validation := latest_system_validation()), "validation_status", "unavailable")),
+            validation_score=float(getattr(validation, "overall_score", 0.0) or 0.0),
+            continuous_runtime_ready=bool(getattr(validation, "continuous_runtime_ready", False)),
+            validation_paper_trading_ready=bool(getattr(validation, "paper_trading_ready", False)),
+            validation_recommendations=tuple(getattr(validation, "recommendations", ()) or ()),
         )
 
     def risks(self) -> DashboardRisks:
@@ -655,8 +684,11 @@ class ResearchDashboardService:
         health = latest_system_health()
         health_blockers = tuple(getattr(health, "blocking_issues", ()) or ())
         health_warnings = tuple(getattr(health, "warnings", ()) or ())
+        validation = latest_system_validation()
+        validation_blockers = tuple(getattr(validation, "blocking_issues", ()) or ())
+        validation_warnings = tuple(getattr(validation, "warnings", ()) or ())
         top = tuple(
-            dict.fromkeys((*health_blockers, *health_warnings, *scheduler_warnings, *orchestrator_warnings, *journal_warnings, *lifecycle_warnings, *paper_warnings, *monitor_errors, *execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
+            dict.fromkeys((*validation_blockers, *validation_warnings, *health_blockers, *health_warnings, *scheduler_warnings, *orchestrator_warnings, *journal_warnings, *lifecycle_warnings, *paper_warnings, *monitor_errors, *execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
         )[:12]
         risk_grade = _risk_grade(top, overfit, drawdown)
         return DashboardRisks(
@@ -701,6 +733,9 @@ class ResearchDashboardService:
             system_health_status=str(getattr(health, "status", "unavailable")),
             system_blocking_issues=health_blockers,
             system_health_warnings=health_warnings,
+            latest_validation_status=str(getattr(validation, "validation_status", "unavailable")),
+            validation_blocking_issues=validation_blockers,
+            validation_warnings=validation_warnings,
         )
 
     def recommendations(self) -> DashboardRecommendations:
@@ -978,6 +1013,15 @@ class ResearchDashboardService:
                 "high" if health.status == "FAIL" else "medium",
                 health.recommended_actions[0] if health.recommended_actions else "Review system health dimensions.",
                 "System Health and Observability",
+            )
+        validation = latest_system_validation()
+        if validation is not None and validation.validation_status in {"WATCHLIST", "FAIL"}:
+            yield (
+                "system_validation",
+                validation.human_readable_summary,
+                "high" if validation.validation_status == "FAIL" else "medium",
+                validation.recommendations[0] if validation.recommendations else "Review validation component results.",
+                "End-to-End Validation Harness",
             )
         if monitor is not None and monitor.signal_count and not monitor.last_error:
             yield (

@@ -82,6 +82,10 @@ from core.system_health import (
     SystemHealthReport,
     SystemReadiness,
 )
+from core.system_validation import (
+    SystemValidationHarness,
+    SystemValidationResult,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -240,6 +244,27 @@ def get_system_health_engine(
         paper_trade_journal=journal, daily_report_engine=reports,
         daily_report_scheduler=scheduler,
         paper_trading_orchestrator=orchestrator,
+    )
+
+
+def get_system_validation_harness(
+    health: SystemHealthEngine = Depends(get_system_health_engine),
+    provider: MarketDataProvider = Depends(get_market_data_provider),
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+    reports: DailyReportEngine = Depends(get_daily_report_engine),
+    scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler),
+    orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator),
+    dashboard: ResearchDashboardService = Depends(get_research_dashboard_service),
+) -> SystemValidationHarness:
+    return SystemValidationHarness(
+        health_engine=health, market_data_provider=provider,
+        monitor=monitor, broker=broker, lifecycle=lifecycle,
+        journal=journal, reports=reports, scheduler=scheduler,
+        orchestrator=orchestrator, dashboard=dashboard,
+        api_paths_provider=lambda: set(app.openapi()["paths"]),
     )
 
 
@@ -886,6 +911,28 @@ def system_storage(engine: SystemHealthEngine = Depends(get_system_health_engine
 @app.get("/system/components", response_model=list[HealthDimension], tags=["system"])
 def system_components(engine: SystemHealthEngine = Depends(get_system_health_engine)) -> list[HealthDimension]:
     return list(engine.components())
+
+
+@app.get("/system/validation", response_model=SystemValidationResult | None, tags=["system"])
+def system_validation_latest(harness: SystemValidationHarness = Depends(get_system_validation_harness)) -> SystemValidationResult | None:
+    return harness.latest()
+
+
+@app.post("/system/validation/run", response_model=SystemValidationResult, tags=["system"])
+def system_validation_run(harness: SystemValidationHarness = Depends(get_system_validation_harness)) -> SystemValidationResult:
+    return harness.run()
+
+
+@app.get("/system/validation/history", response_model=list[SystemValidationResult], tags=["system"])
+def system_validation_history(limit: int | None = None, harness: SystemValidationHarness = Depends(get_system_validation_harness)) -> list[SystemValidationResult]:
+    if limit is not None and not 1 <= limit <= 10_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(harness.history(limit))
+
+
+@app.post("/system/validation/reset-history", response_model=dict[str, int], tags=["system"])
+def system_validation_reset(harness: SystemValidationHarness = Depends(get_system_validation_harness)) -> dict[str, int]:
+    return {"cleared_runs": harness.reset_history()}
 
 
 def _parse_latest_prices(value: str | None) -> dict[str, float]:

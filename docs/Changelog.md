@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 5.9.0 — End-to-End Validation Harness — 2026-07-01
+
+- Added independent timed validation for application, configuration, storage, research files, provider wiring, synthetic analysis, all paper services, dashboard, observability, API registration, and launcher startup.
+- Added latest-run, run-now, history, and reset-history validation endpoints plus `start.py --validate` with PASS/WATCHLIST/FAIL exit codes.
+- Added append-only local validation history and compact validation status, blockers, warnings, and recommendations to dashboard views.
+- Validation uses deterministic local probes and isolated paper state; it never contacts a broker, GPT, email, or a live trading path.
+
 ## Version 5.8.0 — System Health and Observability — 2026-07-01
 
 - Added graded health dimensions across runtime, paper services, dashboard, storage, logs, research, and reports.

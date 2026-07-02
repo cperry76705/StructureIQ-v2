@@ -363,7 +363,33 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Run startup validation checks without launching the server.",
     )
+    parser.add_argument(
+        "--validate",
+        action="store_true",
+        help="Run complete local system validation and exit.",
+    )
     return parser.parse_args(argv)
+
+
+def run_system_validation() -> int:
+    """Run the local validation API in-process and print component results."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    response = TestClient(app).post("/system/validation/run")
+    if response.status_code != 200:
+        print(f"System validation failed to run: HTTP {response.status_code}")
+        return 2
+    result = response.json()
+    print(f"StructureIQ v{get_version()} System Validation")
+    print("=" * 50)
+    for component in result["component_results"]:
+        print(f"[{component['status']}] {component['component']} ({component['duration_ms']:.2f} ms)")
+        print(f"  {component['human_readable_summary']}")
+    print()
+    print(f"Overall: {result['validation_status']} ({result['overall_score']:.2f}/100)")
+    print(result["human_readable_summary"])
+    return {"PASS": 0, "WATCHLIST": 1, "FAIL": 2}[result["validation_status"]]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -377,6 +403,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"StructureIQ v{version}")
         write_startup_log(result="version", argv=raw_argv, version=version)
         return 0
+
+    if args.validate:
+        exit_code = run_system_validation()
+        write_startup_log(result="system_validation", argv=raw_argv, details=f"exit_code={exit_code}")
+        return exit_code
 
     health = run_startup_checks()
 

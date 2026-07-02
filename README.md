@@ -159,6 +159,10 @@ Tests use deterministic fixtures and do not require live market-data access.
 | `GET` | `/system/errors` | Aggregate known component errors |
 | `GET` | `/system/storage` | Verify required local storage |
 | `GET` | `/system/components` | List every health dimension |
+| `GET` | `/system/validation` | Read the latest full-platform validation |
+| `POST` | `/system/validation/run` | Run every validation component independently |
+| `GET` | `/system/validation/history` | List append-only validation history |
+| `POST` | `/system/validation/reset-history` | Clear local validation history |
 
 ### Analysis Request
 
@@ -266,7 +270,7 @@ Version 4.3 adds dashboard-friendly endpoints under `/dashboard/*`. These endpoi
 
 ## Roadmap and Release Information
 
-Version `5.8.0` adds local System Health and Observability. It grades application, configuration, provider wiring, paper services, dashboard, storage, logs, research files, and reports; aggregates known runtime errors; verifies writable local paths; computes paper operational readiness; logs JSONL health snapshots; and feeds compact dashboard status. Checks never fetch market data or invoke operational workflows.
+Version `5.9.0` adds an end-to-end validation harness for application, configuration, storage, synthetic analysis, paper services, reporting, dashboard, observability, API registration, and the launcher. Run it through `POST /system/validation/run` or `python start.py --validate`. Components are isolated so one failure never prevents the remaining checks. Results are local, append-only, and cannot connect to brokers, GPT, email, or live trading.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

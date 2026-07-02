@@ -1,5 +1,11 @@
 # StructureIQ Roadmap
 
+## Version 5.9 — End-to-End Validation Harness (implemented)
+
+- One independent, timed validation flow across platform health and paper-trading services.
+- Local append-only history, dashboard readiness projection, OpenAPI checks, and launcher CLI validation.
+- Deterministic synthetic probes with no external services or production behavior changes.
+
 ## Version 5.8 — System Health and Observability (implemented)
 
 - Unified runtime, service, storage, error, and operational-readiness health reporting.
