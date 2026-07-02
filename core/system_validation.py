@@ -69,6 +69,7 @@ class SystemValidationHarness:
         "/paper-journal/summary", "/reports/daily",
         "/reports/scheduler/status", "/paper-trading/status",
         "/dashboard/overview", "/system/validation/run",
+        "/continuous-paper/status",
     }
 
     def __init__(
@@ -121,6 +122,7 @@ class SystemValidationHarness:
             ("Daily Reports", self._reports),
             ("Daily Scheduler", self._scheduler),
             ("Paper Trading Orchestrator", self._orchestrator),
+            ("Continuous Paper Trading", self._continuous_paper),
             ("Dashboard", self._dashboard),
             ("Observability", self._observability),
             ("API Registration", self._api_registration),
@@ -277,6 +279,16 @@ class SystemValidationHarness:
         for method in (self.dashboard.overview, self.dashboard.readiness, self.dashboard.risks, self.dashboard.recommendations):
             method()
         return _pass("Dashboard summaries are operational.")
+
+    def _continuous_paper(self):
+        module = importlib.import_module("core.continuous_paper_trading")
+        runtime = module.current_continuous_paper_trading()
+        if runtime is None:
+            return _pass("Continuous Paper Trading is available and not auto-started.")
+        state = runtime.status()
+        if state.paused:
+            return _watch(state.pause_reasons, "Continuous Paper Trading is available but paused safely.")
+        return _pass("Continuous Paper Trading runtime state is operational and paper-only.")
 
     def _observability(self):
         report = self.health_engine.check(write_log=False)

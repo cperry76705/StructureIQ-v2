@@ -1,5 +1,5 @@
 from dataclasses import replace
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -39,9 +39,14 @@ def _trade_request():
     )
 
 
+def _utc_today():
+    """Match the UTC timestamps used by paper journal entries."""
+    return datetime.now(timezone.utc).date()
+
+
 def test_report_engine_initializes_and_no_trades_is_controlled(tmp_path) -> None:
     engine, *_ = _services(tmp_path)
-    report = engine.generate(date.today())
+    report = engine.generate(_utc_today())
     assert report.status == "NO_TRADES"
     assert report.summary.closed_trades == 0
     assert engine.latest().report_id == report.report_id
@@ -51,7 +56,7 @@ def test_winning_trade_returns_pass(tmp_path) -> None:
     engine, _, broker, _, _ = _services(tmp_path)
     trade = broker.open_position(_trade_request())
     broker.close_position(trade.trade_id, 106)
-    report = engine.generate(date.today())
+    report = engine.generate(_utc_today())
     assert report.status == "PASS"
     assert report.summary.total_r == 3
     assert report.summary.realized_pl == 300
@@ -63,7 +68,7 @@ def test_open_risk_or_warning_returns_watchlist(tmp_path) -> None:
     trade = broker.open_position(_trade_request())
     entry = journal.get_trade(trade.trade_id)
     journal._entries[trade.trade_id] = replace(entry, warnings=("Execution review required.",))
-    report = engine.generate(date.today())
+    report = engine.generate(_utc_today())
     assert report.status == "WATCHLIST"
     assert report.summary.open_trades == 1
     assert report.summary.warnings == 1
@@ -75,7 +80,7 @@ def test_rule_violation_with_closed_trade_returns_fail(tmp_path) -> None:
     broker.close_position(trade.trade_id, 104)
     entry = journal.get_trade(trade.trade_id)
     journal._entries[trade.trade_id] = replace(entry, rule_violations=("Risk rule violated.",))
-    report = engine.generate(date.today())
+    report = engine.generate(_utc_today())
     assert report.status == "FAIL"
     assert report.summary.rule_violations == 1
 
@@ -96,8 +101,8 @@ def test_gpt_payload_is_compact_and_clean(tmp_path) -> None:
     engine, _, broker, _, _ = _services(tmp_path)
     trade = broker.open_position(_trade_request())
     broker.close_position(trade.trade_id, 104)
-    engine.generate(date.today())
-    payload = engine.export_gpt_payload(date.today())
+    engine.generate(_utc_today())
+    payload = engine.export_gpt_payload(_utc_today())
     assert payload.status == "PASS"
     assert payload.trades[0]["trade_id"] == trade.trade_id
     assert len(payload.questions_for_review) == 3
@@ -107,7 +112,7 @@ def test_gpt_payload_is_compact_and_clean(tmp_path) -> None:
 def test_daily_report_api_and_openapi(tmp_path) -> None:
     engine, _, _, _, _ = _services(tmp_path)
     app.dependency_overrides[get_daily_report_engine] = lambda: engine
-    today = date.today().isoformat()
+    today = _utc_today().isoformat()
     try:
         client = TestClient(app)
         paths = client.get("/openapi.json").json()["paths"]
@@ -133,7 +138,7 @@ def test_dashboard_includes_latest_daily_report(tmp_path, monkeypatch) -> None:
     engine, _, broker, _, _ = _services(tmp_path)
     trade = broker.open_position(_trade_request())
     broker.close_position(trade.trade_id, 106)
-    report = engine.generate(date.today())
+    report = engine.generate(_utc_today())
     monkeypatch.setattr(report_module, "_GLOBAL_REPORT_ENGINE", engine)
     try:
         client = TestClient(app)

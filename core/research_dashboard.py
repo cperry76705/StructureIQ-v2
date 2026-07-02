@@ -18,6 +18,7 @@ from core.paper_trading_orchestrator import current_paper_trading_orchestrator
 from core.daily_report_scheduler import current_daily_report_scheduler
 from core.system_health import latest_system_health
 from core.system_validation import latest_system_validation
+from core.continuous_paper_trading import current_continuous_paper_trading
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -114,6 +115,18 @@ class DashboardOverview:
     validation_paper_trading_ready: bool = False
     validation_blocking_issue_count: int = 0
     validation_recommendations: tuple[str, ...] = ()
+    continuous_paper_running: bool = False
+    continuous_paper_paused: bool = False
+    continuous_paper_session_id: str | None = None
+    continuous_paper_cycle_count: int = 0
+    continuous_paper_last_cycle_status: str | None = None
+    continuous_paper_last_validation_status: str | None = None
+    continuous_paper_last_health_status: str | None = None
+    continuous_paper_error_count: int = 0
+    continuous_paper_pause_reasons: tuple[str, ...] = ()
+    continuous_paper_total_trades_opened: int = 0
+    continuous_paper_total_reports_generated: int = 0
+    continuous_paper_readiness: str = "NOT_STARTED"
 
 
 @dataclass(frozen=True)
@@ -212,6 +225,10 @@ class DashboardReadiness:
     continuous_runtime_ready: bool = False
     validation_paper_trading_ready: bool = False
     validation_recommendations: tuple[str, ...] = ()
+    continuous_paper_running: bool = False
+    continuous_paper_paused: bool = False
+    continuous_paper_readiness: str = "NOT_STARTED"
+    continuous_paper_pause_reasons: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -252,6 +269,8 @@ class DashboardRisks:
     latest_validation_status: str = "unavailable"
     validation_blocking_issues: tuple[str, ...] = ()
     validation_warnings: tuple[str, ...] = ()
+    continuous_paper_status: str = "not_started"
+    continuous_paper_warnings: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -358,6 +377,8 @@ class ResearchDashboardService:
         scheduler_status = scheduler.status() if scheduler is not None else None
         health = latest_system_health()
         validation = latest_system_validation()
+        continuous = current_continuous_paper_trading()
+        continuous_status = continuous.status() if continuous is not None else None
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -463,6 +484,18 @@ class ResearchDashboardService:
             validation_paper_trading_ready=bool(getattr(validation, "paper_trading_ready", False)),
             validation_blocking_issue_count=len(getattr(validation, "blocking_issues", ()) or ()),
             validation_recommendations=tuple(getattr(validation, "recommendations", ()) or ()),
+            continuous_paper_running=bool(getattr(continuous_status, "running", False)),
+            continuous_paper_paused=bool(getattr(continuous_status, "paused", False)),
+            continuous_paper_session_id=getattr(continuous_status, "session_id", None),
+            continuous_paper_cycle_count=int(getattr(continuous_status, "cycle_count", 0) or 0),
+            continuous_paper_last_cycle_status=getattr(continuous_status, "last_cycle_status", None),
+            continuous_paper_last_validation_status=getattr(continuous_status, "last_validation_status", None),
+            continuous_paper_last_health_status=getattr(continuous_status, "last_health_status", None),
+            continuous_paper_error_count=int(getattr(continuous_status, "error_count", 0) or 0),
+            continuous_paper_pause_reasons=tuple(getattr(continuous_status, "pause_reasons", ()) or ()),
+            continuous_paper_total_trades_opened=int(getattr(continuous_status, "total_trades_opened", 0) or 0),
+            continuous_paper_total_reports_generated=int(getattr(continuous_status, "total_reports_generated", 0) or 0),
+            continuous_paper_readiness=("PAUSED" if getattr(continuous_status, "paused", False) else "RUNNING" if getattr(continuous_status, "running", False) else "STOPPED" if continuous_status else "NOT_STARTED"),
         )
 
     def symbols(self) -> DashboardSymbols:
@@ -631,6 +664,10 @@ class ResearchDashboardService:
             continuous_runtime_ready=bool(getattr(validation, "continuous_runtime_ready", False)),
             validation_paper_trading_ready=bool(getattr(validation, "paper_trading_ready", False)),
             validation_recommendations=tuple(getattr(validation, "recommendations", ()) or ()),
+            continuous_paper_running=bool(getattr((continuous_status := current_continuous_paper_trading().status() if current_continuous_paper_trading() else None), "running", False)),
+            continuous_paper_paused=bool(getattr(continuous_status, "paused", False)),
+            continuous_paper_readiness=("PAUSED" if getattr(continuous_status, "paused", False) else "RUNNING" if getattr(continuous_status, "running", False) else "STOPPED" if continuous_status else "NOT_STARTED"),
+            continuous_paper_pause_reasons=tuple(getattr(continuous_status, "pause_reasons", ()) or ()),
         )
 
     def risks(self) -> DashboardRisks:
@@ -687,8 +724,11 @@ class ResearchDashboardService:
         validation = latest_system_validation()
         validation_blockers = tuple(getattr(validation, "blocking_issues", ()) or ())
         validation_warnings = tuple(getattr(validation, "warnings", ()) or ())
+        continuous = current_continuous_paper_trading()
+        continuous_status = continuous.status() if continuous is not None else None
+        continuous_warnings = tuple(getattr(continuous_status, "pause_reasons", ()) or ())
         top = tuple(
-            dict.fromkeys((*validation_blockers, *validation_warnings, *health_blockers, *health_warnings, *scheduler_warnings, *orchestrator_warnings, *journal_warnings, *lifecycle_warnings, *paper_warnings, *monitor_errors, *execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
+            dict.fromkeys((*continuous_warnings, *validation_blockers, *validation_warnings, *health_blockers, *health_warnings, *scheduler_warnings, *orchestrator_warnings, *journal_warnings, *lifecycle_warnings, *paper_warnings, *monitor_errors, *execution_warnings, *overfit, *drawdown, *low_sample, *calibration, *confidence, *provider))
         )[:12]
         risk_grade = _risk_grade(top, overfit, drawdown)
         return DashboardRisks(
@@ -736,6 +776,8 @@ class ResearchDashboardService:
             latest_validation_status=str(getattr(validation, "validation_status", "unavailable")),
             validation_blocking_issues=validation_blockers,
             validation_warnings=validation_warnings,
+            continuous_paper_status=("paused" if getattr(continuous_status, "paused", False) else "running" if getattr(continuous_status, "running", False) else "stopped" if continuous_status else "not_started"),
+            continuous_paper_warnings=continuous_warnings,
         )
 
     def recommendations(self) -> DashboardRecommendations:
@@ -1004,6 +1046,17 @@ class ResearchDashboardService:
                     "high" if state.paused else "medium",
                     "Review local report generation and scheduler history before restarting.",
                     "Scheduled Daily Report Automation",
+                )
+        continuous = current_continuous_paper_trading()
+        if continuous is not None:
+            state = continuous.status()
+            if state.paused or state.error_count:
+                yield (
+                    "continuous_paper_trading",
+                    state.human_readable_summary,
+                    "high" if state.paused else "medium",
+                    "Review runtime safety events and resolve every pause reason before resuming.",
+                    "Continuous Autonomous Paper Trading",
                 )
         health = latest_system_health()
         if health is not None and health.status in {"WATCHLIST", "FAIL"}:

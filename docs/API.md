@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `5.9.0` exposes a FastAPI HTTP interface for analysis, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.0` exposes a FastAPI HTTP interface for analysis, continuous paper trading, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ## Application Launcher
 
@@ -50,7 +50,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "5.9.0",
+  "app_version": "6.0.0",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,
@@ -148,6 +148,12 @@ Auto-approval requires explicit `auto_approve_candidates=true` and `require_manu
 `POST /reports/scheduler/run-now` generates the previous day in the configured timezone by default or accepts an explicit `report_date`. Its optional `overwrite` value overrides scheduler policy for that run. Existing reports are returned as `skipped_existing` unless overwrite is enabled.
 
 `POST /reports/scheduler/start` and `/stop` control a local daemon scheduler; it never auto-starts with the API. `GET /reports/scheduler/status` reports running, enabled, paused, last/next run, last report, counts, and errors. `/history` returns append-only run records stored in `reports/daily_scheduler_history.jsonl`. The default is 06:00 America/Chicago, previous day, weekends included, and overwrite disabled. Repeated failures pause scheduling. Dashboard responses expose scheduler readiness and warnings. No external service, GPT, email, broker, or trading call exists.
+
+## Continuous Autonomous Paper Trading
+
+`GET /continuous-paper/status` reports runtime and session counters. `POST /continuous-paper/start`, `/stop`, `/pause`, and `/resume` provide explicit controls; `POST /continuous-paper/run-once` executes exactly one guarded orchestrator cycle. `/continuous-paper/events` and `/sessions` expose bounded local state backed by append-only JSONL.
+
+The runtime is disabled and stopped by default. It delegates cycles to `PaperTradingOrchestrator`, permits WATCHLIST validation only when configured, and can pause on validation failure, health failure, paper daily limits, or accumulated errors. It remains paper-only and cannot call a broker, GPT, email, or live execution.
 
 ## End-to-End System Validation
 

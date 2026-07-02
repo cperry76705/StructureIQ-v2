@@ -104,7 +104,7 @@ def test_dashboard_overview_returns_unavailable_without_prior_calibration(
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["app_version"] == "5.9.0"
+    assert payload["app_version"] == "6.0.0"
     assert payload["paper_trading_readiness"] == "UNAVAILABLE"
     assert payload["aggregate_win_rate"] is None
     assert "unavailable" in payload["human_readable_summary"].lower()

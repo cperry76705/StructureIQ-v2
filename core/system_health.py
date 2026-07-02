@@ -76,6 +76,7 @@ class SystemHealthEngine:
         "live_monitor", "paper_brokerage", "trade_lifecycle_manager",
         "paper_trade_journal", "daily_report_engine",
         "daily_report_scheduler", "paper_trading_orchestrator",
+        "continuous_paper_trading",
     )
     REQUIRED_DIRS = ("logs", "research", "reports", "reports/daily")
     OPTIONAL_FILES = (
@@ -121,6 +122,7 @@ class SystemHealthEngine:
             self._journal(), self._runtime_component("daily_report_engine", self.reports),
             self._runtime_component("daily_report_scheduler", self.scheduler),
             self._runtime_component("paper_trading_orchestrator", self.orchestrator),
+            self._continuous_paper_dimension(),
             self._module_dimension("dashboard", "core.research_dashboard"),
             self.storage(), self._folder_dimension("logs", "logs"),
             self._research_files(), self._folder_dimension("reports", "reports"),
@@ -168,6 +170,7 @@ class SystemHealthEngine:
             ("live_monitor", self.monitor), ("trade_lifecycle_manager", self.lifecycle),
             ("daily_report_scheduler", self.scheduler),
             ("paper_trading_orchestrator", self.orchestrator),
+            ("continuous_paper_trading", self._continuous_runtime()),
         ):
             if component is None:
                 continue
@@ -182,6 +185,35 @@ class SystemHealthEngine:
             errors=tuple(errors), checked_at=_now(),
             human_readable_summary=f"{len(errors)} components currently expose known errors.",
         )
+
+    @staticmethod
+    def _continuous_runtime():
+        try:
+            from core.continuous_paper_trading import current_continuous_paper_trading
+            return current_continuous_paper_trading()
+        except Exception:
+            return None
+
+    def _continuous_paper_dimension(self) -> HealthDimension:
+        runtime = self._continuous_runtime()
+        if runtime is None:
+            try:
+                importlib.import_module("core.continuous_paper_trading")
+                return HealthDimension("continuous_paper_trading", "PASS", 100.0,
+                    {"available": True, "running": False, "paused": False}, (), (),
+                    "Continuous paper trading is available and not auto-started.")
+            except Exception as exc:
+                return HealthDimension("continuous_paper_trading", "UNAVAILABLE", 0.0,
+                    {"available": False}, (), (f"Continuous paper runtime import failed: {exc}",),
+                    "Continuous paper trading is unavailable.")
+        status = runtime.status()
+        warnings = tuple(status.pause_reasons)
+        return HealthDimension("continuous_paper_trading", "WATCHLIST" if status.paused else "PASS",
+            75.0 if status.paused else 100.0,
+            {"available": True, "running": status.running, "paused": status.paused,
+             "cycle_count": status.cycle_count, "error_count": status.error_count},
+            warnings, (), "Continuous paper trading is paused." if status.paused else
+            "Continuous paper trading is operational and paper-only.")
 
     def components(self) -> tuple[HealthDimension, ...]:
         return self.check().dimensions

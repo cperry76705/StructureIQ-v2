@@ -1,5 +1,9 @@
 # StructureIQ Architecture
 
+## Continuous Paper Trading Boundary
+
+`ContinuousPaperTradingRuntime` is an opt-in scheduling and safety shell around `PaperTradingOrchestrator`. It does not duplicate monitoring, approval, lifecycle, brokerage, journaling, or reporting rules. Before cycles it consults `SystemHealthEngine`, `SystemValidationHarness`, and the Paper Brokerage risk status; configured failures pause the session without mutating production analysis. Events and session snapshots append locally. The runtime never auto-starts and has no live broker, GPT, email, or real-execution path.
+
 ## System Validation Boundary
 
 `SystemValidationHarness` is a test-oriented coordinator over health, configuration, storage, synthetic analysis, and paper-service readiness. Each timed component is exception-isolated, so failures are reported without aborting later checks. Analysis and orchestrator probes use deterministic in-memory candles and isolated temporary paper state. The harness never fetches external data, changes production configuration, or connects to brokers, GPT, email, or live execution. Completed results append to `reports/system_validation_history.jsonl` and feed read-only dashboard projections.

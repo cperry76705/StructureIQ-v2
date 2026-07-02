@@ -1,5 +1,11 @@
 # StructureIQ Roadmap
 
+## Version 6.0 — Continuous Autonomous Paper Trading (implemented)
+
+- Opt-in unattended paper cycles using the existing orchestrator as the execution source of truth.
+- Health, validation, account-risk, and error-threshold safety pauses.
+- Runtime sessions, events, dashboard state, observability, and validation coverage.
+
 ## Version 5.9 — End-to-End Validation Harness (implemented)
 
 - One independent, timed validation flow across platform health and paper-trading services.

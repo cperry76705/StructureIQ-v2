@@ -86,6 +86,15 @@ from core.system_validation import (
     SystemValidationHarness,
     SystemValidationResult,
 )
+from core.continuous_paper_trading import (
+    ContinuousPaperCycleResult,
+    ContinuousPaperEvent,
+    ContinuousPaperSession,
+    ContinuousPaperStatus,
+    ContinuousPaperTradingConfig,
+    ContinuousPaperTradingRuntime,
+    get_global_continuous_paper_trading,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -266,6 +275,16 @@ def get_system_validation_harness(
         orchestrator=orchestrator, dashboard=dashboard,
         api_paths_provider=lambda: set(app.openapi()["paths"]),
     )
+
+
+def get_continuous_paper_trading(
+    orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator),
+    health: SystemHealthEngine = Depends(get_system_health_engine),
+    validation: SystemValidationHarness = Depends(get_system_validation_harness),
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler),
+) -> ContinuousPaperTradingRuntime:
+    return get_global_continuous_paper_trading(orchestrator, health, validation, broker, scheduler)
 
 
 def _research_snapshot(
@@ -933,6 +952,53 @@ def system_validation_history(limit: int | None = None, harness: SystemValidatio
 @app.post("/system/validation/reset-history", response_model=dict[str, int], tags=["system"])
 def system_validation_reset(harness: SystemValidationHarness = Depends(get_system_validation_harness)) -> dict[str, int]:
     return {"cleared_runs": harness.reset_history()}
+
+
+@app.get("/continuous-paper/status", response_model=ContinuousPaperStatus, tags=["continuous-paper"])
+def continuous_paper_status(runtime: ContinuousPaperTradingRuntime = Depends(get_continuous_paper_trading)) -> ContinuousPaperStatus:
+    return runtime.status()
+
+
+@app.post("/continuous-paper/start", response_model=ContinuousPaperStatus, tags=["continuous-paper"])
+def continuous_paper_start(config: ContinuousPaperTradingConfig | None = None, runtime: ContinuousPaperTradingRuntime = Depends(get_continuous_paper_trading)) -> ContinuousPaperStatus:
+    return runtime.start(config)
+
+
+@app.post("/continuous-paper/stop", response_model=ContinuousPaperStatus, tags=["continuous-paper"])
+def continuous_paper_stop(runtime: ContinuousPaperTradingRuntime = Depends(get_continuous_paper_trading)) -> ContinuousPaperStatus:
+    return runtime.stop()
+
+
+@app.post("/continuous-paper/pause", response_model=ContinuousPaperStatus, tags=["continuous-paper"])
+def continuous_paper_pause(runtime: ContinuousPaperTradingRuntime = Depends(get_continuous_paper_trading)) -> ContinuousPaperStatus:
+    return runtime.pause()
+
+
+@app.post("/continuous-paper/resume", response_model=ContinuousPaperStatus, tags=["continuous-paper"])
+def continuous_paper_resume(runtime: ContinuousPaperTradingRuntime = Depends(get_continuous_paper_trading)) -> ContinuousPaperStatus:
+    try:
+        return runtime.resume()
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/continuous-paper/run-once", response_model=ContinuousPaperCycleResult, tags=["continuous-paper"])
+def continuous_paper_run_once(runtime: ContinuousPaperTradingRuntime = Depends(get_continuous_paper_trading)) -> ContinuousPaperCycleResult:
+    return runtime.run_once()
+
+
+@app.get("/continuous-paper/events", response_model=list[ContinuousPaperEvent], tags=["continuous-paper"])
+def continuous_paper_events(limit: int | None = None, runtime: ContinuousPaperTradingRuntime = Depends(get_continuous_paper_trading)) -> list[ContinuousPaperEvent]:
+    if limit is not None and not 1 <= limit <= 10_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(runtime.events(limit))
+
+
+@app.get("/continuous-paper/sessions", response_model=list[ContinuousPaperSession], tags=["continuous-paper"])
+def continuous_paper_sessions(limit: int | None = None, runtime: ContinuousPaperTradingRuntime = Depends(get_continuous_paper_trading)) -> list[ContinuousPaperSession]:
+    if limit is not None and not 1 <= limit <= 10_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(runtime.sessions(limit))
 
 
 def _parse_latest_prices(value: str | None) -> dict[str, float]:

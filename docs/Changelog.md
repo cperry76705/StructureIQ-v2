@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 6.0.0 — Continuous Autonomous Paper Trading — 2026-07-01
+
+- Added an opt-in continuous paper runtime around the existing Paper Trading Orchestrator.
+- Added start, stop, pause, resume, single-cycle, event, and session APIs with local append-only history.
+- Added periodic health and validation gates, paper-account loss/profit locks, recoverable-error handling, and automatic safety pauses.
+- Added runtime state to dashboard, system health, system validation, launcher diagnostics, and OpenAPI.
+- The runtime remains disabled by default, paper-only, and cannot access brokers, GPT, email, or live execution.
+
 ## Version 5.9.0 — End-to-End Validation Harness — 2026-07-01
 
 - Added independent timed validation for application, configuration, storage, research files, provider wiring, synthetic analysis, all paper services, dashboard, observability, API registration, and launcher startup.

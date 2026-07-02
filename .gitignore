@@ -25,5 +25,7 @@ reports/daily/*.json
 reports/paper_trading_cycles.jsonl
 reports/daily_scheduler_history.jsonl
 reports/system_validation_history.jsonl
+reports/continuous_paper_events.jsonl
+reports/continuous_paper_sessions.jsonl
 logs/*.log
 logs/system_health.jsonl

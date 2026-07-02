@@ -73,7 +73,7 @@ def test_component_status_contains_every_dimension(tmp_path) -> None:
     engine, *_ = _engine(tmp_path)
     names = {item.name for item in engine.components()}
     assert {
-        "application", "configuration", "market_data_provider", "live_monitor",
+        "application", "configuration", "market_data_provider", "live_monitor", "continuous_paper_trading",
         "paper_brokerage", "trade_lifecycle_manager", "paper_trade_journal",
         "daily_report_engine", "daily_report_scheduler", "paper_trading_orchestrator",
         "dashboard", "storage", "logs", "research_files", "reports",

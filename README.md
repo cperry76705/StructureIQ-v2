@@ -163,6 +163,14 @@ Tests use deterministic fixtures and do not require live market-data access.
 | `POST` | `/system/validation/run` | Run every validation component independently |
 | `GET` | `/system/validation/history` | List append-only validation history |
 | `POST` | `/system/validation/reset-history` | Clear local validation history |
+| `GET` | `/continuous-paper/status` | Read continuous paper runtime state |
+| `POST` | `/continuous-paper/start` | Explicitly start the background paper runtime |
+| `POST` | `/continuous-paper/stop` | Stop the runtime safely |
+| `POST` | `/continuous-paper/pause` | Pause cycles without ending the session |
+| `POST` | `/continuous-paper/resume` | Resume after safety checks pass |
+| `POST` | `/continuous-paper/run-once` | Run one guarded paper cycle synchronously |
+| `GET` | `/continuous-paper/events` | List recent runtime events |
+| `GET` | `/continuous-paper/sessions` | List runtime session snapshots |
 
 ### Analysis Request
 
@@ -270,7 +278,7 @@ Version 4.3 adds dashboard-friendly endpoints under `/dashboard/*`. These endpoi
 
 ## Roadmap and Release Information
 
-Version `5.9.0` adds an end-to-end validation harness for application, configuration, storage, synthetic analysis, paper services, reporting, dashboard, observability, API registration, and the launcher. Run it through `POST /system/validation/run` or `python start.py --validate`. Components are isolated so one failure never prevents the remaining checks. Results are local, append-only, and cannot connect to brokers, GPT, email, or live trading.
+Version `6.0.0` adds opt-in continuous autonomous paper trading. It repeatedly delegates cycles to the existing orchestrator, checks health, validation, and paper-account limits, records sessions/events, and pauses safely on configured failures. It is disabled by default, does not auto-start, and has no broker, GPT, email, or live-execution integration.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

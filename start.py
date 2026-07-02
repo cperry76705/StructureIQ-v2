@@ -283,6 +283,11 @@ def print_future_sections() -> None:
         print("- System Health: AVAILABLE/ADVISORY")
     except Exception:
         print("- System Health: NOT ENABLED")
+    try:
+        importlib.import_module("core.continuous_paper_trading")
+        print("- Continuous Paper Trading: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
+    except Exception:
+        print("- Continuous Paper Trading: NOT ENABLED")
     for section in (
         "Live Market Monitor",
         "Live Trading",
