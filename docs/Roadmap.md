@@ -1,5 +1,10 @@
 # StructureIQ Roadmap
 
+## Version 6.0.1 — Runtime Session Manager (implemented)
+
+- Controlled-duration and maximum-cycle continuous paper sessions.
+- Graceful automatic completion with stop reasons and final summaries.
+
 ## Version 6.0 — Continuous Autonomous Paper Trading (implemented)
 
 - Opt-in unattended paper cycles using the existing orchestrator as the execution source of truth.

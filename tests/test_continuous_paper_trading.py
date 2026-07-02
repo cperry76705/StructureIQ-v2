@@ -114,3 +114,53 @@ def test_api_endpoints_and_dashboard_fields(tmp_path):
 def test_system_health_exposes_continuous_component(tmp_path):
     report = SystemHealthEngine(project_root=tmp_path).check(write_log=False)
     assert "continuous_paper_trading" in {item.name for item in report.dimensions}
+
+
+def test_minute_and_hour_limits_set_estimated_stop_and_remaining_time(tmp_path):
+    minutes = _runtime(tmp_path / "minutes", run_for_minutes=30)
+    minute_status = minutes.start()
+    assert minute_status.estimated_stop_at and 0 < minute_status.remaining_seconds <= 1800
+    minutes.stop()
+
+    hours = _runtime(tmp_path / "hours", run_for_hours=1)
+    hour_status = hours.start()
+    assert hour_status.estimated_stop_at and 3500 < hour_status.remaining_seconds <= 3600
+    hours.stop()
+
+
+def test_max_cycles_automatically_completes_session(tmp_path):
+    runtime = _runtime(tmp_path, max_cycles=2)
+    runtime.start()
+    deadline = time.time() + 1
+    while runtime.status().stop_reason is None and time.time() < deadline:
+        time.sleep(.01)
+    status = runtime.status()
+    assert status.stop_reason == "max_cycles_reached"
+    assert status.final_session_summary.final_status == "completed"
+    assert status.final_session_summary.cycle_count == 2
+    assert runtime.sessions()[-1].status == "completed"
+
+
+def test_first_limit_wins_and_duration_auto_stop_is_completed(tmp_path):
+    cycles = _runtime(tmp_path / "cycles", max_cycles=1, run_for_hours=1)
+    cycles.start()
+    deadline = time.time() + 1
+    while cycles.status().stop_reason is None and time.time() < deadline:
+        time.sleep(.01)
+    assert cycles.status().stop_reason == "max_cycles_reached"
+
+    duration = _runtime(tmp_path / "duration", run_for_minutes=.0005, max_cycles=100)
+    duration.start()
+    deadline = time.time() + 1
+    while duration.status().stop_reason is None and time.time() < deadline:
+        time.sleep(.01)
+    assert duration.status().stop_reason == "duration_limit_reached"
+    assert duration.sessions()[-1].final_session_summary.duration_seconds >= 0
+
+
+def test_manual_stop_records_reason_and_final_summary(tmp_path):
+    runtime = _runtime(tmp_path, run_for_hours=1)
+    runtime.start(); status = runtime.stop()
+    assert status.stop_reason == "manual_stop"
+    assert status.final_session_summary.stop_reason == "manual_stop"
+    assert status.final_session_summary.final_status == "stopped"

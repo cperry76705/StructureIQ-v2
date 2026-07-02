@@ -278,7 +278,7 @@ Version 4.3 adds dashboard-friendly endpoints under `/dashboard/*`. These endpoi
 
 ## Roadmap and Release Information
 
-Version `6.0.0` adds opt-in continuous autonomous paper trading. It repeatedly delegates cycles to the existing orchestrator, checks health, validation, and paper-account limits, records sessions/events, and pauses safely on configured failures. It is disabled by default, does not auto-start, and has no broker, GPT, email, or live-execution integration.
+Version `6.0.1` adds controlled continuous-paper sessions. `/continuous-paper/start` accepts `run_for_minutes`, `run_for_hours`, `max_cycles`, and `session_label`; the earliest configured limit gracefully completes the session and records its duration, counters, stop reason, and final summary. Manual stop, pause, and resume remain available. Nothing auto-starts, and no broker, GPT, email, or live-execution integration exists.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

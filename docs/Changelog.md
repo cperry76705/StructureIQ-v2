@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 6.0.1 — Runtime Session Manager — 2026-07-01
+
+- Added optional minute, hour, and maximum-cycle limits to continuous paper sessions.
+- Added first-limit-wins automatic completion, estimated stop time, remaining time, explicit stop reasons, and final session summaries.
+- Preserved manual stop, pause, resume, safety gates, paper-only execution, and disabled-by-default startup behavior.
+
 ## Version 6.0.0 — Continuous Autonomous Paper Trading — 2026-07-01
 
 - Added an opt-in continuous paper runtime around the existing Paper Trading Orchestrator.

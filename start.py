@@ -285,7 +285,7 @@ def print_future_sections() -> None:
         print("- System Health: NOT ENABLED")
     try:
         importlib.import_module("core.continuous_paper_trading")
-        print("- Continuous Paper Trading: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
+        print("- Continuous Paper Trading Sessions: AVAILABLE/ADVISORY - NOT AUTO-STARTED")
     except Exception:
         print("- Continuous Paper Trading: NOT ENABLED")
     for section in (

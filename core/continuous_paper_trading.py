@@ -7,7 +7,7 @@ import json
 import threading
 from collections import deque
 from dataclasses import dataclass, replace
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -35,6 +35,9 @@ class ContinuousPaperTradingConfig(BaseModel):
     generate_daily_reports: bool = True
     scheduler_enabled: bool = False
     session_label: str | None = None
+    run_for_minutes: float | None = Field(default=None, gt=0)
+    run_for_hours: float | None = Field(default=None, gt=0)
+    max_cycles: int | None = Field(default=None, ge=1)
     events_path: str = "reports/continuous_paper_events.jsonl"
     sessions_path: str = "reports/continuous_paper_sessions.jsonl"
     max_events_in_memory: int = Field(default=1000, ge=1, le=10000)
@@ -52,12 +55,11 @@ class ContinuousPaperEvent:
 
 
 @dataclass(frozen=True)
-class ContinuousPaperSession:
+class ContinuousPaperSessionSummary:
     session_id: str
-    session_label: str | None
     started_at: str
-    stopped_at: str | None
-    status: Literal["running", "paused", "stopped", "failed"]
+    stopped_at: str
+    duration_seconds: float
     cycle_count: int
     total_candidates_seen: int
     total_trades_opened: int
@@ -65,6 +67,27 @@ class ContinuousPaperSession:
     total_reports_generated: int
     error_count: int
     pause_reasons: tuple[str, ...]
+    stop_reason: str
+    final_status: str
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
+class ContinuousPaperSession:
+    session_id: str
+    session_label: str | None
+    started_at: str
+    stopped_at: str | None
+    status: Literal["running", "paused", "stopped", "completed", "failed"]
+    cycle_count: int
+    total_candidates_seen: int
+    total_trades_opened: int
+    total_trades_closed: int
+    total_reports_generated: int
+    error_count: int
+    pause_reasons: tuple[str, ...]
+    stop_reason: str | None
+    final_session_summary: ContinuousPaperSessionSummary | None
     human_readable_summary: str
 
 
@@ -88,6 +111,13 @@ class ContinuousPaperStatus:
     total_trades_opened: int
     total_trades_closed: int
     total_reports_generated: int
+    estimated_stop_at: str | None
+    remaining_seconds: float | None
+    run_for_minutes: float | None
+    run_for_hours: float | None
+    max_cycles: int | None
+    stop_reason: str | None
+    final_session_summary: ContinuousPaperSessionSummary | None
     config: ContinuousPaperTradingConfig
     paper_only: bool
     human_readable_summary: str
@@ -125,6 +155,7 @@ class ContinuousPaperTradingRuntime:
         self._session: ContinuousPaperSession | None = None
         self._last_cycle_at = self._last_cycle_status = self._last_validation_status = self._last_health_status = None
         self._stopped_at: str | None = None
+        self._estimated_stop_at: str | None = None
         self._scheduler_started = False
 
     @property
@@ -137,17 +168,26 @@ class ContinuousPaperTradingRuntime:
             if config is not None: self.config = config; self._events = deque(self._events, maxlen=config.max_events_in_memory)
             now = _now(); sid = _id("continuous-session", now)
             self.config = self.config.model_copy(update={"enabled": True})
+            self._estimated_stop_at = _estimated_stop(now, self.config)
             self._stopped_at = None; self._stop_event.clear()
-            self._session = ContinuousPaperSession(sid, self.config.session_label, now, None, "running", 0, 0, 0, 0, 0, 0, (), "Continuous paper session is running.")
+            self._session = ContinuousPaperSession(
+                session_id=sid, session_label=self.config.session_label,
+                started_at=now, stopped_at=None, status="running", cycle_count=0,
+                total_candidates_seen=0, total_trades_opened=0,
+                total_trades_closed=0, total_reports_generated=0,
+                error_count=0, pause_reasons=(), stop_reason=None,
+                final_session_summary=None,
+                human_readable_summary="Continuous paper session is running.",
+            )
             self._record("started", "INFO", "Continuous paper-trading session started.")
             if self.config.run_validation_on_start and not self._run_validation_guard():
-                self._pause("Startup validation did not satisfy runtime policy.")
+                self._pause("Startup validation did not satisfy runtime policy.", stop_reason="safety_pause")
             if self.config.scheduler_enabled:
                 try:
                     self.scheduler.start(); self._scheduler_started = True
                 except Exception as exc:
                     self._record("error", "FAIL", f"Daily report scheduler could not start: {exc}")
-                    self._pause("Daily report scheduler failed to start.")
+                    self._pause("Daily report scheduler failed to start.", stop_reason="safety_pause")
             self._persist_session()
             self._thread = threading.Thread(target=self._loop, name="structureiq-continuous-paper", daemon=True)
             self._thread.start()
@@ -163,9 +203,7 @@ class ContinuousPaperTradingRuntime:
         with self._lock:
             if self._thread is thread and (thread is None or not thread.is_alive()): self._thread = None
             self.config = self.config.model_copy(update={"enabled": False})
-            self._stopped_at = _now()
-            if self._session:
-                self._session = replace(self._session, stopped_at=self._stopped_at, status="stopped", human_readable_summary="Continuous paper session is stopped.")
+            self._finish_session("manual_stop", "stopped")
             self._record("stopped", "INFO", "Continuous paper-trading session stopped."); self._persist_session()
         return self.status()
 
@@ -177,14 +215,24 @@ class ContinuousPaperTradingRuntime:
         with self._lock:
             if not self._session: raise RuntimeError("continuous paper trading has no active session")
             if not self._safety_guards(run_validation=True): return self.status()
-            self._session = replace(self._session, status="running", pause_reasons=(), human_readable_summary="Continuous paper session is running.")
+            self._session = replace(self._session, status="running", pause_reasons=(), stop_reason=None,
+                human_readable_summary="Continuous paper session is running.")
             self._record("resumed", "INFO", "Continuous paper-trading session resumed."); self._persist_session()
         return self.status()
 
     def run_once(self) -> ContinuousPaperCycleResult:
         with self._lock:
             if self._session is None:
-                now = _now(); self._session = ContinuousPaperSession(_id("continuous-session", now), self.config.session_label, now, None, "running", 0, 0, 0, 0, 0, 0, (), "Manual paper validation session is active.")
+                now = _now(); self._estimated_stop_at = _estimated_stop(now, self.config)
+                self._session = ContinuousPaperSession(
+                    session_id=_id("continuous-session", now), session_label=self.config.session_label,
+                    started_at=now, stopped_at=None, status="running", cycle_count=0,
+                    total_candidates_seen=0, total_trades_opened=0,
+                    total_trades_closed=0, total_reports_generated=0,
+                    error_count=0, pause_reasons=(), stop_reason=None,
+                    final_session_summary=None,
+                    human_readable_summary="Manual paper validation session is active.",
+                )
             if self._session.status == "paused": return self._blocked_result("paused")
         errors: list[str] = []
         periodic = self._session.cycle_count % self.config.validation_interval_cycles == 0
@@ -210,10 +258,16 @@ class ContinuousPaperTradingRuntime:
                 total_reports_generated=old.total_reports_generated + int(bool(getattr(result, "daily_report_generated", False))),
                 error_count=old.error_count + len(errors))
             if errors and self.config.pause_on_error_threshold and self._session.error_count >= self.config.max_errors_before_pause:
-                self._pause("Runtime error threshold reached.")
+                self._pause("Runtime error threshold reached.", stop_reason="error_threshold")
             self._record("cycle_completed", "WATCHLIST" if errors else "PASS", f"Continuous paper cycle {self._session.cycle_count} completed.", {"errors": errors})
             self._persist_session()
-            return ContinuousPaperCycleResult(self._session.cycle_count, getattr(result, "cycle_id", None), self._last_cycle_status,
+            cycle_number = self._session.cycle_count
+            limit_reason = self._limit_reason()
+            if limit_reason and self._session.status == "running":
+                self._finish_session(limit_reason, "completed")
+                self._record("stopped", "PASS", f"Session completed: {limit_reason}.")
+                self._persist_session()
+            return ContinuousPaperCycleResult(cycle_number, getattr(result, "cycle_id", None), self._last_cycle_status,
                 int(getattr(result, "candidates_seen", 0)), int(getattr(result, "trades_opened", 0)), int(getattr(result, "trades_closed", 0)),
                 bool(getattr(result, "daily_report_generated", False)), self._last_validation_status, self._last_health_status,
                 self._session.status == "paused", self._session.pause_reasons, tuple(errors), self._last_cycle_at,
@@ -222,13 +276,36 @@ class ContinuousPaperTradingRuntime:
     def status(self) -> ContinuousPaperStatus:
         with self._lock:
             s = self._session; paused = bool(s and s.status == "paused")
-            return ContinuousPaperStatus(self.running, paused, self.config.enabled, s.session_id if s else None,
-                s.session_label if s else self.config.session_label, s.started_at if s else None, self._stopped_at,
-                s.cycle_count if s else 0, self._last_cycle_at, self._last_cycle_status, self._last_validation_status,
-                self._last_health_status, s.error_count if s else 0, s.pause_reasons if s else (),
-                s.total_candidates_seen if s else 0, s.total_trades_opened if s else 0, s.total_trades_closed if s else 0,
-                s.total_reports_generated if s else 0, self.config, True,
-                "Continuous paper trading is paused." if paused else "Continuous paper trading is running." if self.running else "Continuous paper trading is stopped.")
+            return ContinuousPaperStatus(
+                running=self.running, paused=paused, enabled=self.config.enabled,
+                session_id=s.session_id if s else None,
+                session_label=s.session_label if s else self.config.session_label,
+                started_at=s.started_at if s else None, stopped_at=self._stopped_at,
+                cycle_count=s.cycle_count if s else 0, last_cycle_at=self._last_cycle_at,
+                last_cycle_status=self._last_cycle_status,
+                last_validation_status=self._last_validation_status,
+                last_health_status=self._last_health_status,
+                error_count=s.error_count if s else 0,
+                pause_reasons=s.pause_reasons if s else (),
+                total_candidates_seen=s.total_candidates_seen if s else 0,
+                total_trades_opened=s.total_trades_opened if s else 0,
+                total_trades_closed=s.total_trades_closed if s else 0,
+                total_reports_generated=s.total_reports_generated if s else 0,
+                estimated_stop_at=self._estimated_stop_at,
+                remaining_seconds=self._remaining_seconds(),
+                run_for_minutes=self.config.run_for_minutes,
+                run_for_hours=self.config.run_for_hours,
+                max_cycles=self.config.max_cycles,
+                stop_reason=s.stop_reason if s else None,
+                final_session_summary=s.final_session_summary if s else None,
+                config=self.config, paper_only=True,
+                human_readable_summary=(
+                    "Continuous paper trading is paused." if paused else
+                    "Continuous paper trading is running." if self.running else
+                    "Continuous paper session completed." if s and s.status == "completed" else
+                    "Continuous paper trading is stopped."
+                ),
+            )
 
     def events(self, limit: int | None = None) -> tuple[ContinuousPaperEvent, ...]:
         items = tuple(self._events); return items[-limit:] if limit else items
@@ -241,14 +318,14 @@ class ContinuousPaperTradingRuntime:
         try:
             health = self.health.check(write_log=False); self._last_health_status = health.status
             self._record("health_check", health.status, health.human_readable_summary)
-            if health.status == "FAIL" and self.config.pause_on_health_fail: self._pause("System health check failed."); return False
+            if health.status == "FAIL" and self.config.pause_on_health_fail: self._pause("System health check failed.", stop_reason="safety_pause"); return False
         except Exception as exc:
             self._record("error", "FAIL", f"Health check failed: {exc}")
-            if self.config.pause_on_health_fail: self._pause("System health check could not complete."); return False
+            if self.config.pause_on_health_fail: self._pause("System health check could not complete.", stop_reason="safety_pause"); return False
         if run_validation and not self._run_validation_guard(): return False
         risk = self.broker.account().risk_status
-        if risk == "daily_loss_limit_reached" and self.config.pause_on_daily_loss_limit: self._pause("Paper account daily loss limit reached."); return False
-        if risk == "daily_profit_lock_reached" and self.config.pause_on_daily_profit_lock: self._pause("Paper account daily profit lock reached."); return False
+        if risk == "daily_loss_limit_reached" and self.config.pause_on_daily_loss_limit: self._pause("Paper account daily loss limit reached.", stop_reason="safety_pause"); return False
+        if risk == "daily_profit_lock_reached" and self.config.pause_on_daily_profit_lock: self._pause("Paper account daily profit lock reached.", stop_reason="safety_pause"); return False
         return True
 
     def _run_validation_guard(self) -> bool:
@@ -263,10 +340,12 @@ class ContinuousPaperTradingRuntime:
             self._last_validation_status = "FAIL"; self._record("error", "FAIL", f"Validation failed: {exc}")
             return not self.config.pause_on_validation_fail
 
-    def _pause(self, reason: str) -> None:
+    def _pause(self, reason: str, *, stop_reason: str | None = None) -> None:
         if not self._session: return
         reasons = tuple(dict.fromkeys((*self._session.pause_reasons, reason)))
-        self._session = replace(self._session, status="paused", pause_reasons=reasons, human_readable_summary=f"Session paused: {reason}")
+        self._session = replace(self._session, status="paused", pause_reasons=reasons,
+            stop_reason=stop_reason or self._session.stop_reason,
+            human_readable_summary=f"Session paused: {reason}")
         self._record("paused", "WATCHLIST", reason); self._persist_session()
 
     def _blocked_result(self, status: str) -> ContinuousPaperCycleResult:
@@ -275,8 +354,50 @@ class ContinuousPaperTradingRuntime:
 
     def _loop(self) -> None:
         while not self._stop_event.is_set():
+            with self._lock:
+                reason = self._limit_reason()
+                if reason and self._session and self._session.status in {"running", "paused"}:
+                    self._finish_session(reason, "completed")
+                    self._record("stopped", "PASS", f"Session completed: {reason}.")
+                    self._persist_session()
+                    break
             if self._session and self._session.status != "paused": self.run_once()
             self._stop_event.wait(self.config.cycle_interval_seconds)
+
+    def _limit_reason(self) -> str | None:
+        if not self._session: return None
+        if self.config.max_cycles is not None and self._session.cycle_count >= self.config.max_cycles:
+            return "max_cycles_reached"
+        if self._estimated_stop_at and datetime.now(timezone.utc) >= datetime.fromisoformat(self._estimated_stop_at):
+            return "duration_limit_reached"
+        return None
+
+    def _remaining_seconds(self) -> float | None:
+        if not self._estimated_stop_at: return None
+        if self._session and self._session.status in {"completed", "stopped", "failed"}: return 0.0
+        return round(max(0.0, (datetime.fromisoformat(self._estimated_stop_at) - datetime.now(timezone.utc)).total_seconds()), 3)
+
+    def _finish_session(self, reason: str, final_status: str) -> None:
+        if not self._session or self._session.status in {"completed", "stopped", "failed"}: return
+        stopped = _now(); self._stopped_at = stopped; self._stop_event.set()
+        started = datetime.fromisoformat(self._session.started_at)
+        duration = round(max(0.0, (datetime.fromisoformat(stopped) - started).total_seconds()), 3)
+        summary = ContinuousPaperSessionSummary(
+            session_id=self._session.session_id, started_at=self._session.started_at,
+            stopped_at=stopped, duration_seconds=duration,
+            cycle_count=self._session.cycle_count,
+            total_candidates_seen=self._session.total_candidates_seen,
+            total_trades_opened=self._session.total_trades_opened,
+            total_trades_closed=self._session.total_trades_closed,
+            total_reports_generated=self._session.total_reports_generated,
+            error_count=self._session.error_count, pause_reasons=self._session.pause_reasons,
+            stop_reason=reason, final_status=final_status,
+            human_readable_summary=f"Session {final_status} after {duration:.2f} seconds and {self._session.cycle_count} cycles ({reason}).",
+        )
+        self._session = replace(self._session, stopped_at=stopped, status=final_status,
+            stop_reason=reason, final_session_summary=summary,
+            human_readable_summary=summary.human_readable_summary)
+        self.config = self.config.model_copy(update={"enabled": False})
 
     def _record(self, kind: str, status: str, message: str, metadata: dict[str, Any] | None = None) -> None:
         now = _now(); event = ContinuousPaperEvent(_id("continuous-event", f"{now}:{len(self._events)}"), now,
@@ -314,3 +435,11 @@ def _append_jsonl(path: Path, value: Any) -> None:
 
 def _now() -> str: return datetime.now(timezone.utc).isoformat()
 def _id(prefix: str, value: str) -> str: return hashlib.sha256(f"{prefix}:{value}".encode()).hexdigest()[:24]
+
+
+def _estimated_stop(started_at: str, config: ContinuousPaperTradingConfig) -> str | None:
+    durations = []
+    if config.run_for_minutes is not None: durations.append(timedelta(minutes=config.run_for_minutes))
+    if config.run_for_hours is not None: durations.append(timedelta(hours=config.run_for_hours))
+    if not durations: return None
+    return (datetime.fromisoformat(started_at) + min(durations)).isoformat()
