@@ -14,6 +14,12 @@ import os
 import platform
 import subprocess
 import sys
+import json
+import threading
+import time
+import urllib.error
+import urllib.request
+import webbrowser
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,7 +33,15 @@ REQUIRED_FILES = ("requirements.txt", "app/config.py")
 REQUIRED_PACKAGES = ("fastapi", "uvicorn", "pydantic", "pytest", "httpx")
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = "8000"
-PUBLIC_API_URL = "http://127.0.0.1:8000"
+PUBLIC_API_URL = "http://localhost:8000"
+LOCAL_URLS = {
+    "Swagger UI": f"{PUBLIC_API_URL}/docs",
+    "API Root": PUBLIC_API_URL,
+    "Health": f"{PUBLIC_API_URL}/health",
+    "System Health": f"{PUBLIC_API_URL}/system/health",
+    "Dashboard Overview": f"{PUBLIC_API_URL}/dashboard/overview",
+    "Continuous Paper Status": f"{PUBLIC_API_URL}/continuous-paper/status",
+}
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_FILE = LOG_DIR / "startup.log"
 
@@ -236,11 +250,41 @@ def print_banner(version: str, status: str = "READY") -> None:
     print(f"{ok} Symbol Profiles Loaded")
     print(f"{ok} API Starting")
     print()
-    print(f"API:\n{PUBLIC_API_URL}")
+    print(f"StructureIQ v{version} is running locally.")
     print()
-    print("Swagger:\n/docs")
+    print_local_urls()
+    print()
+    print("Note: Uvicorn may display 0.0.0.0 because the server listens on all interfaces.")
+    print("Use localhost in your browser.")
     print()
     print(f"Status:\n{status}")
+
+
+def print_local_urls() -> None:
+    """Print stable browser-facing localhost endpoints."""
+    for label, url in LOCAL_URLS.items():
+        print(f"{label}:\n{url}")
+
+
+def open_docs_browser(*, opener=None) -> bool:
+    """Open Swagger locally; browser failures are warning-only."""
+    try:
+        opened = (opener or webbrowser.open)(LOCAL_URLS["Swagger UI"])
+        if opened is False:
+            raise RuntimeError("default browser declined the request")
+        return True
+    except Exception as exc:
+        warning = f"Browser open warning: {exc}"
+        print(warning)
+        write_startup_log(result="browser_open_warning", argv=("--open-browser",), details=warning)
+        return False
+
+
+def schedule_browser_open(*, delay_seconds: float = 1.0) -> threading.Thread:
+    """Attempt browser opening asynchronously so Uvicorn remains the foreground process."""
+    thread = threading.Thread(target=lambda: (time.sleep(delay_seconds), open_docs_browser()), daemon=True)
+    thread.start()
+    return thread
 
 
 def print_future_sections() -> None:
@@ -373,7 +417,40 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Run complete local system validation and exit.",
     )
+    parser.add_argument("--open-browser", action="store_true", help="Open the local Swagger UI after startup.")
+    parser.add_argument("--no-browser", action="store_true", help="Never open a browser window.")
+    parser.add_argument("--urls", action="store_true", help="Print useful localhost URLs and exit.")
+    parser.add_argument("--paper", action="store_true", help="Run an explicitly controlled paper-only session.")
+    parser.add_argument("--minutes", type=float, help="Stop paper mode after this many minutes.")
+    parser.add_argument("--hours", type=float, help="Stop paper mode after this many hours.")
+    parser.add_argument("--days", type=float, help="Stop paper mode after this many 24-hour days.")
+    parser.add_argument("--weeks", type=float, help="Stop paper mode after this many seven-day weeks.")
+    parser.add_argument("--months", type=float, help="Stop paper mode after this many 30-day months.")
+    parser.add_argument("--cycles", type=int, help="Stop paper mode after this many completed cycles.")
+    parser.add_argument("--label", help="Optional paper runtime session label.")
     return parser.parse_args(argv)
+
+
+def build_paper_start_payload(args: argparse.Namespace) -> tuple[dict, tuple[str, ...], str]:
+    """Convert CLI duration options into the existing continuous-runtime request."""
+    durations = []
+    if args.minutes is not None: durations.append((args.minutes * 60, "run_for_minutes", args.minutes, f"{args.minutes:g} minutes"))
+    if args.hours is not None: durations.append((args.hours * 3600, "run_for_hours", args.hours, f"{args.hours:g} hours"))
+    if args.days is not None: durations.append((args.days * 86400, "run_for_hours", args.days * 24, f"{args.days:g} days"))
+    if args.weeks is not None: durations.append((args.weeks * 604800, "run_for_hours", args.weeks * 7 * 24, f"{args.weeks:g} weeks"))
+    if args.months is not None: durations.append((args.months * 30 * 86400, "run_for_hours", args.months * 30 * 24, f"{args.months:g} months"))
+    if any(item[0] <= 0 for item in durations) or (args.cycles is not None and args.cycles <= 0):
+        raise ValueError("paper durations and cycle limits must be greater than zero")
+    payload = {"session_label": args.label, "auto_approve_candidates": False}
+    warnings = []
+    description = "unlimited"
+    if durations:
+        chosen = min(durations, key=lambda item: item[0])
+        payload[chosen[1]] = chosen[2]; description = chosen[3]
+        if len(durations) > 1:
+            warnings.append(f"Multiple duration flags were provided; using the shortest duration ({description}).")
+    if args.cycles is not None: payload["max_cycles"] = args.cycles
+    return payload, tuple(warnings), description
 
 
 def run_system_validation() -> int:
@@ -397,6 +474,100 @@ def run_system_validation() -> int:
     return {"PASS": 0, "WATCHLIST": 1, "FAIL": 2}[result["validation_status"]]
 
 
+def _api_json(path: str, *, method: str = "GET", payload: dict | None = None, timeout: float = 10.0) -> dict:
+    body = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = urllib.request.Request(
+        f"{PUBLIC_API_URL}{path}", data=body, method=method,
+        headers={"Content-Type": "application/json"} if body is not None else {},
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def wait_for_local_api(*, api_call=_api_json, timeout_seconds: float = 30.0, sleep=time.sleep) -> bool:
+    """Wait for the locally started API without contacting external services."""
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        try:
+            api_call("/health")
+            return True
+        except Exception:
+            sleep(.2)
+    return False
+
+
+def _stop_process(process) -> None:
+    if getattr(process, "poll", lambda: None)() is None:
+        process.terminate()
+        try: process.wait(timeout=5)
+        except Exception: process.kill()
+
+
+def run_paper_mode(
+    args: argparse.Namespace,
+    *,
+    process_factory=None,
+    api_call=_api_json,
+    sleep=time.sleep,
+) -> int:
+    """Launch the local API and control the existing continuous-paper runtime."""
+    try:
+        payload, warnings, duration = build_paper_start_payload(args)
+    except ValueError as exc:
+        print(f"Paper mode configuration error: {exc}")
+        return 2
+    for warning in warnings: print(f"Warning: {warning}")
+    print("Starting API...")
+    print(f"Swagger UI: {LOCAL_URLS['Swagger UI']}")
+    factory = process_factory or subprocess.Popen
+    process = factory(build_uvicorn_command(reload=False), cwd=str(PROJECT_ROOT))
+    try:
+        if not wait_for_local_api(api_call=api_call, sleep=sleep):
+            print("Local API did not become ready in time.")
+            return 2
+        validation = api_call("/system/validation/run", method="POST")
+        validation_status = validation.get("validation_status", "FAIL")
+        print(f"Validation: {validation_status}")
+        if validation_status == "FAIL":
+            print("Paper mode blocked because system validation failed.")
+            return 2
+        status = api_call("/continuous-paper/start", method="POST", payload=payload)
+        if args.open_browser and not args.no_browser: open_docs_browser()
+        print("Starting continuous paper trading...")
+        print(f"Session: {status.get('session_label') or 'Unlabeled local session'}")
+        print(f"Duration: {duration}")
+        print("Auto Approval: false")
+        print("Paper Only: true")
+        print("\nPaper trading is running.\nPress CTRL+C to stop early.")
+        while status.get("running") or status.get("paused"):
+            if status.get("final_session_summary"): break
+            sleep(.5)
+            status = api_call("/continuous-paper/status")
+        _print_final_paper_summary(status)
+        return 0
+    except KeyboardInterrupt:
+        print("\nStopping paper session early...")
+        try: status = api_call("/continuous-paper/stop", method="POST")
+        except Exception: status = {}
+        _print_final_paper_summary(status)
+        return 130
+    except Exception as exc:
+        print(f"Paper mode failed safely: {exc}")
+        return 2
+    finally:
+        _stop_process(process)
+
+
+def _print_final_paper_summary(status: dict) -> None:
+    summary = status.get("final_session_summary") or {}
+    print("\nPaper trading session completed.")
+    print(f"Cycles: {summary.get('cycle_count', status.get('cycle_count', 0))}")
+    print(f"Candidates Seen: {summary.get('total_candidates_seen', status.get('total_candidates_seen', 0))}")
+    print(f"Trades Opened: {summary.get('total_trades_opened', status.get('total_trades_opened', 0))}")
+    print(f"Reports Generated: {summary.get('total_reports_generated', status.get('total_reports_generated', 0))}")
+    print(f"Stop Reason: {summary.get('stop_reason', status.get('stop_reason', 'unknown'))}")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the StructureIQ launcher CLI."""
 
@@ -407,6 +578,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         version = get_version()
         print(f"StructureIQ v{version}")
         write_startup_log(result="version", argv=raw_argv, version=version)
+        return 0
+
+    if args.urls:
+        print_local_urls()
         return 0
 
     if args.validate:
@@ -437,9 +612,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     version = get_version()
+    if args.paper:
+        print(f"StructureIQ v{version}")
+        exit_code = run_paper_mode(args)
+        write_startup_log(result="paper_session", argv=raw_argv, version=version, details=f"exit_code={exit_code}")
+        return exit_code
     print_banner(version)
     print_health(health)
     print_future_sections()
+    if args.open_browser and not args.no_browser:
+        schedule_browser_open()
     write_startup_log(result="startup_begin", argv=raw_argv, version=version)
     status_code = start_api()
     write_startup_log(

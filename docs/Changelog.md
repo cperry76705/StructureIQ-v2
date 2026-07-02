@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 6.0.2 — Local Startup UX and Paper Runtime CLI — 2026-07-02
+
+- Replaced browser-facing `0.0.0.0` output with clear localhost Swagger, API, health, dashboard, and continuous-paper URLs while retaining the existing all-interface Uvicorn bind.
+- Added `--urls`, opt-in `--open-browser`, and explicit `--no-browser` behavior with warning-only browser failures.
+- Added paper-only CLI sessions for minutes, hours, days, weeks, months, cycle caps, and labels, using the existing continuous-runtime API.
+- Added validation gating, shortest-duration selection, terminal session summaries, and Ctrl+C-safe runtime/API shutdown.
+
 ## Version 6.0.1 — Runtime Session Manager — 2026-07-01
 
 - Added optional minute, hour, and maximum-cycle limits to continuous paper sessions.

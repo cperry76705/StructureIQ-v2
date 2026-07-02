@@ -1,5 +1,9 @@
 # StructureIQ Architecture
 
+## Local Launcher and Paper CLI Boundary
+
+The launcher continues to bind Uvicorn to `0.0.0.0` so local interfaces remain reachable, but presents `localhost` URLs for browsers. Browser opening is opt-in and failure is non-blocking. Paper CLI mode starts a manageable local API process, validates it, and controls `ContinuousPaperTradingRuntime` exclusively through its existing API. Unit conversion, terminal rendering, and child-process lifecycle are launcher concerns; analysis, routing, risk, orchestration, and brokerage remain owned by their existing engines.
+
 ## Continuous Paper Trading Boundary
 
 `ContinuousPaperTradingRuntime` is an opt-in scheduling and safety shell around `PaperTradingOrchestrator`. It does not duplicate monitoring, approval, lifecycle, brokerage, journaling, or reporting rules. Before cycles it consults `SystemHealthEngine`, `SystemValidationHarness`, and the Paper Brokerage risk status; configured failures pause the session without mutating production analysis. Events and session snapshots append locally. The runtime never auto-starts and has no live broker, GPT, email, or real-execution path.

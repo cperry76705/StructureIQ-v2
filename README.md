@@ -278,7 +278,7 @@ Version 4.3 adds dashboard-friendly endpoints under `/dashboard/*`. These endpoi
 
 ## Roadmap and Release Information
 
-Version `6.0.1` adds controlled continuous-paper sessions. `/continuous-paper/start` accepts `run_for_minutes`, `run_for_hours`, `max_cycles`, and `session_label`; the earliest configured limit gracefully completes the session and records its duration, counters, stop reason, and final summary. Manual stop, pause, and resume remain available. Nothing auto-starts, and no broker, GPT, email, or live-execution integration exists.
+Version `6.0.2` adds localhost-first startup output and a paper runtime CLI. Use `python start.py --urls`, opt into Swagger opening with `--open-browser`, or run controlled paper sessions such as `python start.py --paper --hours 2 --label "2 Hour Validation"`. Days, weeks, months, minutes, and cycle limits are supported. Multiple duration flags select the shortest. Validation FAIL blocks the session; WATCHLIST is allowed. Everything remains local, paper-only, and manual-approval by default.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

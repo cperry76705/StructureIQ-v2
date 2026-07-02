@@ -1,5 +1,11 @@
 # StructureIQ Roadmap
 
+## Version 6.0.2 — Local Startup UX and Paper Runtime CLI (implemented)
+
+- Localhost-first startup URLs and optional Swagger browser opening.
+- Controlled paper CLI sessions from minutes through month-scale runs or cycle caps.
+- Validation-gated, paper-only runtime control with graceful terminal summaries.
+
 ## Version 6.0.1 — Runtime Session Manager (implemented)
 
 - Controlled-duration and maximum-cycle continuous paper sessions.

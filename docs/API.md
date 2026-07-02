@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `6.0.1` exposes a FastAPI HTTP interface for analysis, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.2` exposes a FastAPI HTTP interface for analysis, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ## Application Launcher
 
@@ -26,7 +26,13 @@ Supported launcher commands:
 | `python start.py --api` | Start only the API process after validation. |
 | `python start.py --version` | Print the version from `app/config.py` and exit. |
 | `python start.py --health` | Validate Python, folders, files, packages, config import, and `app.main` import without launching uvicorn. |
+| `python start.py --urls` | Print browser-facing localhost URLs and exit. |
+| `python start.py --open-browser` | Start normally and attempt to open local Swagger; failure is warning-only. |
+| `python start.py --paper --hours 2` | Start the API, validate it, and run a two-hour paper-only session. |
+| `python start.py --paper --cycles 20` | Run a paper-only session capped at 20 completed cycles. |
 | `python start.py --help` | Display launcher options. |
+
+Browser-facing output always uses `http://localhost:8000`. Uvicorn still displays and binds `0.0.0.0`, which means it listens on local interfaces; users should use localhost in a browser. Paper CLI duration options include `--minutes`, `--hours`, `--days`, `--weeks`, and `--months` (30 days), plus `--cycles` and `--label`. Multiple duration flags select the shortest and print a warning. Validation WATCHLIST is allowed; FAIL blocks startup. Ctrl+C explicitly stops the continuous runtime before terminating the local API.
 
 The launcher is not an API endpoint and does not modify request or response contracts.
 
@@ -50,7 +56,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.1",
+  "app_version": "6.0.2",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,

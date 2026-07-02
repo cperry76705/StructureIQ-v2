@@ -16,7 +16,7 @@ def test_version_command_prints_current_version(capsys) -> None:
     output = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "StructureIQ v6.0.1" in output
+    assert "StructureIQ v6.0.2" in output
 
 
 def test_health_command_runs_startup_validation(capsys) -> None:
@@ -97,13 +97,13 @@ def test_logging_writes_startup_log(tmp_path: Path, monkeypatch) -> None:
     start.write_startup_log(
         result="test_pass",
         argv=["--health"],
-        version="6.0.1",
+        version="6.0.2",
         details="ok",
     )
 
     contents = log_file.read_text(encoding="utf-8")
     assert "result=test_pass" in contents
-    assert "version=6.0.1" in contents
+    assert "version=6.0.2" in contents
     assert "arguments=--health" in contents
     assert "details=ok" in contents
 
@@ -124,7 +124,7 @@ def test_successful_startup_path_launches_api(monkeypatch, capsys) -> None:
     assert exit_code == 0
     assert calls
     assert calls[0][:4] == [sys.executable, "-m", "uvicorn", "app.main:app"]
-    assert "StructureIQ v6.0.1" in output
+    assert "StructureIQ v6.0.2" in output
     assert "Status:" in output
     assert "READY" in output
     assert "Paper Trading: AVAILABLE/ADVISORY - NOT AUTO-STARTED" in output
@@ -157,3 +157,106 @@ def test_api_subprocess_failure_returns_status_code() -> None:
         return SimpleNamespace(returncode=7)
 
     assert start.start_api(["fake"], runner=fake_runner) == 7
+
+
+def test_startup_urls_are_browser_facing_localhost(capsys) -> None:
+    start.print_banner("6.0.2")
+    output = capsys.readouterr().out
+    assert "http://localhost:8000/docs" in output
+    assert "Use localhost in your browser" in output
+    assert "http://0.0.0.0" not in output
+
+
+def test_urls_command_prints_expected_endpoints(capsys) -> None:
+    assert start.main(["--urls"]) == 0
+    output = capsys.readouterr().out
+    for path in ("/docs", "/health", "/system/health", "/dashboard/overview", "/continuous-paper/status"):
+        assert f"http://localhost:8000{path}" in output
+
+
+def test_browser_open_success_and_failure_are_nonfatal(monkeypatch, capsys) -> None:
+    seen = []
+    assert start.open_docs_browser(opener=lambda url: seen.append(url) or True)
+    assert seen == ["http://localhost:8000/docs"]
+    monkeypatch.setattr(start, "write_startup_log", lambda **kwargs: None)
+    assert not start.open_docs_browser(opener=lambda url: (_ for _ in ()).throw(RuntimeError("no browser")))
+    assert "Browser open warning" in capsys.readouterr().out
+
+
+def test_open_browser_flag_schedules_docs_open(monkeypatch) -> None:
+    scheduled = []
+    monkeypatch.setattr(start, "schedule_browser_open", lambda: scheduled.append(True))
+    monkeypatch.setattr(start, "start_api", lambda: 0)
+    monkeypatch.setattr(start, "write_startup_log", lambda **kwargs: None)
+    assert start.main(["--open-browser"]) == 0
+    assert scheduled == [True]
+
+
+def test_no_browser_overrides_open_browser(monkeypatch) -> None:
+    scheduled = []
+    monkeypatch.setattr(start, "schedule_browser_open", lambda: scheduled.append(True))
+    monkeypatch.setattr(start, "start_api", lambda: 0)
+    monkeypatch.setattr(start, "write_startup_log", lambda **kwargs: None)
+    assert start.main(["--open-browser", "--no-browser"]) == 0
+    assert scheduled == []
+
+
+def test_paper_duration_cli_mapping_and_shortest_warning() -> None:
+    cases = [
+        (["--paper", "--minutes", "30"], "run_for_minutes", 30),
+        (["--paper", "--hours", "2"], "run_for_hours", 2),
+        (["--paper", "--days", "2"], "run_for_hours", 48),
+        (["--paper", "--weeks", "2"], "run_for_hours", 336),
+        (["--paper", "--months", "1"], "run_for_hours", 720),
+    ]
+    for argv, key, expected in cases:
+        payload, warnings, _ = start.build_paper_start_payload(start.parse_args(argv))
+        assert payload[key] == expected and not warnings
+    payload, _, _ = start.build_paper_start_payload(start.parse_args(["--paper", "--cycles", "20"]))
+    assert payload["max_cycles"] == 20
+    payload, warnings, _ = start.build_paper_start_payload(start.parse_args(["--paper", "--hours", "2", "--minutes", "30"]))
+    assert payload["run_for_minutes"] == 30 and "run_for_hours" not in payload
+    assert "shortest" in warnings[0]
+
+
+class _PaperProcess:
+    def __init__(self): self.terminated = False
+    def poll(self): return None if not self.terminated else 0
+    def terminate(self): self.terminated = True
+    def wait(self, timeout=None): return 0
+    def kill(self): self.terminated = True
+
+
+def test_paper_mode_blocks_fail_and_allows_watchlist(capsys) -> None:
+    process = _PaperProcess()
+    def failed(path, **kwargs):
+        if path == "/health": return {"status": "ok"}
+        return {"validation_status": "FAIL"}
+    args = start.parse_args(["--paper", "--minutes", "1"])
+    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=failed, sleep=lambda _: None) == 2
+    assert "blocked" in capsys.readouterr().out
+
+    process = _PaperProcess()
+    def watchlist(path, **kwargs):
+        if path == "/health": return {"status": "ok"}
+        if path == "/system/validation/run": return {"validation_status": "WATCHLIST"}
+        if path == "/continuous-paper/start":
+            return {"running": False, "paused": False, "session_label": "test", "stop_reason": "max_cycles_reached", "final_session_summary": {"cycle_count": 1, "stop_reason": "max_cycles_reached"}}
+        return {"running": False}
+    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=watchlist, sleep=lambda _: None) == 0
+    assert "Validation: WATCHLIST" in capsys.readouterr().out
+
+
+def test_paper_mode_ctrl_c_stops_runtime_safely() -> None:
+    process = _PaperProcess(); calls = []
+    def api(path, **kwargs):
+        calls.append((path, kwargs.get("method")))
+        if path == "/health": return {"status": "ok"}
+        if path == "/system/validation/run": return {"validation_status": "PASS"}
+        if path == "/continuous-paper/start": return {"running": True, "paused": False, "session_label": "test"}
+        if path == "/continuous-paper/stop": return {"running": False, "stop_reason": "manual_stop"}
+        return {"running": True}
+    def interrupt(_): raise KeyboardInterrupt
+    args = start.parse_args(["--paper", "--cycles", "2"])
+    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=api, sleep=interrupt) == 130
+    assert ("/continuous-paper/stop", "POST") in calls
