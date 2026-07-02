@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `6.0.3` exposes a FastAPI HTTP interface for analysis, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.4` exposes a FastAPI HTTP interface for analysis, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ## Application Launcher
 
@@ -56,7 +56,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.3",
+  "app_version": "6.0.4",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,

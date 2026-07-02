@@ -15,6 +15,7 @@ import platform
 import subprocess
 import sys
 import json
+import socket
 import threading
 import time
 import urllib.error
@@ -496,6 +497,20 @@ def wait_for_local_api(*, api_call=_api_json, timeout_seconds: float = 30.0, sle
     return False
 
 
+def is_local_port_available(host: str = "127.0.0.1", port: int = 8000) -> bool:
+    """Return whether the launcher can exclusively bind the local API port."""
+    probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        probe.bind((host, port))
+        return True
+    except OSError:
+        return False
+    finally:
+        probe.close()
+
+
 def _stop_process(process) -> None:
     if getattr(process, "poll", lambda: None)() is None:
         process.terminate()
@@ -509,6 +524,7 @@ def run_paper_mode(
     process_factory=None,
     api_call=_api_json,
     sleep=time.sleep,
+    port_available=None,
 ) -> int:
     """Launch the local API and control the existing continuous-paper runtime."""
     try:
@@ -517,9 +533,15 @@ def run_paper_mode(
         print(f"Paper mode configuration error: {exc}")
         return 2
     for warning in warnings: print(f"Warning: {warning}")
+    if not (port_available or is_local_port_available)():
+        print("Port 8000 is already in use. Stop the existing local API or paper session, then retry.")
+        print(f"Swagger may already be available at {LOCAL_URLS['Swagger UI']}")
+        return 2
     print("Starting API...")
     print(f"Swagger UI: {LOCAL_URLS['Swagger UI']}")
     factory = process_factory or subprocess.Popen
+    # Paper mode owns exactly one child. No --reload process is permitted because
+    # Windows reload supervisors can otherwise create a second port-8000 binder.
     process = factory(build_uvicorn_command(reload=False), cwd=str(PROJECT_ROOT))
     try:
         if not wait_for_local_api(api_call=api_call, sleep=sleep):

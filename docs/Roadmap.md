@@ -1,5 +1,10 @@
 # StructureIQ Roadmap
 
+## Version 6.0.4 — Windows Paper CLI Single-Process Fix (implemented)
+
+- Exclusive port preflight and clear occupied-port recovery.
+- Exactly one health-gated, no-reload Uvicorn process in paper CLI mode.
+
 ## Version 6.0.3 — Operations Manual (implemented)
 
 - Operator-focused runbooks for daily operation, validation, paper sessions, Git, troubleshooting, and releases.

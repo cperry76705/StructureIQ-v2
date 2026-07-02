@@ -50,6 +50,8 @@ python start.py --paper --hours 2 --label "2 Hour Local Validation"
 
 The CLI starts the API, validates it, permits WATCHLIST, blocks FAIL, and invokes the existing continuous paper runtime. Auto-approval remains false. Multiple duration flags select the shortest.
 
+Paper CLI uses one Uvicorn process with reload disabled. Before process creation it verifies that local port 8000 is free, then waits for `/health` before starting the continuous runtime. If port 8000 is occupied, stop the existing API or paper session and retry.
+
 ## localhost vs 0.0.0.0
 
 `0.0.0.0` is Uvicorn’s server bind address. It is not the browser URL. Use `http://localhost:8000` and `http://localhost:8000/docs`.

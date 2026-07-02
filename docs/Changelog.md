@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 6.0.4 — Windows Paper CLI Single-Process Fix — 2026-07-02
+
+- Added an exclusive localhost port-8000 preflight before paper API process creation.
+- Confirmed paper CLI always launches one Uvicorn child with reload disabled, waits for API health, and starts the continuous runtime once.
+- Added clear occupied-port recovery output and Windows-safe regression coverage.
+- Normal API startup and all production trading behavior remain unchanged.
+
 ## Version 6.0.3 — Operations Manual — 2026-07-02
 
 - Added a complete operations manual covering startup, commands, Git, paper sessions, daily procedures, releases, troubleshooting, and subsystem ownership.

@@ -14,6 +14,8 @@ The process-scoped change is temporary. Do not weaken machine policy without app
 
 ## Port 8000 Is Already in Use
 
+Paper CLI now checks this before starting Uvicorn and exits without creating a child process. Stop an existing local API or paper session before retrying.
+
 ```powershell
 Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
 Get-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess

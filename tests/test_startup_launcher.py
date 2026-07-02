@@ -16,7 +16,7 @@ def test_version_command_prints_current_version(capsys) -> None:
     output = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "StructureIQ v6.0.3" in output
+    assert "StructureIQ v6.0.4" in output
 
 
 def test_health_command_runs_startup_validation(capsys) -> None:
@@ -97,13 +97,13 @@ def test_logging_writes_startup_log(tmp_path: Path, monkeypatch) -> None:
     start.write_startup_log(
         result="test_pass",
         argv=["--health"],
-        version="6.0.3",
+        version="6.0.4",
         details="ok",
     )
 
     contents = log_file.read_text(encoding="utf-8")
     assert "result=test_pass" in contents
-    assert "version=6.0.3" in contents
+    assert "version=6.0.4" in contents
     assert "arguments=--health" in contents
     assert "details=ok" in contents
 
@@ -124,7 +124,7 @@ def test_successful_startup_path_launches_api(monkeypatch, capsys) -> None:
     assert exit_code == 0
     assert calls
     assert calls[0][:4] == [sys.executable, "-m", "uvicorn", "app.main:app"]
-    assert "StructureIQ v6.0.3" in output
+    assert "StructureIQ v6.0.4" in output
     assert "Status:" in output
     assert "READY" in output
     assert "Paper Trading: AVAILABLE/ADVISORY - NOT AUTO-STARTED" in output
@@ -233,7 +233,7 @@ def test_paper_mode_blocks_fail_and_allows_watchlist(capsys) -> None:
         if path == "/health": return {"status": "ok"}
         return {"validation_status": "FAIL"}
     args = start.parse_args(["--paper", "--minutes", "1"])
-    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=failed, sleep=lambda _: None) == 2
+    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=failed, sleep=lambda _: None, port_available=lambda: True) == 2
     assert "blocked" in capsys.readouterr().out
 
     process = _PaperProcess()
@@ -243,7 +243,7 @@ def test_paper_mode_blocks_fail_and_allows_watchlist(capsys) -> None:
         if path == "/continuous-paper/start":
             return {"running": False, "paused": False, "session_label": "test", "stop_reason": "max_cycles_reached", "final_session_summary": {"cycle_count": 1, "stop_reason": "max_cycles_reached"}}
         return {"running": False}
-    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=watchlist, sleep=lambda _: None) == 0
+    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=watchlist, sleep=lambda _: None, port_available=lambda: True) == 0
     assert "Validation: WATCHLIST" in capsys.readouterr().out
 
 
@@ -258,5 +258,39 @@ def test_paper_mode_ctrl_c_stops_runtime_safely() -> None:
         return {"running": True}
     def interrupt(_): raise KeyboardInterrupt
     args = start.parse_args(["--paper", "--cycles", "2"])
-    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=api, sleep=interrupt) == 130
+    assert start.run_paper_mode(args, process_factory=lambda *a, **k: process, api_call=api, sleep=interrupt, port_available=lambda: True) == 130
     assert ("/continuous-paper/stop", "POST") in calls
+
+
+def test_paper_mode_uses_one_windows_safe_no_reload_api_process() -> None:
+    processes = []; api_calls = []
+    def factory(command, **kwargs):
+        processes.append(command)
+        return _PaperProcess()
+    def api(path, **kwargs):
+        api_calls.append((path, kwargs.get("method")))
+        if path == "/health": return {"status": "ok"}
+        if path == "/system/validation/run": return {"validation_status": "PASS"}
+        if path == "/continuous-paper/start":
+            return {"running": False, "paused": False, "stop_reason": "max_cycles_reached", "final_session_summary": {"cycle_count": 1, "stop_reason": "max_cycles_reached"}}
+        return {"running": False}
+    args = start.parse_args(["--paper", "--cycles", "1"])
+    result = start.run_paper_mode(args, process_factory=factory, api_call=api, sleep=lambda _: None, port_available=lambda: True)
+    assert result == 0
+    assert len(processes) == 1
+    assert "--reload" not in processes[0]
+    assert api_calls.count(("/continuous-paper/start", "POST")) == 1
+    assert api_calls.index(("/health", None)) < api_calls.index(("/continuous-paper/start", "POST"))
+
+
+def test_paper_mode_port_preflight_blocks_before_process_creation(capsys) -> None:
+    processes = []
+    args = start.parse_args(["--paper", "--hours", "2"])
+    result = start.run_paper_mode(
+        args,
+        process_factory=lambda *a, **k: processes.append(a),
+        port_available=lambda: False,
+    )
+    assert result == 2
+    assert processes == []
+    assert "Port 8000 is already in use" in capsys.readouterr().out

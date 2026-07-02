@@ -293,7 +293,7 @@ Use [COMMANDS.md](COMMANDS.md) for a concise copy/paste command reference.
 
 ## Roadmap and Release Information
 
-Version `6.0.3` adds the complete Operations Manual and root command cheat sheet. This release changes documentation and version identity only.
+Version `6.0.4` prevents Windows paper CLI double binding by using one no-reload Uvicorn child and checking port 8000 before process creation. If the port is occupied, the launcher exits with a clear recovery message instead of attempting another server.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)
