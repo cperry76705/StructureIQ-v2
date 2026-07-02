@@ -1,5 +1,10 @@
 # StructureIQ Roadmap
 
+## Version 6.0.5 — Daily Report Generation Guard (implemented)
+
+- At-most-once report generation per date during continuous runtime.
+- Explicit generated, skipped-existing, disabled, and failed cycle states.
+
 ## Version 6.0.4 — Windows Paper CLI Single-Process Fix (implemented)
 
 - Exclusive port preflight and clear occupied-port recovery.

@@ -73,6 +73,7 @@ class PaperTradingCycleResult:
     trades_closed: int
     journal_updates: int
     daily_report_generated: bool
+    daily_report_status: str
     blocked_reasons: tuple[str, ...]
     errors: tuple[str, ...]
     status: str
@@ -213,13 +214,26 @@ class PaperTradingOrchestrator:
         after_journal_events = sum(len(item.lifecycle_events) for item in self.journal.entries())
         journal_updates = max(0, len(self.journal.entries()) - before_journal_entries + after_journal_events - before_journal_events)
         report_generated = False
+        report_status = "disabled"
         if self.config.generate_daily_report_after_cycle:
+            report_day = date.today()
             try:
-                self.daily_reports.generate(date.today(), overwrite=self.config.report_overwrite)
-                report_generated = True
+                if not self.config.report_overwrite and self.daily_reports.get(report_day) is not None:
+                    report_status = "skipped_existing"
+                    blocked.append("daily_report_skipped_existing")
+                else:
+                    self.daily_reports.generate(report_day, overwrite=self.config.report_overwrite)
+                    report_generated = True
+                    report_status = "generated"
             except DailyReportError as exc:
-                errors.append(f"daily report: {exc}")
+                if "already exists" in str(exc).lower():
+                    report_status = "skipped_existing"
+                    blocked.append("daily_report_skipped_existing")
+                else:
+                    report_status = "failed"
+                    errors.append(f"daily report: {exc}")
             except Exception as exc:
+                report_status = "failed"
                 errors.append(f"daily report failed: {exc}")
 
         completed = _now()
@@ -231,9 +245,10 @@ class PaperTradingOrchestrator:
             orders_filled=getattr(lifecycle_result, "orders_filled", 0),
             trades_opened=trades_opened, trades_closed=trades_closed,
             journal_updates=journal_updates, daily_report_generated=report_generated,
+            daily_report_status=report_status,
             blocked_reasons=tuple(dict.fromkeys(blocked)), errors=tuple(errors),
             status=status,
-            human_readable_summary=f"Paper-trading cycle completed with {len(candidates)} candidates and {trades_opened} new trades.",
+            human_readable_summary=f"Paper-trading cycle completed with {len(candidates)} candidates, {trades_opened} new trades, and daily report {report_status}.",
         )
         with self._lock:
             self._cycles.append(result); self._cycle_count += 1

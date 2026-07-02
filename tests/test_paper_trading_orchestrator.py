@@ -156,6 +156,17 @@ def test_daily_report_generation_and_error_pause(tmp_path) -> None:
     assert result.daily_report_generated is True
     assert reports.latest() is not None
 
+    guarded, *_, guarded_reports = _services(
+        tmp_path / "guarded", analysis=_Analysis(action="wait"),
+        config=PaperTradingOrchestratorConfig(report_overwrite=False),
+    )
+    first = guarded.run_cycle(); second = guarded.run_cycle()
+    assert first.daily_report_status == "generated"
+    assert second.daily_report_status == "skipped_existing"
+    assert "daily_report_skipped_existing" in second.blocked_reasons
+    assert second.errors == ()
+    assert len(guarded_reports.list_reports()) == 1
+
     failing, *_ = _services(
         tmp_path / "fail", provider=_Provider(fail=True),
         config=PaperTradingOrchestratorConfig(generate_daily_report_after_cycle=False, max_errors_before_pause=1),

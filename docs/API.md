@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `6.0.4` exposes a FastAPI HTTP interface for analysis, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.5` exposes a FastAPI HTTP interface for analysis, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ## Application Launcher
 
@@ -56,7 +56,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.4",
+  "app_version": "6.0.5",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,
@@ -160,6 +160,8 @@ Auto-approval requires explicit `auto_approve_candidates=true` and `require_manu
 `GET /continuous-paper/status` reports runtime and session counters. `POST /continuous-paper/start`, `/stop`, `/pause`, and `/resume` provide explicit controls; `POST /continuous-paper/run-once` executes exactly one guarded orchestrator cycle. `/continuous-paper/events` and `/sessions` expose bounded local state backed by append-only JSONL.
 
 The runtime is disabled and stopped by default. It delegates cycles to `PaperTradingOrchestrator`, permits WATCHLIST validation only when configured, and can pause on validation failure, health failure, paper daily limits, or accumulated errors. It remains paper-only and cannot call a broker, GPT, email, or live execution.
+
+Continuous runtime report generation is non-overwriting. A cycle reports `generated`, `skipped_existing`, `disabled`, or `failed`; an existing report adds `daily_report_skipped_existing` to cycle blocking information without turning the cycle into an error. Runtime status and sessions expose separate generated and skipped-existing totals. The manual `/reports/daily/generate` endpoint retains explicit `overwrite=true` support.
 
 Optional start controls are `run_for_minutes`, `run_for_hours`, `max_cycles`, and `session_label`. When multiple limits are supplied, the first reached completes the session. Status adds `estimated_stop_at`, `remaining_seconds`, configured limits, `stop_reason`, and `final_session_summary`. Automatic completion uses `duration_limit_reached` or `max_cycles_reached`; manual stop uses `manual_stop`, while safety and error pauses remain resumable.
 

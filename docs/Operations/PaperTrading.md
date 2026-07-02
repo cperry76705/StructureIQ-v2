@@ -43,6 +43,8 @@ Invoke-RestMethod http://localhost:8000/reports/daily
 
 Review cycles, candidates, trades, reports, errors, pause reasons, and stop reason. A no-trade session can still validate stability and data availability.
 
+Continuous runtime generates at most one daily report for each report date. Subsequent cycles count `skipped_existing`; they do not overwrite the file or report an operational error. Use the manual report endpoint with explicit `overwrite=true` only when regeneration is intentional.
+
 ## Safety Protections
 
 - No automatic application startup.

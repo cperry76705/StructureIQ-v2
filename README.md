@@ -293,7 +293,7 @@ Use [COMMANDS.md](COMMANDS.md) for a concise copy/paste command reference.
 
 ## Roadmap and Release Information
 
-Version `6.0.4` prevents Windows paper CLI double binding by using one no-reload Uvicorn child and checking port 8000 before process creation. If the port is occupied, the launcher exits with a clear recovery message instead of attempting another server.
+Version `6.0.5` prevents continuous paper cycles from repeatedly overwriting the same daily report. The first cycle may generate the date’s report; later cycles record `skipped_existing`. Manual report generation can still overwrite only when `overwrite=true` is explicit.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

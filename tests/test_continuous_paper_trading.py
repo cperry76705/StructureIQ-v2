@@ -13,12 +13,19 @@ from core.system_health import SystemHealthEngine
 class _Orchestrator:
     def __init__(self, *, errors=()):
         self.config = PaperTradingOrchestratorConfig(generate_daily_report_after_cycle=False)
-        self.calls = 0; self.errors = errors
+        self.calls = 0; self.errors = errors; self.report_exists = False
 
     def run_cycle(self, config):
         self.calls += 1; self.config = config
+        report_status = "disabled"
+        if config.generate_daily_report_after_cycle:
+            if self.report_exists and not config.report_overwrite:
+                report_status = "skipped_existing"
+            else:
+                report_status = "generated"; self.report_exists = True
         return SimpleNamespace(cycle_id=f"cycle-{self.calls}", status="completed_with_errors" if self.errors else "completed",
-            candidates_seen=2, trades_opened=1, trades_closed=0, daily_report_generated=config.generate_daily_report_after_cycle,
+            candidates_seen=2, trades_opened=1, trades_closed=0, daily_report_generated=report_status == "generated",
+            daily_report_status=report_status,
             errors=tuple(self.errors))
 
 
@@ -114,6 +121,15 @@ def test_api_endpoints_and_dashboard_fields(tmp_path):
 def test_system_health_exposes_continuous_component(tmp_path):
     report = SystemHealthEngine(project_root=tmp_path).check(write_log=False)
     assert "continuous_paper_trading" in {item.name for item in report.dimensions}
+
+
+def test_five_cycles_generate_one_report_and_skip_four_existing(tmp_path):
+    runtime = _runtime(tmp_path)
+    results = [runtime.run_once() for _ in range(5)]
+    status = runtime.status()
+    assert [item.daily_report_status for item in results] == ["generated"] + ["skipped_existing"] * 4
+    assert status.total_reports_generated == 1
+    assert status.total_reports_skipped_existing == 4
 
 
 def test_minute_and_hour_limits_set_estimated_stop_and_remaining_time(tmp_path):

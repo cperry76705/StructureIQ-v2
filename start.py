@@ -587,6 +587,7 @@ def _print_final_paper_summary(status: dict) -> None:
     print(f"Candidates Seen: {summary.get('total_candidates_seen', status.get('total_candidates_seen', 0))}")
     print(f"Trades Opened: {summary.get('total_trades_opened', status.get('total_trades_opened', 0))}")
     print(f"Reports Generated: {summary.get('total_reports_generated', status.get('total_reports_generated', 0))}")
+    print(f"Reports Skipped Existing: {summary.get('total_reports_skipped_existing', status.get('total_reports_skipped_existing', 0))}")
     print(f"Stop Reason: {summary.get('stop_reason', status.get('stop_reason', 'unknown'))}")
 
 

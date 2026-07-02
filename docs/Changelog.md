@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 6.0.5 — Daily Report Generation Guard — 2026-07-02
+
+- Continuous paper cycles now use non-overwriting daily report generation and create at most one report per report date.
+- Existing dated reports produce `daily_report_skipped_existing` rather than an error or overwrite.
+- Added generated/skipped counters to runtime status, sessions, final summaries, cycles, and CLI output.
+- Manual report generation and explicit `overwrite=true` behavior remain unchanged.
+
 ## Version 6.0.4 — Windows Paper CLI Single-Process Fix — 2026-07-02
 
 - Added an exclusive localhost port-8000 preflight before paper API process creation.
