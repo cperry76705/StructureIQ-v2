@@ -1,5 +1,10 @@
 # StructureIQ Roadmap
 
+## Version 6.0.3 — Operations Manual (implemented)
+
+- Operator-focused runbooks for daily operation, validation, paper sessions, Git, troubleshooting, and releases.
+- Root command cheat sheet and internally linked documentation entry point.
+
 ## Version 6.0.2 — Local Startup UX and Paper Runtime CLI (implemented)
 
 - Localhost-first startup URLs and optional Swagger browser opening.

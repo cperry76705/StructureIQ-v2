@@ -276,9 +276,24 @@ Version 4.3 adds dashboard-friendly endpoints under `/dashboard/*`. These endpoi
 - The local JSONL journal is intended for a single local process, not concurrent or multi-user deployment.
 - There is no dashboard, broker integration, order execution, alerting, or live-trading loop.
 
+## Operations Manual
+
+The [StructureIQ Operations Manual](docs/Operations/README.md) is the source of truth for local startup, validation, paper sessions, daily procedures, Git workflows, releases, troubleshooting, and operational subsystem ownership.
+
+Use [COMMANDS.md](COMMANDS.md) for a concise copy/paste command reference.
+
+- [Startup and local environment](docs/Operations/Startup.md)
+- [Command reference](docs/Operations/Commands.md)
+- [Paper-trading operations](docs/Operations/PaperTrading.md)
+- [Daily workflow](docs/Operations/DailyWorkflow.md)
+- [Git operations](docs/Operations/Git.md)
+- [Release procedure](docs/Operations/Releases.md)
+- [Troubleshooting](docs/Operations/Troubleshooting.md)
+- [Operational architecture](docs/Operations/ArchitectureOverview.md)
+
 ## Roadmap and Release Information
 
-Version `6.0.2` adds localhost-first startup output and a paper runtime CLI. Use `python start.py --urls`, opt into Swagger opening with `--open-browser`, or run controlled paper sessions such as `python start.py --paper --hours 2 --label "2 Hour Validation"`. Days, weeks, months, minutes, and cycle limits are supported. Multiple duration flags select the shortest. Validation FAIL blocks the session; WATCHLIST is allowed. Everything remains local, paper-only, and manual-approval by default.
+Version `6.0.3` adds the complete Operations Manual and root command cheat sheet. This release changes documentation and version identity only.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

@@ -16,7 +16,7 @@ def test_version_command_prints_current_version(capsys) -> None:
     output = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "StructureIQ v6.0.2" in output
+    assert "StructureIQ v6.0.3" in output
 
 
 def test_health_command_runs_startup_validation(capsys) -> None:
@@ -97,13 +97,13 @@ def test_logging_writes_startup_log(tmp_path: Path, monkeypatch) -> None:
     start.write_startup_log(
         result="test_pass",
         argv=["--health"],
-        version="6.0.2",
+        version="6.0.3",
         details="ok",
     )
 
     contents = log_file.read_text(encoding="utf-8")
     assert "result=test_pass" in contents
-    assert "version=6.0.2" in contents
+    assert "version=6.0.3" in contents
     assert "arguments=--health" in contents
     assert "details=ok" in contents
 
@@ -124,7 +124,7 @@ def test_successful_startup_path_launches_api(monkeypatch, capsys) -> None:
     assert exit_code == 0
     assert calls
     assert calls[0][:4] == [sys.executable, "-m", "uvicorn", "app.main:app"]
-    assert "StructureIQ v6.0.2" in output
+    assert "StructureIQ v6.0.3" in output
     assert "Status:" in output
     assert "READY" in output
     assert "Paper Trading: AVAILABLE/ADVISORY - NOT AUTO-STARTED" in output

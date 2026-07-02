@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 6.0.3 — Operations Manual — 2026-07-02
+
+- Added a complete operations manual covering startup, commands, Git, paper sessions, daily procedures, releases, troubleshooting, and subsystem ownership.
+- Added a root `COMMANDS.md` cheat sheet with copy/paste startup, validation, paper, reporting, health, dashboard, and Git commands.
+- Linked operational documentation from the project README.
+- This release changes documentation and version identity only; application, API, trading, risk, calibration, and research behavior are unchanged.
+
 ## Version 6.0.2 — Local Startup UX and Paper Runtime CLI — 2026-07-02
 
 - Replaced browser-facing `0.0.0.0` output with clear localhost Swagger, API, health, dashboard, and continuous-paper URLs while retaining the existing all-interface Uvicorn bind.
