@@ -17,6 +17,7 @@ from fastapi.encoders import jsonable_encoder
 
 from app.config import APP_VERSION
 from core.analysis_engine import AnalysisEngine
+from core.candidate_diagnostics import get_global_candidate_diagnostics
 from core.daily_report_engine import DailyReportEngine
 from core.live_market_monitor import LiveMarketMonitor, MonitorConfig
 from core.market_data import Candle
@@ -70,6 +71,7 @@ class SystemValidationHarness:
         "/reports/scheduler/status", "/paper-trading/status",
         "/dashboard/overview", "/system/validation/run",
         "/continuous-paper/status",
+        "/candidate-diagnostics/summary",
     }
 
     def __init__(
@@ -123,6 +125,7 @@ class SystemValidationHarness:
             ("Daily Scheduler", self._scheduler),
             ("Paper Trading Orchestrator", self._orchestrator),
             ("Continuous Paper Trading", self._continuous_paper),
+            ("Candidate Diagnostics", self._candidate_diagnostics),
             ("Dashboard", self._dashboard),
             ("Observability", self._observability),
             ("API Registration", self._api_registration),
@@ -289,6 +292,15 @@ class SystemValidationHarness:
         if state.paused:
             return _watch(state.pause_reasons, "Continuous Paper Trading is available but paused safely.")
         return _pass("Continuous Paper Trading runtime state is operational and paper-only.")
+
+    def _candidate_diagnostics(self):
+        engine = get_global_candidate_diagnostics()
+        if not engine.writable():
+            return _fail("Candidate Diagnostics persistence is not writable.")
+        summary = engine.summary()
+        if summary.markets_analyzed < 0 or summary.candidates_created < 0:
+            return _fail("Candidate Diagnostics statistics are invalid.")
+        return _pass("Candidate Diagnostics is available, writable, and statistically operational.")
 
     def _observability(self):
         report = self.health_engine.check(write_log=False)

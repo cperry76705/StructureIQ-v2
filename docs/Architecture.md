@@ -1,5 +1,9 @@
 # StructureIQ Architecture
 
+## Candidate Diagnostics Boundary
+
+`CandidateDiagnosticsEngine` observes completed Live Market Monitor analyses after every authoritative engine has finished. It records emission, rejection, duplicate, and failure context, but its output is never consumed by analysis, decision, setup, strategy, risk, lifecycle, or brokerage paths. Persistence is append-only, and diagnostic write failures are isolated so they cannot alter monitor outcomes. Dashboard and validation layers read aggregate projections only.
+
 ## Local Launcher and Paper CLI Boundary
 
 The launcher continues to bind Uvicorn to `0.0.0.0` so local interfaces remain reachable, but presents `localhost` URLs for browsers. Browser opening is opt-in and failure is non-blocking. Paper CLI mode starts a manageable local API process, validates it, and controls `ContinuousPaperTradingRuntime` exclusively through its existing API. Unit conversion, terminal rendering, and child-process lifecycle are launcher concerns; analysis, routing, risk, orchestration, and brokerage remain owned by their existing engines.

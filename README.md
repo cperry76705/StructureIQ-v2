@@ -293,7 +293,7 @@ Use [COMMANDS.md](COMMANDS.md) for a concise copy/paste command reference.
 
 ## Roadmap and Release Information
 
-Version `6.0.5` prevents continuous paper cycles from repeatedly overwriting the same daily report. The first cycle may generate the date’s report; later cycles record `skipped_existing`. Manual report generation can still overwrite only when `overwrite=true` is explicit.
+Version `6.0.6` adds candidate diagnostics for every monitor analysis. Rejected markets now expose ordered gate reasons, warnings, rule failures, and near-miss distances, with append-only history and compact APIs. Diagnostics are observational and never feed back into analysis or candidate selection.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

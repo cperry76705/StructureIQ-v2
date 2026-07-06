@@ -16,6 +16,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.analysis_engine import AnalysisEngine
+from core.candidate_diagnostics import CandidateDiagnosticsEngine, get_global_candidate_diagnostics
 from core.market_data import MarketDataError, MarketDataProvider
 from models.schemas import AnalysisRequest, AnalysisResponse
 
@@ -110,10 +111,12 @@ class LiveMarketMonitor:
         config: MonitorConfig | None = None,
         *,
         analysis_engine_factory: Callable[[MarketDataProvider], Any] | None = None,
+        candidate_diagnostics: CandidateDiagnosticsEngine | None = None,
     ) -> None:
         self.provider = provider
         self.config = config or MonitorConfig()
         self._analysis_engine_factory = analysis_engine_factory or AnalysisEngine
+        self.candidate_diagnostics = candidate_diagnostics or get_global_candidate_diagnostics()
         self._events: deque[MonitorEvent] = deque(maxlen=self.config.max_events_in_memory)
         self._emitted_keys: set[tuple[str, str, int, str, str]] = set()
         self._lock = threading.RLock()
@@ -164,6 +167,7 @@ class LiveMarketMonitor:
                     )
                     analyzed += 1
                     if not _is_actionable(analysis):
+                        self._record_diagnostic(analysis, timeframe, False)
                         continue
                     key = (
                         symbol,
@@ -175,6 +179,7 @@ class LiveMarketMonitor:
                     with self._lock:
                         if key in self._emitted_keys:
                             duplicates += 1
+                            self._record_diagnostic(analysis, timeframe, False, duplicate=True)
                             continue
                         event = _build_event(
                             analysis, timeframe, self.config.higher_timeframe,
@@ -185,6 +190,7 @@ class LiveMarketMonitor:
                         self._signal_count += 1
                         self._last_signal_time = event.timestamp
                     self._persist(event)
+                    self._record_diagnostic(analysis, timeframe, True)
                     created.append(event)
                 except Exception as exc:
                     message = f"{symbol} {timeframe}: {exc}"
@@ -192,6 +198,13 @@ class LiveMarketMonitor:
                     with self._lock:
                         self._last_error = message
                         self._error_count += 1
+                    try:
+                        self.candidate_diagnostics.record_failure(
+                            symbol=symbol, timeframe=timeframe,
+                            higher_timeframe=self.config.higher_timeframe, error=str(exc),
+                        )
+                    except Exception:
+                        pass
         completed = _now()
         with self._lock:
             self._last_cycle_time = completed
@@ -296,6 +309,17 @@ class LiveMarketMonitor:
         with path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(jsonable_encoder(event), separators=(",", ":")))
             stream.write("\n")
+
+    def _record_diagnostic(self, analysis, timeframe: str, created: bool, *, duplicate: bool = False) -> None:
+        """Keep diagnostics strictly observational; failures cannot affect monitoring."""
+        try:
+            self.candidate_diagnostics.record_analysis(
+                analysis, timeframe=timeframe,
+                higher_timeframe=self.config.higher_timeframe,
+                candidate_created=created, duplicate=duplicate,
+            )
+        except Exception:
+            pass
 
 
 def _is_actionable(analysis: AnalysisResponse) -> bool:

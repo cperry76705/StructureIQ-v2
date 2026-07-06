@@ -95,6 +95,12 @@ from core.continuous_paper_trading import (
     ContinuousPaperTradingRuntime,
     get_global_continuous_paper_trading,
 )
+from core.candidate_diagnostics import (
+    CandidateDiagnostic,
+    CandidateDiagnosticsEngine,
+    CandidateDiagnosticsSummary,
+    get_global_candidate_diagnostics,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -140,6 +146,10 @@ def get_symbol_profile_engine() -> SymbolProfileEngine:
     """Return the durable research-only symbol profile store."""
 
     return get_global_symbol_profile_engine()
+
+
+def get_candidate_diagnostics_engine() -> CandidateDiagnosticsEngine:
+    return get_global_candidate_diagnostics()
 
 
 def get_analysis_engine(
@@ -999,6 +1009,28 @@ def continuous_paper_sessions(limit: int | None = None, runtime: ContinuousPaper
     if limit is not None and not 1 <= limit <= 10_000:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
     return list(runtime.sessions(limit))
+
+
+@app.get("/candidate-diagnostics/summary", response_model=CandidateDiagnosticsSummary, tags=["candidate-diagnostics"])
+def candidate_diagnostics_summary(engine: CandidateDiagnosticsEngine = Depends(get_candidate_diagnostics_engine)) -> CandidateDiagnosticsSummary:
+    return engine.summary()
+
+
+@app.get("/candidate-diagnostics/recent", response_model=list[CandidateDiagnostic], tags=["candidate-diagnostics"])
+def candidate_diagnostics_recent(limit: int = 100, engine: CandidateDiagnosticsEngine = Depends(get_candidate_diagnostics_engine)) -> list[CandidateDiagnostic]:
+    if not 1 <= limit <= 10_000: raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(engine.recent(limit))
+
+
+@app.get("/candidate-diagnostics/reasons", response_model=dict[str, int], tags=["candidate-diagnostics"])
+def candidate_diagnostics_reasons(engine: CandidateDiagnosticsEngine = Depends(get_candidate_diagnostics_engine)) -> dict[str, int]:
+    return engine.reasons()
+
+
+@app.get("/candidate-diagnostics/near-misses", response_model=list[CandidateDiagnostic], tags=["candidate-diagnostics"])
+def candidate_diagnostics_near_misses(limit: int = 100, engine: CandidateDiagnosticsEngine = Depends(get_candidate_diagnostics_engine)) -> list[CandidateDiagnostic]:
+    if not 1 <= limit <= 10_000: raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
+    return list(engine.near_misses(limit))
 
 
 def _parse_latest_prices(value: str | None) -> dict[str, float]:

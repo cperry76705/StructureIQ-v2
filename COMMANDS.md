@@ -51,6 +51,8 @@ Invoke-RestMethod http://localhost:8000/system/readiness
 Invoke-RestMethod http://localhost:8000/dashboard/overview
 Invoke-RestMethod http://localhost:8000/dashboard/risks
 Invoke-RestMethod http://localhost:8000/paper-journal/summary
+Invoke-RestMethod http://localhost:8000/candidate-diagnostics/summary
+Invoke-RestMethod http://localhost:8000/candidate-diagnostics/near-misses?limit=20
 ```
 
 ## Git

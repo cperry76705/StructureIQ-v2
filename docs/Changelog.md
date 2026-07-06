@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 6.0.6 — Candidate Diagnostics and Explainability — 2026-07-06
+
+- Added append-only diagnostics for every completed or failed monitor analysis without changing candidate selection.
+- Added ordered rejection reasons, rule failures, warnings, and confidence/setup-quality/score near-miss distances.
+- Added aggregate statistics, recent diagnostics, rejection frequency, and near-miss APIs.
+- Added dashboard and system-validation visibility for diagnostic availability, persistence, and statistics.
+
 ## Version 6.0.5 — Daily Report Generation Guard — 2026-07-02
 
 - Continuous paper cycles now use non-overwriting daily report generation and create at most one report per report date.

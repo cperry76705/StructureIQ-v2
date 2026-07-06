@@ -19,6 +19,7 @@ from core.daily_report_scheduler import current_daily_report_scheduler
 from core.system_health import latest_system_health
 from core.system_validation import latest_system_validation
 from core.continuous_paper_trading import current_continuous_paper_trading
+from core.candidate_diagnostics import current_candidate_diagnostics
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -127,6 +128,16 @@ class DashboardOverview:
     continuous_paper_total_trades_opened: int = 0
     continuous_paper_total_reports_generated: int = 0
     continuous_paper_readiness: str = "NOT_STARTED"
+    candidate_markets_analyzed: int = 0
+    candidate_candidates_created: int = 0
+    candidate_rate_percent: float = 0.0
+    candidate_average_confidence: float = 0.0
+    candidate_average_setup_quality: float = 0.0
+    candidate_top_rejection_reason: str | None = None
+    candidate_closest_missed_setup: str | None = None
+    candidate_highest_rejected_confidence: float | None = None
+    candidate_highest_rejected_quality: float | None = None
+    candidate_highest_rejected_score: float | None = None
 
 
 @dataclass(frozen=True)
@@ -379,6 +390,8 @@ class ResearchDashboardService:
         validation = latest_system_validation()
         continuous = current_continuous_paper_trading()
         continuous_status = continuous.status() if continuous is not None else None
+        diagnostic_engine = current_candidate_diagnostics()
+        candidate_summary = diagnostic_engine.summary() if diagnostic_engine is not None else None
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -496,6 +509,16 @@ class ResearchDashboardService:
             continuous_paper_total_trades_opened=int(getattr(continuous_status, "total_trades_opened", 0) or 0),
             continuous_paper_total_reports_generated=int(getattr(continuous_status, "total_reports_generated", 0) or 0),
             continuous_paper_readiness=("PAUSED" if getattr(continuous_status, "paused", False) else "RUNNING" if getattr(continuous_status, "running", False) else "STOPPED" if continuous_status else "NOT_STARTED"),
+            candidate_markets_analyzed=int(getattr(candidate_summary, "markets_analyzed", 0) or 0),
+            candidate_candidates_created=int(getattr(candidate_summary, "candidates_created", 0) or 0),
+            candidate_rate_percent=float(getattr(candidate_summary, "candidate_rate_percent", 0.0) or 0.0),
+            candidate_average_confidence=float(getattr(candidate_summary, "average_confidence", 0.0) or 0.0),
+            candidate_average_setup_quality=float(getattr(candidate_summary, "average_setup_quality", 0.0) or 0.0),
+            candidate_top_rejection_reason=getattr(candidate_summary, "most_common_rejection_reason", None),
+            candidate_closest_missed_setup=getattr(getattr(candidate_summary, "closest_missed_candidate", None), "best_setup_name", None),
+            candidate_highest_rejected_confidence=getattr(candidate_summary, "highest_confidence_rejected", None),
+            candidate_highest_rejected_quality=getattr(candidate_summary, "highest_setup_quality_rejected", None),
+            candidate_highest_rejected_score=getattr(candidate_summary, "highest_score_rejected", None),
         )
 
     def symbols(self) -> DashboardSymbols:

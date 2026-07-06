@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `6.0.5` exposes a FastAPI HTTP interface for analysis, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.6` exposes a FastAPI HTTP interface for analysis, candidate diagnostics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ## Application Launcher
 
@@ -56,7 +56,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.5",
+  "app_version": "6.0.6",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,
@@ -154,6 +154,15 @@ Auto-approval requires explicit `auto_approve_candidates=true` and `require_manu
 `POST /reports/scheduler/run-now` generates the previous day in the configured timezone by default or accepts an explicit `report_date`. Its optional `overwrite` value overrides scheduler policy for that run. Existing reports are returned as `skipped_existing` unless overwrite is enabled.
 
 `POST /reports/scheduler/start` and `/stop` control a local daemon scheduler; it never auto-starts with the API. `GET /reports/scheduler/status` reports running, enabled, paused, last/next run, last report, counts, and errors. `/history` returns append-only run records stored in `reports/daily_scheduler_history.jsonl`. The default is 06:00 America/Chicago, previous day, weekends included, and overwrite disabled. Repeated failures pause scheduling. Dashboard responses expose scheduler readiness and warnings. No external service, GPT, email, broker, or trading call exists.
+
+## Candidate Diagnostics
+
+- `GET /candidate-diagnostics/summary` returns aggregate analysis/candidate rates, averages, rejected highs, the closest miss, and top rejection reasons.
+- `GET /candidate-diagnostics/recent?limit=100` returns the newest per-market records.
+- `GET /candidate-diagnostics/reasons` returns rejection frequency counts.
+- `GET /candidate-diagnostics/near-misses?limit=100` returns rejected completed analyses ordered by total numerical shortfall.
+
+Records are appended to `research/candidate_diagnostics.jsonl`. Decision gates and setup/execution state explain authoritative rejection; confidence, setup-quality, and score distances are diagnostic references only. These APIs cannot modify analysis, routing, thresholds, candidates, or trades.
 
 ## Continuous Autonomous Paper Trading
 

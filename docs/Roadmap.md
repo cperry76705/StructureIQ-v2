@@ -1,5 +1,10 @@
 # StructureIQ Roadmap
 
+## Version 6.0.6 — Candidate Diagnostics and Explainability (implemented)
+
+- Per-market candidate/rejection observability and ordered rejection evidence.
+- Persistent near-miss analysis, runtime statistics, dashboard projection, and validation checks.
+
 ## Version 6.0.5 — Daily Report Generation Guard (implemented)
 
 - At-most-once report generation per date during continuous runtime.
