@@ -1,5 +1,15 @@
 # StructureIQ
 
+## Controlled paper auto-approval (v6.0.8)
+
+Paper candidates remain manual by default. An explicitly controlled validation run can enable the existing paper-only safety gates:
+
+```powershell
+.\.venv\Scripts\python.exe start.py --paper --hours 2 --label "Auto Approval Validation" --auto-approve-paper --max-trades-per-cycle 1 --max-candidates-per-cycle 3 --order-type limit_retest
+```
+
+Market paper orders require the additional `--allow-market-orders` flag. Ambiguous candidates fail closed and their reasons appear in `/paper-trading/recent-actions`; this mode cannot enable live trading or broker connections.
+
 StructureIQ is an explainable market-intelligence and trader decision-support platform. It does not predict markets or place trades. It interprets current price structure, quantifies weighted evidence, explains uncertainty, and helps traders make disciplined decisions.
 
 ## Project Overview

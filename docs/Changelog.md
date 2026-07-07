@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 6.0.8 — Controlled Paper Auto-Approval Mode — 2026-07-07
+
+- Added explicit, disabled-by-default paper candidate auto-approval.
+- Added CLI/API limits, order selection, and explicit simulated market-order opt-in.
+- Added fail-closed candidate checks, recent decision actions, and dashboard status fields.
+- Live trading and broker connections remain unavailable.
+
 ## Version 6.0.7 — Calibration Analytics and Candidate Distribution Reporting — 2026-07-06
 
 - Added read-only confidence, setup-quality, and overall-score distributions over append-only candidate diagnostics.

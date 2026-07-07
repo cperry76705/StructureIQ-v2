@@ -9,7 +9,7 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ConfigDict, Field
@@ -31,6 +31,9 @@ class PaperTradingOrchestratorConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
+    paper_only: Literal[True] = True
+    live_trading_enabled: Literal[False] = False
+    broker_connections_enabled: Literal[False] = False
     auto_approve_candidates: bool = False
     require_manual_approval: bool = True
     allow_market_orders: bool = False
@@ -67,6 +70,7 @@ class PaperTradingCycleResult:
     monitor_result: MonitorCycleResult
     candidates_seen: int
     candidates_approved: int
+    candidates_blocked_from_auto_approval: int
     orders_created: int
     orders_filled: int
     trades_opened: int
@@ -93,6 +97,8 @@ class PaperTradingOrchestratorStatus:
     paused: bool
     total_candidates_seen: int
     total_candidates_approved: int
+    total_candidates_blocked_from_auto_approval: int
+    last_auto_approval_block_reason: str | None
     total_orders_created: int
     total_trades_opened: int
     total_trades_closed: int
@@ -134,6 +140,8 @@ class PaperTradingOrchestrator:
         self._paused = False
         self._total_candidates_seen = 0
         self._total_candidates_approved = 0
+        self._total_candidates_blocked = 0
+        self._last_auto_approval_block_reason: str | None = None
         self._total_orders_created = 0
         self._total_trades_opened = 0
         self._total_trades_closed = 0
@@ -157,7 +165,7 @@ class PaperTradingOrchestrator:
         cycle_id = hashlib.sha256(f"paper-cycle:{started}:{self._cycle_count}".encode()).hexdigest()[:24]
         errors: list[str] = []
         blocked: list[str] = []
-        approved = orders = 0
+        approved = orders = auto_blocked = 0
         before_open = len(self.broker.open_positions())
         before_closed = len(self.broker.closed_trades())
         before_journal_entries = len(self.journal.entries())
@@ -173,31 +181,45 @@ class PaperTradingOrchestrator:
         candidates = tuple(monitor_result.events[: self.config.max_candidates_per_cycle])
         if len(monitor_result.events) > len(candidates):
             blocked.append("Candidate limit reached; remaining candidates were observed only.")
+            for candidate in monitor_result.events[len(candidates):]:
+                self._record_action(cycle_id, "candidate_skipped", candidate, "Maximum candidates per cycle reached.")
 
         account = self.broker.account()
         approval_enabled = self.config.auto_approve_candidates and not self.config.require_manual_approval
         if not approval_enabled and candidates:
             blocked.append("Automatic approval is disabled; candidates require manual lifecycle approval.")
-        elif approval_enabled:
             for candidate in candidates:
+                self._record_action(cycle_id, "candidate_skipped", candidate, "Manual lifecycle approval is required.")
+        elif approval_enabled:
+            for index, candidate in enumerate(candidates):
                 if approved >= self.config.max_new_trades_per_cycle:
-                    blocked.append("Maximum new trades per cycle reached.")
+                    reason = "Maximum new trades per cycle reached."
+                    blocked.append(reason)
+                    for skipped in candidates[index:]:
+                        auto_blocked += 1
+                        self._record_action(cycle_id, "candidate_skipped", skipped, reason)
                     break
                 reason = self._candidate_blocker(candidate, account)
                 if reason:
+                    auto_blocked += 1
                     blocked.append(f"{candidate.symbol}: {reason}")
                     self._record_action(cycle_id, "candidate_blocked", candidate, reason)
                     continue
                 try:
-                    self.lifecycle.approve_candidate(
+                    order = self.lifecycle.approve_candidate(
                         ApproveCandidateRequest(
                             event_id=candidate.event_id,
                             order_type=self.config.default_order_type,
                         )
                     )
                     approved += 1; orders += 1
-                    self._record_action(cycle_id, "candidate_approved", candidate, "Candidate passed orchestrator safety gates.")
+                    self._record_action(cycle_id, "candidate_auto_approved", candidate, "Candidate passed every controlled paper auto-approval gate.")
+                    converted_action = "converted_to_paper_trade" if order.trade_id else "converted_to_pending_order"
+                    converted_message = "Candidate opened a simulated paper trade." if order.trade_id else f"Candidate became a pending {order.order_type} paper order."
+                    self._record_action(cycle_id, converted_action, candidate, converted_message)
                 except LifecycleError as exc:
+                    auto_blocked += 1
+                    self._record_action(cycle_id, "candidate_rejected", candidate, str(exc))
                     errors.append(f"{candidate.symbol}: {exc}")
 
         try:
@@ -242,6 +264,7 @@ class PaperTradingOrchestrator:
             cycle_id=cycle_id, started_at=started, completed_at=completed,
             monitor_result=monitor_result, candidates_seen=len(candidates),
             candidates_approved=approved, orders_created=orders,
+            candidates_blocked_from_auto_approval=auto_blocked,
             orders_filled=getattr(lifecycle_result, "orders_filled", 0),
             trades_opened=trades_opened, trades_closed=trades_closed,
             journal_updates=journal_updates, daily_report_generated=report_generated,
@@ -254,6 +277,8 @@ class PaperTradingOrchestrator:
             self._cycles.append(result); self._cycle_count += 1
             self._last_cycle_id = cycle_id; self._last_started = started; self._last_completed = completed
             self._total_candidates_seen += len(candidates); self._total_candidates_approved += approved
+            self._total_candidates_blocked += auto_blocked
+            if auto_blocked and blocked: self._last_auto_approval_block_reason = blocked[-1]
             self._total_orders_created += orders; self._total_trades_opened += trades_opened
             self._total_trades_closed += trades_closed; self._total_reports_generated += int(report_generated)
             self._error_count += len(errors)
@@ -293,6 +318,8 @@ class PaperTradingOrchestrator:
                 last_error=self._last_error, error_count=self._error_count, paused=self._paused,
                 total_candidates_seen=self._total_candidates_seen,
                 total_candidates_approved=self._total_candidates_approved,
+                total_candidates_blocked_from_auto_approval=self._total_candidates_blocked,
+                last_auto_approval_block_reason=self._last_auto_approval_block_reason,
                 total_orders_created=self._total_orders_created,
                 total_trades_opened=self._total_trades_opened,
                 total_trades_closed=self._total_trades_closed,
@@ -310,8 +337,14 @@ class PaperTradingOrchestrator:
         return values[-limit:] if limit is not None else values
 
     def _candidate_blocker(self, candidate: MonitorEvent, account: Any) -> str | None:
+        if not self.config.paper_only or self.config.live_trading_enabled or self.config.broker_connections_enabled:
+            return "paper-only safety configuration is not satisfied"
         if candidate.paper_trade_created: return "candidate already created a paper trade"
+        if not str(candidate.symbol).strip(): return "candidate symbol is missing"
         if candidate.action not in {"buy", "sell"}: return "candidate action is not buy or sell"
+        if not str(candidate.setup).strip() or candidate.setup == "no_valid_setup": return "candidate setup is invalid"
+        if not str(candidate.strategy).strip() or candidate.strategy == "no_strategy": return "candidate strategy is invalid"
+        if float(candidate.confidence or 0.0) < 7.0: return "candidate confidence is below the existing actionable threshold"
         quality = candidate.setup_quality or {}
         grade = str(quality.get("grade", ""))
         if not grade and not self.config.allow_missing_setup_quality: return "setup quality is missing"
@@ -329,6 +362,8 @@ class PaperTradingOrchestrator:
         if account.risk_status != "available": return f"paper account risk status is {account.risk_status}"
         if len(self.broker.open_positions()) >= self.broker.config.max_open_positions: return "maximum paper positions reached"
         if self.config.default_order_type is OrderType.MARKET and not self.config.allow_market_orders: return "market orders are disabled"
+        if any(item.source_event_id == candidate.event_id for item in self.lifecycle.pending_orders()): return "duplicate lifecycle order already exists"
+        if any(item.symbol == candidate.symbol and item.timeframe == candidate.timeframe and item.setup == candidate.setup for item in self.lifecycle.pending_orders()): return "duplicate symbol/timeframe/setup order is disabled"
         if not self.broker.config.allow_duplicate_symbol_positions and any(item.symbol == candidate.symbol for item in self.broker.open_positions()): return "duplicate symbol position is disabled"
         if not self.broker.config.allow_duplicate_setup_positions and any(item.symbol == candidate.symbol and item.timeframe == candidate.timeframe and item.setup == candidate.setup for item in self.broker.open_positions()): return "duplicate setup position is disabled"
         return None

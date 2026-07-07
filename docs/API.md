@@ -2,7 +2,11 @@
 
 ## Overview
 
-StructureIQ `6.0.7` exposes a FastAPI HTTP interface for analysis, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.8` exposes a FastAPI HTTP interface for analysis, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+
+### Controlled paper auto-approval
+
+`POST /continuous-paper/start` accepts `auto_approve_candidates`, `max_trades_per_cycle`, `max_candidates_per_cycle`, `allow_market_orders`, and `default_order_type`. `POST /paper-trading/run-cycle` accepts the corresponding orchestrator configuration (`max_new_trades_per_cycle` at that layer). Fixed safety fields require `paper_only=true`, `live_trading_enabled=false`, and `broker_connections_enabled=false`. Decisions and block reasons are returned by `GET /paper-trading/recent-actions`.
 
 ## Application Launcher
 

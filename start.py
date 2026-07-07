@@ -422,6 +422,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--no-browser", action="store_true", help="Never open a browser window.")
     parser.add_argument("--urls", action="store_true", help="Print useful localhost URLs and exit.")
     parser.add_argument("--paper", action="store_true", help="Run an explicitly controlled paper-only session.")
+    parser.add_argument("--auto-approve-paper", action="store_true", help="Enable gated paper-only candidate auto-approval.")
+    parser.add_argument("--max-trades-per-cycle", type=int, default=1, help="Maximum new paper trades per cycle (default: 1).")
+    parser.add_argument("--max-candidates-per-cycle", type=int, default=3, help="Maximum candidates evaluated per cycle (default: 3).")
+    parser.add_argument("--allow-market-orders", action="store_true", help="Explicitly allow simulated market paper orders.")
+    parser.add_argument("--order-type", choices=("limit_retest", "confirmation_close", "market"), default="limit_retest", help="Paper lifecycle order type (default: limit_retest).")
     parser.add_argument("--minutes", type=float, help="Stop paper mode after this many minutes.")
     parser.add_argument("--hours", type=float, help="Stop paper mode after this many hours.")
     parser.add_argument("--days", type=float, help="Stop paper mode after this many 24-hour days.")
@@ -442,7 +447,26 @@ def build_paper_start_payload(args: argparse.Namespace) -> tuple[dict, tuple[str
     if args.months is not None: durations.append((args.months * 30 * 86400, "run_for_hours", args.months * 30 * 24, f"{args.months:g} months"))
     if any(item[0] <= 0 for item in durations) or (args.cycles is not None and args.cycles <= 0):
         raise ValueError("paper durations and cycle limits must be greater than zero")
-    payload = {"session_label": args.label, "auto_approve_candidates": False}
+    max_trades = getattr(args, "max_trades_per_cycle", 1)
+    max_candidates = getattr(args, "max_candidates_per_cycle", 3)
+    allow_market = bool(getattr(args, "allow_market_orders", False))
+    order_type = getattr(args, "order_type", "limit_retest")
+    auto_approve = bool(getattr(args, "auto_approve_paper", False))
+    if max_trades <= 0 or max_candidates <= 0:
+        raise ValueError("paper candidate and trade limits must be greater than zero")
+    if order_type == "market" and not allow_market:
+        raise ValueError("market paper orders require --allow-market-orders")
+    payload = {
+        "session_label": args.label,
+        "auto_approve_candidates": auto_approve,
+        "paper_only": True,
+        "live_trading_enabled": False,
+        "broker_connections_enabled": False,
+        "allow_market_orders": allow_market,
+        "default_order_type": order_type,
+        "max_trades_per_cycle": max_trades,
+        "max_candidates_per_cycle": max_candidates,
+    }
     warnings = []
     description = "unlimited"
     if durations:
@@ -558,7 +582,10 @@ def run_paper_mode(
         print("Starting continuous paper trading...")
         print(f"Session: {status.get('session_label') or 'Unlabeled local session'}")
         print(f"Duration: {duration}")
-        print("Auto Approval: false")
+        print(f"Auto Approval: {str(bool(payload['auto_approve_candidates'])).lower()}")
+        print(f"Order Type: {payload['default_order_type']}")
+        print(f"Max Trades/Cycle: {payload['max_trades_per_cycle']}")
+        print(f"Max Candidates/Cycle: {payload['max_candidates_per_cycle']}")
         print("Paper Only: true")
         print("\nPaper trading is running.\nPress CTRL+C to stop early.")
         while status.get("running") or status.get("paused"):

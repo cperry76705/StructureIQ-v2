@@ -1,5 +1,9 @@
 # StructureIQ Roadmap
 
+## Version 6.0.8 — Controlled Paper Auto-Approval Mode (implemented)
+
+- Explicit paper-only approval with health/validation guards, conservative candidate gates, cycle limits, and transparent decisions.
+
 ## Version 6.0.7 — Calibration Analytics and Candidate Distribution Reporting (implemented)
 
 - Candidate distributions, conversion funnel, rejection waterfall, near-miss calibration, and grouped performance views.

@@ -1,5 +1,13 @@
 # StructureIQ Command Cheat Sheet
 
+## Controlled paper auto-approval
+
+```powershell
+.\.venv\Scripts\python.exe start.py --paper --hours 2 --label "Auto Approval Validation" --auto-approve-paper --max-trades-per-cycle 1 --max-candidates-per-cycle 3 --order-type limit_retest
+```
+
+Auto-approval is off unless `--auto-approve-paper` is present. Simulated market orders additionally require `--allow-market-orders --order-type market`.
+
 Full manual: [docs/Operations/README.md](docs/Operations/README.md)
 
 ## Environment and Startup

@@ -866,8 +866,20 @@ def paper_trading_status(orchestrator: PaperTradingOrchestrator = Depends(get_pa
 
 
 @app.post("/paper-trading/run-cycle", response_model=PaperTradingCycleResult, tags=["paper-trading"])
-def paper_trading_run_cycle(config: PaperTradingOrchestratorConfig | None = None, orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator)) -> PaperTradingCycleResult:
+def paper_trading_run_cycle(
+    config: PaperTradingOrchestratorConfig | None = None,
+    orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator),
+    health: SystemHealthEngine = Depends(get_system_health_engine),
+    validation: SystemValidationHarness = Depends(get_system_validation_harness),
+) -> PaperTradingCycleResult:
     try:
+        if config is not None and config.auto_approve_candidates:
+            health_result = health.check(write_log=False)
+            if health_result.status != "PASS":
+                raise HTTPException(status_code=409, detail="paper auto-approval requires system health PASS")
+            validation_result = validation.run()
+            if validation_result.validation_status not in {"PASS", "WATCHLIST"}:
+                raise HTTPException(status_code=409, detail="paper auto-approval requires validation PASS or WATCHLIST")
         return orchestrator.run_cycle(config)
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

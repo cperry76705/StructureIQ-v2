@@ -2,6 +2,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
+import pytest
 
 from app.main import app, get_paper_trading_orchestrator
 from core.daily_report_engine import DailyReportEngine
@@ -28,13 +30,13 @@ class _Provider:
 
 
 class _Analysis:
-    def __init__(self, *, action="buy", grade="B", include_quality=True, blockers=()):
-        self.action, self.grade, self.include_quality, self.blockers = action, grade, include_quality, blockers
+    def __init__(self, *, action="buy", grade="B", include_quality=True, blockers=(), confidence=7.8):
+        self.action, self.grade, self.include_quality, self.blockers, self.confidence = action, grade, include_quality, blockers, confidence
 
     def analyze(self, request):
         return SimpleNamespace(
             symbol=request.symbol, action=self.action,
-            setup="liquidity_sweep_reversal_long", confidence=7.8,
+            setup="liquidity_sweep_reversal_long", confidence=self.confidence,
             entry_zone="100", stop_loss="98", target="106",
             reasons=["Synthetic orchestrator candidate."],
             setup_plan=SimpleNamespace(setup_status="confirmed"),
@@ -95,6 +97,8 @@ def test_default_cycle_observes_without_approval(tmp_path) -> None:
     assert len(lifecycle.pending_orders()) == 0
     assert len(broker.open_positions()) == 0
     assert "manual" in " ".join(result.blocked_reasons).lower()
+    assert orchestrator.status().total_candidates_blocked_from_auto_approval == 0
+    assert orchestrator.recent_actions()[-1].action == "candidate_skipped"
 
 
 def test_auto_approval_opens_only_safe_candidate(tmp_path) -> None:
@@ -106,6 +110,9 @@ def test_auto_approval_opens_only_safe_candidate(tmp_path) -> None:
     assert result.trades_opened == 1
     assert len(broker.open_positions()) == 1
     assert len(journal.entries()) == 1
+    actions = [item.action for item in orchestrator.recent_actions()]
+    assert "candidate_auto_approved" in actions
+    assert "converted_to_pending_order" in actions
 
 
 def test_low_or_missing_quality_is_blocked(tmp_path) -> None:
@@ -118,6 +125,23 @@ def test_low_or_missing_quality_is_blocked(tmp_path) -> None:
     missing_result = missing.run_cycle()
     assert missing_result.candidates_approved == 0
     assert "quality is missing" in " ".join(missing_result.blocked_reasons)
+
+
+def test_low_confidence_and_execution_blockers_fail_closed(tmp_path) -> None:
+    low, *_ = _services(tmp_path / "confidence", analysis=_Analysis(confidence=6.9), config=_auto())
+    assert low.run_cycle().candidates_approved == 0
+    assert "confidence" in low.recent_actions()[-1].message
+
+    blocked, *_ = _services(tmp_path / "execution", analysis=_Analysis(blockers=("ambiguous",)), config=_auto())
+    assert blocked.run_cycle().candidates_approved == 0
+    assert blocked.status().total_candidates_blocked_from_auto_approval == 1
+
+
+def test_live_and_broker_modes_are_impossible() -> None:
+    with pytest.raises(ValidationError):
+        PaperTradingOrchestratorConfig(live_trading_enabled=True)
+    with pytest.raises(ValidationError):
+        PaperTradingOrchestratorConfig(broker_connections_enabled=True)
 
 
 def test_paper_risk_limit_blocks_auto_approval(tmp_path) -> None:
@@ -205,6 +229,8 @@ def test_api_openapi_and_dashboard(tmp_path, monkeypatch) -> None:
         overview = client.get("/dashboard/overview").json()
         assert overview["paper_trading_orchestrator_status"] == "stopped_advisory"
         assert overview["total_cycles"] == 1
+        assert overview["auto_approval_enabled"] is False
+        assert overview["manual_approval_required"] is True
     finally:
         orchestrator.stop()
         app.dependency_overrides.clear()

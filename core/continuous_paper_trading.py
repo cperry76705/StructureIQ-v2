@@ -14,14 +14,23 @@ from typing import Any, Literal
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.trade_lifecycle_manager import OrderType
+
 
 class ContinuousPaperTradingConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     enabled: bool = False
     auto_start: bool = False
+    paper_only: Literal[True] = True
+    live_trading_enabled: Literal[False] = False
+    broker_connections_enabled: Literal[False] = False
     cycle_interval_seconds: float = Field(default=60.0, gt=0)
     auto_approve_candidates: bool = False
+    allow_market_orders: bool = False
+    default_order_type: OrderType = OrderType.LIMIT_RETEST
+    max_candidates_per_cycle: int = Field(default=3, ge=1)
+    max_trades_per_cycle: int = Field(default=1, ge=1)
     require_validation_pass: bool = False
     allow_watchlist_validation: bool = True
     pause_on_validation_fail: bool = True
@@ -247,6 +256,13 @@ class ContinuousPaperTradingRuntime:
             base = self.orchestrator.config.model_copy(update={
                 "auto_approve_candidates": self.config.auto_approve_candidates,
                 "require_manual_approval": not self.config.auto_approve_candidates,
+                "paper_only": self.config.paper_only,
+                "live_trading_enabled": self.config.live_trading_enabled,
+                "broker_connections_enabled": self.config.broker_connections_enabled,
+                "allow_market_orders": self.config.allow_market_orders,
+                "default_order_type": self.config.default_order_type,
+                "max_candidates_per_cycle": self.config.max_candidates_per_cycle,
+                "max_new_trades_per_cycle": self.config.max_trades_per_cycle,
                 "generate_daily_report_after_cycle": self.config.generate_daily_reports,
                 "report_overwrite": False,
             })

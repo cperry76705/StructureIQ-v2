@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 import start
 
 
@@ -16,7 +17,28 @@ def test_version_command_prints_current_version(capsys) -> None:
     output = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "StructureIQ v6.0.7" in output
+    assert "StructureIQ v6.0.8" in output
+
+
+def test_controlled_paper_auto_approval_cli_maps_safely() -> None:
+    args = start.parse_args([
+        "--paper", "--hours", "2", "--auto-approve-paper",
+        "--max-trades-per-cycle", "1", "--max-candidates-per-cycle", "3",
+        "--order-type", "limit_retest",
+    ])
+    payload, _, _ = start.build_paper_start_payload(args)
+    assert payload["auto_approve_candidates"] is True
+    assert payload["paper_only"] is True
+    assert payload["live_trading_enabled"] is False
+    assert payload["broker_connections_enabled"] is False
+    assert payload["max_trades_per_cycle"] == 1
+    assert payload["max_candidates_per_cycle"] == 3
+
+
+def test_market_paper_order_requires_explicit_opt_in() -> None:
+    args = start.parse_args(["--paper", "--order-type", "market"])
+    with pytest.raises(ValueError, match="allow-market-orders"):
+        start.build_paper_start_payload(args)
 
 
 def test_health_command_runs_startup_validation(capsys) -> None:
@@ -124,7 +146,7 @@ def test_successful_startup_path_launches_api(monkeypatch, capsys) -> None:
     assert exit_code == 0
     assert calls
     assert calls[0][:4] == [sys.executable, "-m", "uvicorn", "app.main:app"]
-    assert "StructureIQ v6.0.7" in output
+    assert "StructureIQ v6.0.8" in output
     assert "Status:" in output
     assert "READY" in output
     assert "Paper Trading: AVAILABLE/ADVISORY - NOT AUTO-STARTED" in output
