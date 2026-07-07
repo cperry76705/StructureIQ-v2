@@ -293,7 +293,7 @@ Use [COMMANDS.md](COMMANDS.md) for a concise copy/paste command reference.
 
 ## Roadmap and Release Information
 
-Version `6.0.6` adds candidate diagnostics for every monitor analysis. Rejected markets now expose ordered gate reasons, warnings, rule failures, and near-miss distances, with append-only history and compact APIs. Diagnostics are observational and never feed back into analysis or candidate selection.
+Version `6.0.7` adds read-only calibration analytics over candidate diagnostics: fixed distributions, conversion funnel, rejection waterfall, near-miss calibration, and symbol/strategy/regime views. The dashboard exposes a compact interpretation without changing any candidate or threshold.
 
 - [Roadmap](docs/Roadmap.md)
 - [Changelog](docs/Changelog.md)

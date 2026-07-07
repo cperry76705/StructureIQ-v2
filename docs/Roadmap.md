@@ -1,5 +1,10 @@
 # StructureIQ Roadmap
 
+## Version 6.0.7 — Calibration Analytics and Candidate Distribution Reporting (implemented)
+
+- Candidate distributions, conversion funnel, rejection waterfall, near-miss calibration, and grouped performance views.
+- Read-only APIs, dashboard summaries, and empty/populated validation coverage.
+
 ## Version 6.0.6 — Candidate Diagnostics and Explainability (implemented)
 
 - Per-market candidate/rejection observability and ordered rejection evidence.

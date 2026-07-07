@@ -1,5 +1,12 @@
 # Changelog
 
+## Version 6.0.7 — Calibration Analytics and Candidate Distribution Reporting — 2026-07-06
+
+- Added read-only confidence, setup-quality, and overall-score distributions over append-only candidate diagnostics.
+- Added conversion funnel, overlapping rejection waterfall, near-miss summary, and symbol/strategy/regime group analytics.
+- Added nine compact analytics endpoints plus dashboard and system-validation projections.
+- Analytics never write diagnostics or alter candidate, threshold, routing, risk, lifecycle, or brokerage behavior.
+
 ## Version 6.0.6 — Candidate Diagnostics and Explainability — 2026-07-06
 
 - Added append-only diagnostics for every completed or failed monitor analysis without changing candidate selection.

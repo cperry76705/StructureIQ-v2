@@ -18,6 +18,7 @@ from fastapi.encoders import jsonable_encoder
 from app.config import APP_VERSION
 from core.analysis_engine import AnalysisEngine
 from core.candidate_diagnostics import get_global_candidate_diagnostics
+from core.calibration_analytics import CalibrationAnalyticsEngine, get_global_calibration_analytics
 from core.daily_report_engine import DailyReportEngine
 from core.live_market_monitor import LiveMarketMonitor, MonitorConfig
 from core.market_data import Candle
@@ -72,6 +73,7 @@ class SystemValidationHarness:
         "/dashboard/overview", "/system/validation/run",
         "/continuous-paper/status",
         "/candidate-diagnostics/summary",
+        "/calibration-analytics/summary",
     }
 
     def __init__(
@@ -126,6 +128,7 @@ class SystemValidationHarness:
             ("Paper Trading Orchestrator", self._orchestrator),
             ("Continuous Paper Trading", self._continuous_paper),
             ("Candidate Diagnostics", self._candidate_diagnostics),
+            ("Calibration Analytics", self._calibration_analytics),
             ("Dashboard", self._dashboard),
             ("Observability", self._observability),
             ("API Registration", self._api_registration),
@@ -301,6 +304,24 @@ class SystemValidationHarness:
         if summary.markets_analyzed < 0 or summary.candidates_created < 0:
             return _fail("Candidate Diagnostics statistics are invalid.")
         return _pass("Candidate Diagnostics is available, writable, and statistically operational.")
+
+    def _calibration_analytics(self):
+        engine = get_global_calibration_analytics()
+        if not engine.readable(): return _fail("Candidate diagnostics history is not readable for calibration analytics.")
+        engine.summary()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp); empty = CalibrationAnalyticsEngine(root / "empty.jsonl", lambda: 0)
+            if empty.summary().markets_analyzed != 0: return _fail("Calibration Analytics empty-state calculation is invalid.")
+            populated_path = root / "populated.jsonl"
+            populated_path.write_text(json.dumps({
+                "analysis_completed": True, "candidate_created": False, "symbol": "TEST",
+                "best_strategy": "no_strategy", "market_regime": "unknown",
+                "highest_confidence": 50, "highest_setup_quality": 50, "overall_score": 50,
+                "blocked_reasons": ["directional_confidence"], "distance_to_candidate": [],
+            }) + "\n", encoding="utf-8")
+            if CalibrationAnalyticsEngine(populated_path, lambda: 0).summary().markets_analyzed != 1:
+                return _fail("Calibration Analytics populated-state calculation is invalid.")
+        return _pass("Calibration Analytics is available, read-only, and handles empty and populated diagnostics safely.")
 
     def _observability(self):
         report = self.health_engine.check(write_log=False)

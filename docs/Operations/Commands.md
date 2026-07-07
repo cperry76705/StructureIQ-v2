@@ -53,6 +53,9 @@ Invoke-RestMethod http://localhost:8000/dashboard/risks
 Invoke-RestMethod http://localhost:8000/dashboard/recommendations
 Invoke-RestMethod http://localhost:8000/candidate-diagnostics/summary
 Invoke-RestMethod http://localhost:8000/candidate-diagnostics/near-misses?limit=20
+Invoke-RestMethod http://localhost:8000/calibration-analytics/summary
+Invoke-RestMethod http://localhost:8000/calibration-analytics/conversion-funnel
+Invoke-RestMethod http://localhost:8000/calibration-analytics/rejection-waterfall
 ```
 
 ## Reports, Monitoring, Lifecycle, and Journal

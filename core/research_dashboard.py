@@ -20,6 +20,7 @@ from core.system_health import latest_system_health
 from core.system_validation import latest_system_validation
 from core.continuous_paper_trading import current_continuous_paper_trading
 from core.candidate_diagnostics import current_candidate_diagnostics
+from core.calibration_analytics import get_global_calibration_analytics
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -138,6 +139,14 @@ class DashboardOverview:
     candidate_highest_rejected_confidence: float | None = None
     candidate_highest_rejected_quality: float | None = None
     candidate_highest_rejected_score: float | None = None
+    calibration_confidence_distribution_summary: str | None = None
+    calibration_candidate_conversion_rate: float = 0.0
+    calibration_top_rejection_reason: str | None = None
+    calibration_closest_missed_candidate: str | None = None
+    calibration_best_symbol_by_candidate_rate: str | None = None
+    calibration_weakest_symbol_by_average_score: str | None = None
+    calibration_most_common_market_regime: str | None = None
+    calibration_analytics_summary: str | None = None
 
 
 @dataclass(frozen=True)
@@ -392,6 +401,7 @@ class ResearchDashboardService:
         continuous_status = continuous.status() if continuous is not None else None
         diagnostic_engine = current_candidate_diagnostics()
         candidate_summary = diagnostic_engine.summary() if diagnostic_engine is not None else None
+        calibration_summary = get_global_calibration_analytics().summary()
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -519,6 +529,14 @@ class ResearchDashboardService:
             candidate_highest_rejected_confidence=getattr(candidate_summary, "highest_confidence_rejected", None),
             candidate_highest_rejected_quality=getattr(candidate_summary, "highest_setup_quality_rejected", None),
             candidate_highest_rejected_score=getattr(candidate_summary, "highest_score_rejected", None),
+            calibration_confidence_distribution_summary=calibration_summary.confidence_distribution_summary,
+            calibration_candidate_conversion_rate=calibration_summary.candidate_conversion_rate,
+            calibration_top_rejection_reason=calibration_summary.top_rejection_reason,
+            calibration_closest_missed_candidate=(calibration_summary.closest_missed_candidate or {}).get("symbol"),
+            calibration_best_symbol_by_candidate_rate=calibration_summary.best_symbol_by_candidate_rate,
+            calibration_weakest_symbol_by_average_score=calibration_summary.weakest_symbol_by_average_score,
+            calibration_most_common_market_regime=calibration_summary.most_common_market_regime,
+            calibration_analytics_summary=calibration_summary.human_readable_summary,
         )
 
     def symbols(self) -> DashboardSymbols:

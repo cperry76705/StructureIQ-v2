@@ -2,7 +2,7 @@
 
 ## Overview
 
-StructureIQ `6.0.6` exposes a FastAPI HTTP interface for analysis, candidate diagnostics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.7` exposes a FastAPI HTTP interface for analysis, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ## Application Launcher
 
@@ -56,7 +56,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.6",
+  "app_version": "6.0.7",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,
@@ -154,6 +154,22 @@ Auto-approval requires explicit `auto_approve_candidates=true` and `require_manu
 `POST /reports/scheduler/run-now` generates the previous day in the configured timezone by default or accepts an explicit `report_date`. Its optional `overwrite` value overrides scheduler policy for that run. Existing reports are returned as `skipped_existing` unless overwrite is enabled.
 
 `POST /reports/scheduler/start` and `/stop` control a local daemon scheduler; it never auto-starts with the API. `GET /reports/scheduler/status` reports running, enabled, paused, last/next run, last report, counts, and errors. `/history` returns append-only run records stored in `reports/daily_scheduler_history.jsonl`. The default is 06:00 America/Chicago, previous day, weekends included, and overwrite disabled. Repeated failures pause scheduling. Dashboard responses expose scheduler readiness and warnings. No external service, GPT, email, broker, or trading call exists.
+
+## Calibration Analytics
+
+The following GET endpoints read `research/candidate_diagnostics.jsonl` without modifying it:
+
+- `/calibration-analytics/summary`
+- `/calibration-analytics/confidence-distribution`
+- `/calibration-analytics/setup-quality-distribution`
+- `/calibration-analytics/score-distribution`
+- `/calibration-analytics/rejection-waterfall`
+- `/calibration-analytics/conversion-funnel`
+- `/calibration-analytics/by-symbol`
+- `/calibration-analytics/by-strategy`
+- `/calibration-analytics/by-regime`
+
+Distributions use fixed 0–10 through 90–100 buckets. Waterfall and funnel blocker stages may overlap because one rejected market can fail multiple rules. A near miss is a completed rejection whose combined confidence, quality-reference, and score-reference shortfall is no greater than 15 points. All output is descriptive and includes plain-language interpretation.
 
 ## Candidate Diagnostics
 

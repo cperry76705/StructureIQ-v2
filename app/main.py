@@ -101,6 +101,15 @@ from core.candidate_diagnostics import (
     CandidateDiagnosticsSummary,
     get_global_candidate_diagnostics,
 )
+from core.calibration_analytics import (
+    CalibrationAnalyticsEngine,
+    CalibrationAnalyticsSummary,
+    ConversionFunnel,
+    DistributionResult,
+    GroupAnalyticsResult,
+    RejectionWaterfallResult,
+    get_global_calibration_analytics,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -150,6 +159,10 @@ def get_symbol_profile_engine() -> SymbolProfileEngine:
 
 def get_candidate_diagnostics_engine() -> CandidateDiagnosticsEngine:
     return get_global_candidate_diagnostics()
+
+
+def get_calibration_analytics_engine() -> CalibrationAnalyticsEngine:
+    return get_global_calibration_analytics()
 
 
 def get_analysis_engine(
@@ -1031,6 +1044,51 @@ def candidate_diagnostics_reasons(engine: CandidateDiagnosticsEngine = Depends(g
 def candidate_diagnostics_near_misses(limit: int = 100, engine: CandidateDiagnosticsEngine = Depends(get_candidate_diagnostics_engine)) -> list[CandidateDiagnostic]:
     if not 1 <= limit <= 10_000: raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
     return list(engine.near_misses(limit))
+
+
+@app.get("/calibration-analytics/summary", response_model=CalibrationAnalyticsSummary, tags=["calibration-analytics"])
+def calibration_analytics_summary(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> CalibrationAnalyticsSummary:
+    return engine.summary()
+
+
+@app.get("/calibration-analytics/confidence-distribution", response_model=DistributionResult, tags=["calibration-analytics"])
+def calibration_analytics_confidence(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> DistributionResult:
+    return engine.confidence_distribution()
+
+
+@app.get("/calibration-analytics/setup-quality-distribution", response_model=DistributionResult, tags=["calibration-analytics"])
+def calibration_analytics_quality(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> DistributionResult:
+    return engine.setup_quality_distribution()
+
+
+@app.get("/calibration-analytics/score-distribution", response_model=DistributionResult, tags=["calibration-analytics"])
+def calibration_analytics_score(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> DistributionResult:
+    return engine.score_distribution()
+
+
+@app.get("/calibration-analytics/rejection-waterfall", response_model=RejectionWaterfallResult, tags=["calibration-analytics"])
+def calibration_analytics_waterfall(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> RejectionWaterfallResult:
+    return engine.rejection_waterfall()
+
+
+@app.get("/calibration-analytics/conversion-funnel", response_model=ConversionFunnel, tags=["calibration-analytics"])
+def calibration_analytics_funnel(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> ConversionFunnel:
+    return engine.conversion_funnel()
+
+
+@app.get("/calibration-analytics/by-symbol", response_model=GroupAnalyticsResult, tags=["calibration-analytics"])
+def calibration_analytics_symbols(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> GroupAnalyticsResult:
+    return engine.by_symbol()
+
+
+@app.get("/calibration-analytics/by-strategy", response_model=GroupAnalyticsResult, tags=["calibration-analytics"])
+def calibration_analytics_strategies(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> GroupAnalyticsResult:
+    return engine.by_strategy()
+
+
+@app.get("/calibration-analytics/by-regime", response_model=GroupAnalyticsResult, tags=["calibration-analytics"])
+def calibration_analytics_regimes(engine: CalibrationAnalyticsEngine = Depends(get_calibration_analytics_engine)) -> GroupAnalyticsResult:
+    return engine.by_regime()
 
 
 def _parse_latest_prices(value: str | None) -> dict[str, float]:
