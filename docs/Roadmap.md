@@ -1,5 +1,10 @@
 # StructureIQ Roadmap
 
+## Version 6.0.9 — Paper State Reconciliation and Lifecycle Audit (implemented)
+
+- Read-only reconciliation across paper brokerage, lifecycle, journal, daily report, and orchestrator state.
+- PASS/WATCHLIST/FAIL discrepancy classification, append-only audit snapshots, dashboard projection, and validation coverage.
+
 ## Version 6.0.8 — Controlled Paper Auto-Approval Mode (implemented)
 
 - Explicit paper-only approval with health/validation guards, conservative candidate gates, cycle limits, and transparent decisions.

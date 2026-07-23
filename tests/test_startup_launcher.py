@@ -17,7 +17,7 @@ def test_version_command_prints_current_version(capsys) -> None:
     output = capsys.readouterr().out
 
     assert exit_code == 0
-    assert "StructureIQ v6.0.8" in output
+    assert "StructureIQ v6.0.9" in output
 
 
 def test_controlled_paper_auto_approval_cli_maps_safely() -> None:
@@ -146,7 +146,7 @@ def test_successful_startup_path_launches_api(monkeypatch, capsys) -> None:
     assert exit_code == 0
     assert calls
     assert calls[0][:4] == [sys.executable, "-m", "uvicorn", "app.main:app"]
-    assert "StructureIQ v6.0.8" in output
+    assert "StructureIQ v6.0.9" in output
     assert "Status:" in output
     assert "READY" in output
     assert "Paper Trading: AVAILABLE/ADVISORY - NOT AUTO-STARTED" in output

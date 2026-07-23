@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 6.0.9 — Paper Trading State Reconciliation and Trade Lifecycle Audit — 2026-07-07
+
+- Added a read-only reconciliation engine comparing paper brokerage, lifecycle, journal, daily report, and orchestrator state.
+- Added `/paper-reconciliation/*` endpoints for status, summary, discrepancies, reconciled trades, and persisted audit runs.
+- Added dashboard and system-validation visibility for reconciliation status, warning counts, critical counts, and recommended actions.
+- Reconciliation explains expected WATCHLIST states after process restart when persisted journal history exists but in-memory paper state is empty.
+- Trading logic, strategy routing, confidence scoring, risk rules, lifecycle execution, auto-approval gates, and brokerage behavior remain unchanged.
+
 ## Version 6.0.8 — Controlled Paper Auto-Approval Mode — 2026-07-07
 
 - Added explicit, disabled-by-default paper candidate auto-approval.

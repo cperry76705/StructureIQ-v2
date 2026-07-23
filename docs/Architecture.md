@@ -34,6 +34,10 @@ The Runtime Session Manager adds optional wall-clock and completed-cycle limits 
 
 `PaperTradingOrchestrator` coordinates existing paper services but owns none of their domain state. LiveMarketMonitor remains the candidate source, TradeLifecycleManager owns order transitions, PaperBrokerage owns positions and P/L, PaperTradeJournal owns journal views, and DailyReportEngine owns dated reports. Default cycles only observe candidates. Auto-approval requires explicit configuration and all safety gates. The background loop is opt-in, pauses after repeated errors, and has no real broker, network, GPT, email, or production decision path.
 
+## Paper State Reconciliation Boundary
+
+`PaperStateReconciliationEngine` is a read-only audit layer over PaperBrokerage, TradeLifecycleManager, PaperTradeJournal, DailyReportEngine, and PaperTradingOrchestrator recent actions. It explains expected drift between process-local state and persisted append-only journal history after restarts, and it flags critical contradictions such as duplicate IDs, impossible R values, or inconsistent P/L. It never repairs state, rebuilds positions, approves candidates, closes trades, changes risk, or affects any trading decision.
+
 ## Daily Report Boundary
 
 `DailyReportEngine` is a pure read-side projection over journal, lifecycle, brokerage, monitor, calibration, readiness, and risk state. Report generation never invokes analysis, monitoring, order evaluation, or account mutation. Dated JSON artifacts are immutable unless overwrite is explicitly requested. GPT payload export is local structured data only; no model, email, network, or broker integration exists.

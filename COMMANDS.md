@@ -63,6 +63,9 @@ Invoke-RestMethod http://localhost:8000/candidate-diagnostics/summary
 Invoke-RestMethod http://localhost:8000/candidate-diagnostics/near-misses?limit=20
 Invoke-RestMethod http://localhost:8000/calibration-analytics/summary
 Invoke-RestMethod http://localhost:8000/calibration-analytics/conversion-funnel
+Invoke-RestMethod http://localhost:8000/paper-reconciliation/status
+Invoke-RestMethod http://localhost:8000/paper-reconciliation/discrepancies
+Invoke-RestMethod -Method Post http://localhost:8000/paper-reconciliation/run
 ```
 
 ## Git

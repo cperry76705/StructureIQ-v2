@@ -110,6 +110,13 @@ from core.calibration_analytics import (
     RejectionWaterfallResult,
     get_global_calibration_analytics,
 )
+from core.paper_state_reconciliation import (
+    PaperReconciliationResult,
+    PaperReconciliationSummary,
+    PaperStateDiscrepancy,
+    PaperStateReconciliationEngine,
+    ReconciledTradeRecord,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -254,6 +261,22 @@ def get_paper_trading_orchestrator(
     )
 
 
+def get_paper_state_reconciliation_engine(
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+    reports: DailyReportEngine = Depends(get_daily_report_engine),
+    orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator),
+) -> PaperStateReconciliationEngine:
+    return PaperStateReconciliationEngine(
+        broker=broker,
+        lifecycle=lifecycle,
+        journal=journal,
+        reports=reports,
+        orchestrator=orchestrator,
+    )
+
+
 def get_daily_report_scheduler(
     reports: DailyReportEngine = Depends(get_daily_report_engine),
 ) -> DailyReportScheduler:
@@ -290,12 +313,14 @@ def get_system_validation_harness(
     scheduler: DailyReportScheduler = Depends(get_daily_report_scheduler),
     orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator),
     dashboard: ResearchDashboardService = Depends(get_research_dashboard_service),
+    reconciliation: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine),
 ) -> SystemValidationHarness:
     return SystemValidationHarness(
         health_engine=health, market_data_provider=provider,
         monitor=monitor, broker=broker, lifecycle=lifecycle,
         journal=journal, reports=reports, scheduler=scheduler,
         orchestrator=orchestrator, dashboard=dashboard,
+        reconciliation=reconciliation,
         api_paths_provider=lambda: set(app.openapi()["paths"]),
     )
 
@@ -910,6 +935,31 @@ def paper_trading_recent_actions(limit: int | None = None, orchestrator: PaperTr
     if limit is not None and not 1 <= limit <= 10_000:
         raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
     return list(orchestrator.recent_actions(limit))
+
+
+@app.get("/paper-reconciliation/status", response_model=PaperReconciliationSummary, tags=["paper-reconciliation"])
+def paper_reconciliation_status(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationSummary:
+    return engine.status()
+
+
+@app.get("/paper-reconciliation/summary", response_model=PaperReconciliationSummary, tags=["paper-reconciliation"])
+def paper_reconciliation_summary(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationSummary:
+    return engine.summary()
+
+
+@app.get("/paper-reconciliation/discrepancies", response_model=list[PaperStateDiscrepancy], tags=["paper-reconciliation"])
+def paper_reconciliation_discrepancies(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> list[PaperStateDiscrepancy]:
+    return list(engine.discrepancies())
+
+
+@app.get("/paper-reconciliation/trades", response_model=list[ReconciledTradeRecord], tags=["paper-reconciliation"])
+def paper_reconciliation_trades(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> list[ReconciledTradeRecord]:
+    return list(engine.trades())
+
+
+@app.post("/paper-reconciliation/run", response_model=PaperReconciliationResult, tags=["paper-reconciliation"])
+def paper_reconciliation_run(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationResult:
+    return engine.run()
 
 
 @app.get("/reports/scheduler/status", response_model=DailyReportSchedulerStatus, tags=["reports"])

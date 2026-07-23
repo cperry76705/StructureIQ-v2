@@ -21,6 +21,7 @@ from core.system_validation import latest_system_validation
 from core.continuous_paper_trading import current_continuous_paper_trading
 from core.candidate_diagnostics import current_candidate_diagnostics
 from core.calibration_analytics import get_global_calibration_analytics
+from core.paper_state_reconciliation import latest_paper_reconciliation
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -155,6 +156,12 @@ class DashboardOverview:
     calibration_weakest_symbol_by_average_score: str | None = None
     calibration_most_common_market_regime: str | None = None
     calibration_analytics_summary: str | None = None
+    reconciliation_status: str = "unavailable"
+    reconciliation_discrepancy_count: int = 0
+    reconciliation_warning_count: int = 0
+    reconciliation_critical_count: int = 0
+    latest_reconciliation_summary: str | None = None
+    reconciliation_recommended_actions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -410,6 +417,8 @@ class ResearchDashboardService:
         diagnostic_engine = current_candidate_diagnostics()
         candidate_summary = diagnostic_engine.summary() if diagnostic_engine is not None else None
         calibration_summary = get_global_calibration_analytics().summary()
+        reconciliation = latest_paper_reconciliation()
+        reconciliation_summary = getattr(reconciliation, "summary", None)
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -553,6 +562,12 @@ class ResearchDashboardService:
             calibration_weakest_symbol_by_average_score=calibration_summary.weakest_symbol_by_average_score,
             calibration_most_common_market_regime=calibration_summary.most_common_market_regime,
             calibration_analytics_summary=calibration_summary.human_readable_summary,
+            reconciliation_status=str(getattr(reconciliation_summary, "status", "unavailable")),
+            reconciliation_discrepancy_count=int(getattr(reconciliation_summary, "discrepancy_count", 0) or 0),
+            reconciliation_warning_count=int(getattr(reconciliation_summary, "warning_count", 0) or 0),
+            reconciliation_critical_count=int(getattr(reconciliation_summary, "critical_count", 0) or 0),
+            latest_reconciliation_summary=getattr(reconciliation_summary, "human_readable_summary", None),
+            reconciliation_recommended_actions=tuple(getattr(reconciliation, "recommended_actions", ()) or ()),
         )
 
     def symbols(self) -> DashboardSymbols:

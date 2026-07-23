@@ -1,5 +1,17 @@
 # StructureIQ
 
+## Paper state reconciliation (v6.0.9)
+
+StructureIQ now includes a read-only paper-trading reconciliation layer:
+
+- `GET /paper-reconciliation/status`
+- `GET /paper-reconciliation/summary`
+- `GET /paper-reconciliation/discrepancies`
+- `GET /paper-reconciliation/trades`
+- `POST /paper-reconciliation/run`
+
+It compares process-local paper brokerage and lifecycle state against the persisted paper journal, latest daily report, and orchestrator recent actions. A `WATCHLIST` result is expected when the service restarts and the journal reloads historical trades while in-memory paper positions/recent actions are empty. Critical contradictions, such as duplicate trade IDs, impossible R values, or open/closed state corruption, return `FAIL`.
+
 ## Controlled paper auto-approval (v6.0.8)
 
 Paper candidates remain manual by default. An explicitly controlled validation run can enable the existing paper-only safety gates:

@@ -24,6 +24,7 @@ from core.live_market_monitor import LiveMarketMonitor, MonitorConfig
 from core.market_data import Candle
 from core.paper_brokerage import PaperBrokerageEngine
 from core.paper_trade_journal import PaperTradeJournal
+from core.paper_state_reconciliation import PaperStateReconciliationEngine
 from core.paper_trading_orchestrator import PaperTradingOrchestrator, PaperTradingOrchestratorConfig
 from core.trade_lifecycle_manager import TradeLifecycleManager
 from models.schemas import AnalysisRequest
@@ -74,6 +75,7 @@ class SystemValidationHarness:
         "/continuous-paper/status",
         "/candidate-diagnostics/summary",
         "/calibration-analytics/summary",
+        "/paper-reconciliation/status",
     }
 
     def __init__(
@@ -89,6 +91,7 @@ class SystemValidationHarness:
         scheduler: Any,
         orchestrator: Any,
         dashboard: Any,
+        reconciliation: Any | None = None,
         api_paths_provider: Callable[[], set[str]] | None = None,
         history_path: str | Path = "reports/system_validation_history.jsonl",
         stopped_components_watchlist: bool = True,
@@ -103,6 +106,7 @@ class SystemValidationHarness:
         self.scheduler = scheduler
         self.orchestrator = orchestrator
         self.dashboard = dashboard
+        self.reconciliation = reconciliation
         self.api_paths_provider = api_paths_provider or (lambda: set())
         self.history_path = Path(history_path)
         self.stopped_components_watchlist = stopped_components_watchlist
@@ -129,6 +133,7 @@ class SystemValidationHarness:
             ("Continuous Paper Trading", self._continuous_paper),
             ("Candidate Diagnostics", self._candidate_diagnostics),
             ("Calibration Analytics", self._calibration_analytics),
+            ("Paper State Reconciliation", self._paper_reconciliation),
             ("Dashboard", self._dashboard),
             ("Observability", self._observability),
             ("API Registration", self._api_registration),
@@ -322,6 +327,38 @@ class SystemValidationHarness:
             if CalibrationAnalyticsEngine(populated_path, lambda: 0).summary().markets_analyzed != 1:
                 return _fail("Calibration Analytics populated-state calculation is invalid.")
         return _pass("Calibration Analytics is available, read-only, and handles empty and populated diagnostics safely.")
+
+    def _paper_reconciliation(self):
+        engine = self.reconciliation or PaperStateReconciliationEngine(
+            broker=self.broker, lifecycle=self.lifecycle, journal=self.journal,
+            reports=self.reports, orchestrator=self.orchestrator,
+        )
+        if not engine.writable():
+            return _fail("Paper State Reconciliation history path is not writable.")
+        before = (
+            len(self.broker.open_positions()),
+            len(self.broker.closed_trades()),
+            len(self.lifecycle.pending_orders()),
+            len(self.lifecycle.events()),
+            len(self.journal.entries()),
+            len(self.orchestrator.recent_actions()),
+        )
+        result = engine.run(persist=False)
+        after = (
+            len(self.broker.open_positions()),
+            len(self.broker.closed_trades()),
+            len(self.lifecycle.pending_orders()),
+            len(self.lifecycle.events()),
+            len(self.journal.entries()),
+            len(self.orchestrator.recent_actions()),
+        )
+        if before != after:
+            return _fail("Paper State Reconciliation mutated paper trading state.")
+        if result.status == "FAIL":
+            return _fail("Paper State Reconciliation detected critical discrepancies.", tuple(item.message for item in result.discrepancies if item.severity == "critical"))
+        if result.status == "WATCHLIST":
+            return _watch(tuple(item.message for item in result.discrepancies if item.severity == "warning"), result.human_readable_summary)
+        return _pass("Paper State Reconciliation is available, writable, and read-only.")
 
     def _observability(self):
         report = self.health_engine.check(write_log=False)

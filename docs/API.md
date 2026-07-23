@@ -2,11 +2,25 @@
 
 ## Overview
 
-StructureIQ `6.0.8` exposes a FastAPI HTTP interface for analysis, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.9` exposes a FastAPI HTTP interface for analysis, paper-state reconciliation, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ### Controlled paper auto-approval
 
 `POST /continuous-paper/start` accepts `auto_approve_candidates`, `max_trades_per_cycle`, `max_candidates_per_cycle`, `allow_market_orders`, and `default_order_type`. `POST /paper-trading/run-cycle` accepts the corresponding orchestrator configuration (`max_new_trades_per_cycle` at that layer). Fixed safety fields require `paper_only=true`, `live_trading_enabled=false`, and `broker_connections_enabled=false`. Decisions and block reasons are returned by `GET /paper-trading/recent-actions`.
+
+### Paper state reconciliation
+
+Version 6.0.9 adds read-only reconciliation endpoints under the `paper-reconciliation` OpenAPI tag:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/paper-reconciliation/status` | Compact PASS/WATCHLIST/FAIL reconciliation status and counts. |
+| `GET` | `/paper-reconciliation/summary` | Same summary shape for dashboard-friendly use. |
+| `GET` | `/paper-reconciliation/discrepancies` | Detailed discrepancy list with severity, component, trade ID, message, and recommended action. |
+| `GET` | `/paper-reconciliation/trades` | Trade-by-trade presence matrix across brokerage, lifecycle, and journal. |
+| `POST` | `/paper-reconciliation/run` | Runs reconciliation and appends a snapshot to `reports/paper_reconciliation_history.jsonl`. |
+
+The reconciliation layer compares paper brokerage, lifecycle, paper journal, latest daily report, and orchestrator recent actions. It is diagnostic only. It does not rebuild state, reopen trades, close trades, approve candidates, or alter risk. A `WATCHLIST` result is expected when a local service restart leaves process-memory endpoints empty while the append-only journal still contains historical paper trades. A `FAIL` result indicates corruption-like contradictions such as duplicate trade IDs, impossible R values, or inconsistent realized P/L.
 
 ## Application Launcher
 
@@ -60,7 +74,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.7",
+  "app_version": "6.0.9",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,
