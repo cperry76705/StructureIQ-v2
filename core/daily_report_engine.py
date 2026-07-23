@@ -66,6 +66,7 @@ class DailyPaperTradingReport:
     key_findings: tuple[str, ...]
     recommended_actions: tuple[str, ...]
     human_readable_summary: str
+    campaign_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -256,6 +257,7 @@ class DailyReportEngine:
             readiness_summary=jsonable_encoder(self.readiness_context) if self.readiness_context is not None else {"status": "unavailable"},
             key_findings=findings, recommended_actions=actions,
             human_readable_summary=_human_summary(status, summary),
+            campaign_id=_current_campaign_id(),
         )
 
     def _path(self, day: date) -> Path:
@@ -323,6 +325,15 @@ def _date(value: date | str | None) -> date:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _current_campaign_id() -> str | None:
+    try:
+        from core.validation_campaigns import get_global_validation_campaign_manager
+        campaign = get_global_validation_campaign_manager().current()
+        return campaign.campaign_id if campaign else None
+    except Exception:
+        return None
 
 
 def _report_from_dict(raw: dict[str, Any]) -> DailyPaperTradingReport:

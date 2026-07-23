@@ -56,6 +56,7 @@ class PaperTradeJournalEntry:
     warnings: tuple[str, ...]
     rule_violations: tuple[str, ...]
     human_readable_summary: str
+    campaign_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -179,6 +180,7 @@ class PaperTradeJournal:
             violations = existing.rule_violations if existing else ()
             metadata = trade.metadata or {}
             if event_type == "paper_trade_opened":
+                campaign_id = _current_campaign_id()
                 entry = PaperTradeJournalEntry(
                     journal_id=_journal_id(trade.trade_id), trade_id=trade.trade_id,
                     source_event_id=trade.source_event_id, symbol=trade.symbol,
@@ -196,6 +198,7 @@ class PaperTradeJournal:
                     strategy_rating=_dict(metadata.get("strategy_rating")), setup_rating=_dict(metadata.get("setup_rating")),
                     lifecycle_events=lifecycle_history, warnings=warnings, rule_violations=violations,
                     human_readable_summary=f"Paper trade opened from {trade.symbol} {trade.timeframe} {trade.setup} setup.",
+                    campaign_id=campaign_id,
                 )
                 if existing_key and existing_key != trade.trade_id:
                     self._entries.pop(existing_key, None)
@@ -237,6 +240,7 @@ class PaperTradeJournal:
                     adaptive_strategy_router=None, strategy_rating=None, setup_rating=None,
                     lifecycle_events=(), warnings=(), rule_violations=(),
                     human_readable_summary=f"Lifecycle record is {event.state_after}: {event.message}",
+                    campaign_id=_current_campaign_id(),
                 )
                 if event.source_event_id:
                     self._source_index[event.source_event_id] = key
@@ -273,6 +277,7 @@ class PaperTradeJournal:
                 raw["lifecycle_events"] = tuple(raw.get("lifecycle_events", ()))
                 raw["warnings"] = tuple(raw.get("warnings", ()))
                 raw["rule_violations"] = tuple(raw.get("rule_violations", ()))
+                raw.setdefault("campaign_id", None)
                 entry = PaperTradeJournalEntry(**raw)
                 self._entries[entry.trade_id] = entry
                 if entry.source_event_id:
@@ -311,6 +316,15 @@ def _journal_id(trade_id: str) -> str:
 def _now() -> str:
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).isoformat()
+
+
+def _current_campaign_id() -> str | None:
+    try:
+        from core.validation_campaigns import get_global_validation_campaign_manager
+        campaign = get_global_validation_campaign_manager().current()
+        return campaign.campaign_id if campaign else None
+    except Exception:
+        return None
 
 
 _GLOBAL_JOURNAL: PaperTradeJournal | None = None

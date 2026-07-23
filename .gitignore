@@ -21,7 +21,13 @@ research/symbol_profiles.tmp
 research/live_monitor_events.jsonl
 research/candidate_diagnostics.jsonl
 research/paper_account_state.json
+research/paper_account.json
+research/paper_open_positions.json
+research/paper_closed_trades.json
+research/lifecycle_state.json
+research/paper_orphans.json
 research/paper_trade_journal.jsonl
+validation_campaigns/
 reports/daily/*.json
 reports/paper_trading_cycles.jsonl
 reports/daily_scheduler_history.jsonl

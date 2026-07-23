@@ -1,5 +1,37 @@
 # StructureIQ
 
+## Durable paper runtime and validation campaigns (v6.0.10)
+
+Paper runtime state is now restart-safe for formal validation:
+
+- durable account: `research/paper_account.json`
+- durable positions: `research/paper_open_positions.json`, `research/paper_closed_trades.json`
+- durable lifecycle: `research/lifecycle_state.json`
+- orphan quarantine: `research/paper_orphans.json`
+- campaign folders: `validation_campaigns/<campaign_id>/`
+
+Recovery endpoints:
+
+- `GET /paper-recovery/status`
+- `GET /paper-recovery/summary`
+- `POST /paper-recovery/run`
+
+Campaign endpoints:
+
+- `GET /campaigns`
+- `GET /campaigns/current`
+- `GET /campaigns/{campaign_id}`
+- `GET /campaigns/{campaign_id}/summary`
+- `GET /campaigns/{campaign_id}/journal`
+
+Run a named validation campaign:
+
+```powershell
+python start.py --paper --days 7 --campaign-name "July 7 Day Validation"
+```
+
+Existing pre-6.0.10 journal history is migrated into a `legacy_campaign` without deleting or rewriting historical trades. Recovery and campaigns are observability/persistence features only; they do not change strategy logic, candidate generation, scoring, fills, exits, risk, or auto-approval gates.
+
 ## Paper state reconciliation (v6.0.9)
 
 StructureIQ now includes a read-only paper-trading reconciliation layer:

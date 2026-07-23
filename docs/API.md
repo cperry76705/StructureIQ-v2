@@ -2,7 +2,45 @@
 
 ## Overview
 
-StructureIQ `6.0.9` exposes a FastAPI HTTP interface for analysis, paper-state reconciliation, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.10` exposes a FastAPI HTTP interface for analysis, durable paper runtime recovery, validation campaigns, paper-state reconciliation, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+
+### Durable paper recovery and campaigns
+
+Version 6.0.10 adds restart-safe paper runtime storage and campaign-oriented validation reporting.
+
+Durable files:
+
+- `research/paper_account.json`
+- `research/paper_open_positions.json`
+- `research/paper_closed_trades.json`
+- `research/lifecycle_state.json`
+- `research/paper_orphans.json`
+
+Recovery endpoints:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/paper-recovery/status` | Current recovery summary. |
+| `GET` | `/paper-recovery/summary` | Dashboard-friendly recovery summary. |
+| `POST` | `/paper-recovery/run` | Reload durable brokerage/lifecycle state, run reconciliation, and quarantine orphans. |
+
+Campaign endpoints:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/campaigns` | List validation campaigns. |
+| `GET` | `/campaigns/current` | Return the active/current campaign if one exists. |
+| `GET` | `/campaigns/{campaign_id}` | Read campaign metadata. |
+| `GET` | `/campaigns/{campaign_id}/summary` | Read campaign performance summary. |
+| `GET` | `/campaigns/{campaign_id}/journal` | Read journal entries associated with a campaign. |
+
+The paper CLI accepts `--campaign-name`, for example:
+
+```powershell
+python start.py --paper --days 7 --campaign-name "July 7 Day Validation"
+```
+
+Pre-6.0.10 journal history is migrated into a `legacy_campaign` with `legacy_import=true`. Recovery and campaign reporting never change strategy, scoring, routing, fills, exits, risk, auto-approval gates, or broker availability.
 
 ### Controlled paper auto-approval
 
@@ -74,7 +112,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.9",
+  "app_version": "6.0.10",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,

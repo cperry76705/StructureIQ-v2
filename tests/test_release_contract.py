@@ -12,7 +12,7 @@ def test_release_identity_is_exposed_without_changing_health_contract() -> None:
     health_response = client.get("/health")
     openapi_response = client.get("/openapi.json")
 
-    assert APP_VERSION == "6.0.9"
+    assert APP_VERSION == "6.0.10"
     assert health_response.status_code == 200
     assert health_response.json() == {"status": "ok", "app": APP_NAME}
     assert openapi_response.status_code == 200
@@ -40,6 +40,14 @@ def test_openapi_preserves_complete_stable_endpoint_surface() -> None:
         "/paper-reconciliation/discrepancies": {"get"},
         "/paper-reconciliation/trades": {"get"},
         "/paper-reconciliation/run": {"post"},
+        "/paper-recovery/status": {"get"},
+        "/paper-recovery/summary": {"get"},
+        "/paper-recovery/run": {"post"},
+        "/campaigns": {"get"},
+        "/campaigns/current": {"get"},
+        "/campaigns/{campaign_id}": {"get"},
+        "/campaigns/{campaign_id}/summary": {"get"},
+        "/campaigns/{campaign_id}/journal": {"get"},
     }
 
     for path, methods in expected_methods.items():

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import threading
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -48,6 +50,8 @@ class LifecycleConfig(BaseModel):
     enable_trailing_stop_rule: bool = False
     trailing_trigger_r: float = Field(default=1.5, gt=0)
     max_lifecycle_events_in_memory: int = Field(default=1000, ge=1, le=100_000)
+    durable_state: bool = False
+    persistence_path: str = "research/lifecycle_state.json"
 
 
 class ApproveCandidateRequest(BaseModel):
@@ -156,6 +160,8 @@ class TradeLifecycleManager:
         self._last_cycle_time: str | None = None
         self._last_error: str | None = None
         self._listeners: list[Any] = []
+        if self.config.durable_state:
+            self._load_state()
 
     def add_listener(self, listener: Any) -> None:
         with self._lock:
@@ -198,6 +204,7 @@ class TradeLifecycleManager:
             self._emit(candidate, "order_created", "candidate", "pending", f"Candidate approved and pending {order.order_type} order created.", order_id=order.order_id)
             if request.order_type is OrderType.MARKET:
                 order = self._fill_order(order, candidate)
+            self._persist_state()
             return order
 
     def reject_candidate(self, request: RejectCandidateRequest) -> LifecycleEvent:
@@ -209,7 +216,9 @@ class TradeLifecycleManager:
                 raise LifecycleError("monitor candidate was not found")
             self._processed_candidates.add(request.event_id)
             self._rejected += 1
-            return self._emit(candidate, "candidate_rejected", "candidate", "rejected", request.reason)
+            event = self._emit(candidate, "candidate_rejected", "candidate", "rejected", request.reason)
+            self._persist_state()
+            return event
 
     def cancel_order(self, request: CancelOrderRequest) -> LifecycleEvent:
         with self._lock:
@@ -218,7 +227,9 @@ class TradeLifecycleManager:
                 raise LifecycleError("pending lifecycle order was not found")
             self._orders[order.order_id] = replace(order, status="expired")
             self._expired += 1
-            return self._emit_order(order, "order_cancelled", "pending", "expired", request.reason)
+            event = self._emit_order(order, "order_cancelled", "pending", "expired", request.reason)
+            self._persist_state()
+            return event
 
     def run_once(self) -> LifecycleCycleResult:
         new_events_before = len(self._events)
@@ -285,6 +296,7 @@ class TradeLifecycleManager:
             if errors:
                 self._last_error = errors[-1]
             emitted = tuple(self._events[new_events_before:])
+            self._persist_state()
         return LifecycleCycleResult(
             pending_evaluated=pending_evaluated, orders_filled=filled,
             trades_closed=closed, orders_expired=expired,
@@ -341,6 +353,7 @@ class TradeLifecycleManager:
         self._trade_states[trade.trade_id] = "open"
         self._emit_order(updated, "order_filled", "pending", "filled", "Pending paper order filled.", trade_id=trade.trade_id)
         self._emit_order(updated, "position_opened", "filled", "open", "Paper brokerage position opened.", trade_id=trade.trade_id)
+        self._persist_state()
         return updated
 
     def _close_trade(self, trade: PaperTrade, exit_price: float, outcome: str, ambiguous: bool = False) -> None:
@@ -350,6 +363,7 @@ class TradeLifecycleManager:
         closed = self.broker.close_position(trade.trade_id, exit_price)
         self._trade_states[trade.trade_id] = "closed"
         self._emit_trade(closed, "position_closed", state, "closed", f"Paper position closed at {exit_price}.", {"realized_r": closed.realized_r})
+        self._persist_state()
 
     def _advisory_management(self, trade: PaperTrade, candle: Any) -> None:
         risk = abs(trade.entry_price - trade.stop_loss)
@@ -359,9 +373,11 @@ class TradeLifecycleManager:
         if self.config.enable_trailing_stop_rule and favorable_r >= self.config.trailing_trigger_r and state != "trailing":
             self._trade_states[trade.trade_id] = "trailing"
             self._emit_trade(trade, "trailing_eligible", state, "trailing", "Trade reached the advisory trailing-stop trigger; brokerage levels remain unchanged.", {"favorable_r": favorable_r})
+            self._persist_state()
         elif self.config.enable_breakeven_rule and favorable_r >= self.config.breakeven_trigger_r and state == "open":
             self._trade_states[trade.trade_id] = "breakeven_eligible"
             self._emit_trade(trade, "breakeven_eligible", "open", "breakeven_eligible", "Trade reached the advisory break-even trigger; brokerage stop remains unchanged.", {"favorable_r": favorable_r})
+            self._persist_state()
 
     def _validate_order_type(self, order_type: OrderType) -> None:
         allowed = {
@@ -399,6 +415,72 @@ class TradeLifecycleManager:
             except Exception:
                 continue
         return event
+
+    def recover_from_storage(self) -> LifecycleStatus:
+        with self._lock:
+            if self.config.durable_state:
+                self._load_state()
+            return self.status()
+
+    def _persist_state(self) -> None:
+        if not self.config.durable_state:
+            return
+        path = Path(self.config.persistence_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "pending_orders": [asdict(item) for item in self._orders.values()],
+            "trade_event_history": [asdict(item) for item in self._events],
+            "processed_candidates": sorted(self._processed_candidates),
+            "managed_trade_ids": sorted(self._managed_trade_ids),
+            "trade_states": dict(self._trade_states),
+            "expired_trades": self._expired,
+            "rejected_candidates": self._rejected,
+            "ambiguous_exit_count": self._ambiguous,
+            "last_cycle_time": self._last_cycle_time,
+            "last_error": self._last_error,
+            "state_machine_status": self.status().lifecycle_status,
+            "updated_at": _now(),
+        }
+        path.write_text(json.dumps(payload, separators=(",", ":"), default=str), encoding="utf-8")
+
+    def _load_state(self) -> None:
+        path = Path(self.config.persistence_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists():
+            self._persist_state()
+            return
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            self._orders = {
+                item["order_id"]: PendingPaperOrder(**item)
+                for item in raw.get("pending_orders", ())
+                if isinstance(item, dict) and item.get("order_id")
+            }
+            seen_events: set[str] = set()
+            events: list[LifecycleEvent] = []
+            for item in raw.get("trade_event_history", ()):
+                if not isinstance(item, dict) or not item.get("event_id") or item["event_id"] in seen_events:
+                    continue
+                seen_events.add(item["event_id"])
+                events.append(LifecycleEvent(**item))
+            self._events = events[-self.config.max_lifecycle_events_in_memory:]
+            self._processed_candidates = set(raw.get("processed_candidates", ()))
+            self._managed_trade_ids = set(raw.get("managed_trade_ids", ()))
+            self._trade_states = dict(raw.get("trade_states", {}))
+            self._expired = int(raw.get("expired_trades", 0) or 0)
+            self._rejected = int(raw.get("rejected_candidates", 0) or 0)
+            self._ambiguous = int(raw.get("ambiguous_exit_count", 0) or 0)
+            self._last_cycle_time = raw.get("last_cycle_time")
+            self._last_error = raw.get("last_error")
+        except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError):
+            self._orders = {}
+            self._events = []
+            self._processed_candidates = set()
+            self._managed_trade_ids = set()
+            self._trade_states = {}
+            self._expired = self._rejected = self._ambiguous = 0
+            self._last_cycle_time = self._last_error = None
+            self._persist_state()
 
 
 def _candidate_levels(candidate: MonitorEvent) -> tuple[float, float, float]:
@@ -458,7 +540,7 @@ def get_global_trade_lifecycle_manager(provider: MarketDataProvider, monitor: Li
     global _GLOBAL_MANAGER
     with _GLOBAL_LOCK:
         if _GLOBAL_MANAGER is None or _GLOBAL_MANAGER.provider is not provider or _GLOBAL_MANAGER.monitor is not monitor or _GLOBAL_MANAGER.broker is not broker:
-            _GLOBAL_MANAGER = TradeLifecycleManager(provider, monitor, broker)
+            _GLOBAL_MANAGER = TradeLifecycleManager(provider, monitor, broker, LifecycleConfig(durable_state=True))
         return _GLOBAL_MANAGER
 
 

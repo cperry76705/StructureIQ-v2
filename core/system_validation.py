@@ -76,6 +76,8 @@ class SystemValidationHarness:
         "/candidate-diagnostics/summary",
         "/calibration-analytics/summary",
         "/paper-reconciliation/status",
+        "/paper-recovery/status",
+        "/campaigns",
     }
 
     def __init__(
@@ -92,6 +94,8 @@ class SystemValidationHarness:
         orchestrator: Any,
         dashboard: Any,
         reconciliation: Any | None = None,
+        recovery: Any | None = None,
+        campaigns: Any | None = None,
         api_paths_provider: Callable[[], set[str]] | None = None,
         history_path: str | Path = "reports/system_validation_history.jsonl",
         stopped_components_watchlist: bool = True,
@@ -107,6 +111,8 @@ class SystemValidationHarness:
         self.orchestrator = orchestrator
         self.dashboard = dashboard
         self.reconciliation = reconciliation
+        self.recovery = recovery
+        self.campaigns = campaigns
         self.api_paths_provider = api_paths_provider or (lambda: set())
         self.history_path = Path(history_path)
         self.stopped_components_watchlist = stopped_components_watchlist
@@ -134,6 +140,8 @@ class SystemValidationHarness:
             ("Candidate Diagnostics", self._candidate_diagnostics),
             ("Calibration Analytics", self._calibration_analytics),
             ("Paper State Reconciliation", self._paper_reconciliation),
+            ("Paper Runtime Recovery", self._paper_recovery),
+            ("Validation Campaigns", self._campaigns),
             ("Dashboard", self._dashboard),
             ("Observability", self._observability),
             ("API Registration", self._api_registration),
@@ -359,6 +367,51 @@ class SystemValidationHarness:
         if result.status == "WATCHLIST":
             return _watch(tuple(item.message for item in result.discrepancies if item.severity == "warning"), result.human_readable_summary)
         return _pass("Paper State Reconciliation is available, writable, and read-only.")
+
+    def _paper_recovery(self):
+        if self.recovery is None:
+            from core.paper_recovery import PaperRecoveryEngine
+            engine = self.reconciliation or PaperStateReconciliationEngine(
+                broker=self.broker, lifecycle=self.lifecycle, journal=self.journal,
+                reports=self.reports, orchestrator=self.orchestrator,
+            )
+            self.recovery = PaperRecoveryEngine(
+                broker=self.broker, lifecycle=self.lifecycle, journal=self.journal,
+                reconciliation=engine,
+            )
+        if not self.recovery.writable():
+            return _fail("Paper Runtime Recovery orphan path is not writable.")
+        before = (
+            len(self.broker.open_positions()),
+            len(self.broker.closed_trades()),
+            len(self.lifecycle.pending_orders()),
+            len(self.lifecycle.events()),
+            len(self.journal.entries()),
+        )
+        result = self.recovery.run(persist_reconciliation=False)
+        after = (
+            len(self.broker.open_positions()),
+            len(self.broker.closed_trades()),
+            len(self.lifecycle.pending_orders()),
+            len(self.lifecycle.events()),
+            len(self.journal.entries()),
+        )
+        if before != after:
+            return _fail("Paper Runtime Recovery mutated paper trading state during validation.")
+        if result.summary.status == "FAIL":
+            return _fail("Paper Runtime Recovery reports critical reconciliation issues.")
+        if result.summary.status == "WATCHLIST":
+            return _watch(result.warnings, result.human_readable_summary)
+        return _pass("Paper Runtime Recovery can run safely and preserves restored state.")
+
+    def _campaigns(self):
+        if self.campaigns is None:
+            from core.validation_campaigns import ValidationCampaignManager
+            self.campaigns = ValidationCampaignManager(journal=self.journal)
+        if not self.campaigns.writable():
+            return _fail("Validation Campaign storage is not writable.")
+        self.campaigns.list_campaigns()
+        return _pass("Validation Campaign storage is available and readable.")
 
     def _observability(self):
         report = self.health_engine.check(write_log=False)

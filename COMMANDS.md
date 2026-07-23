@@ -38,6 +38,7 @@ python start.py --paper --days 1
 python start.py --paper --weeks 1
 python start.py --paper --months 1
 python start.py --paper --cycles 100
+python start.py --paper --days 7 --campaign-name "July 7 Day Validation"
 ```
 
 ## Runtime Controls
@@ -66,6 +67,10 @@ Invoke-RestMethod http://localhost:8000/calibration-analytics/conversion-funnel
 Invoke-RestMethod http://localhost:8000/paper-reconciliation/status
 Invoke-RestMethod http://localhost:8000/paper-reconciliation/discrepancies
 Invoke-RestMethod -Method Post http://localhost:8000/paper-reconciliation/run
+Invoke-RestMethod http://localhost:8000/paper-recovery/status
+Invoke-RestMethod -Method Post http://localhost:8000/paper-recovery/run
+Invoke-RestMethod http://localhost:8000/campaigns
+Invoke-RestMethod http://localhost:8000/campaigns/current
 ```
 
 ## Git

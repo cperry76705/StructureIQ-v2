@@ -44,6 +44,7 @@ class ContinuousPaperTradingConfig(BaseModel):
     generate_daily_reports: bool = True
     scheduler_enabled: bool = False
     session_label: str | None = None
+    campaign_name: str | None = None
     run_for_minutes: float | None = Field(default=None, gt=0)
     run_for_hours: float | None = Field(default=None, gt=0)
     max_cycles: int | None = Field(default=None, ge=1)
@@ -193,6 +194,16 @@ class ContinuousPaperTradingRuntime:
                 final_session_summary=None,
                 human_readable_summary="Continuous paper session is running.",
             )
+            if self.config.campaign_name or self.config.session_label:
+                try:
+                    from core.validation_campaigns import get_global_validation_campaign_manager
+                    get_global_validation_campaign_manager().start(
+                        self.config.campaign_name or self.config.session_label,
+                        cli=None,
+                        paper_settings=self.config.model_dump(mode="json"),
+                    )
+                except Exception as exc:
+                    self._record("error", "WATCHLIST", f"Campaign could not be started: {exc}")
             self._record("started", "INFO", "Continuous paper-trading session started.")
             if self.config.run_validation_on_start and not self._run_validation_guard():
                 self._pause("Startup validation did not satisfy runtime policy.", stop_reason="safety_pause")
@@ -437,6 +448,13 @@ class ContinuousPaperTradingRuntime:
             stop_reason=reason, final_session_summary=summary,
             human_readable_summary=summary.human_readable_summary)
         self.config = self.config.model_copy(update={"enabled": False})
+        try:
+            from core.validation_campaigns import get_global_validation_campaign_manager
+            current = get_global_validation_campaign_manager().current()
+            if current and current.status == "running":
+                get_global_validation_campaign_manager().finish(current.campaign_id, status=final_status)
+        except Exception:
+            pass
 
     def _record(self, kind: str, status: str, message: str, metadata: dict[str, Any] | None = None) -> None:
         now = _now(); event = ContinuousPaperEvent(_id("continuous-event", f"{now}:{len(self._events)}"), now,

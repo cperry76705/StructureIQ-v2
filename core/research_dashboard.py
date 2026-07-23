@@ -22,6 +22,8 @@ from core.continuous_paper_trading import current_continuous_paper_trading
 from core.candidate_diagnostics import current_candidate_diagnostics
 from core.calibration_analytics import get_global_calibration_analytics
 from core.paper_state_reconciliation import latest_paper_reconciliation
+from core.paper_recovery import latest_paper_recovery
+from core.validation_campaigns import get_global_validation_campaign_manager
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -162,6 +164,18 @@ class DashboardOverview:
     reconciliation_critical_count: int = 0
     latest_reconciliation_summary: str | None = None
     reconciliation_recommended_actions: tuple[str, ...] = ()
+    current_campaign_id: str | None = None
+    current_campaign_status: str = "unavailable"
+    current_campaign_duration_seconds: float | None = None
+    current_campaign_start: str | None = None
+    current_campaign_end: str | None = None
+    current_campaign_trades: int = 0
+    current_campaign_win_rate: float = 0.0
+    current_campaign_loss_rate: float = 0.0
+    current_campaign_total_r: float = 0.0
+    current_campaign_drawdown: float = 0.0
+    recovery_status: str = "unavailable"
+    historical_campaigns: int = 0
 
 
 @dataclass(frozen=True)
@@ -419,6 +433,14 @@ class ResearchDashboardService:
         calibration_summary = get_global_calibration_analytics().summary()
         reconciliation = latest_paper_reconciliation()
         reconciliation_summary = getattr(reconciliation, "summary", None)
+        recovery = latest_paper_recovery()
+        recovery_summary = getattr(recovery, "summary", None)
+        campaign_manager = get_global_validation_campaign_manager(journal)
+        current_campaign = campaign_manager.current()
+        campaign_summary = (
+            campaign_manager.summary(current_campaign.campaign_id)
+            if current_campaign is not None else None
+        )
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -568,6 +590,18 @@ class ResearchDashboardService:
             reconciliation_critical_count=int(getattr(reconciliation_summary, "critical_count", 0) or 0),
             latest_reconciliation_summary=getattr(reconciliation_summary, "human_readable_summary", None),
             reconciliation_recommended_actions=tuple(getattr(reconciliation, "recommended_actions", ()) or ()),
+            current_campaign_id=getattr(current_campaign, "campaign_id", None),
+            current_campaign_status=str(getattr(current_campaign, "status", "unavailable")),
+            current_campaign_duration_seconds=getattr(campaign_summary, "duration_seconds", None),
+            current_campaign_start=getattr(campaign_summary, "started_at", None),
+            current_campaign_end=getattr(campaign_summary, "ended_at", None),
+            current_campaign_trades=int(getattr(campaign_summary, "trades", 0) or 0),
+            current_campaign_win_rate=float(getattr(campaign_summary, "win_rate", 0.0) or 0.0),
+            current_campaign_loss_rate=float(getattr(campaign_summary, "loss_rate", 0.0) or 0.0),
+            current_campaign_total_r=float(getattr(campaign_summary, "total_r", 0.0) or 0.0),
+            current_campaign_drawdown=float(getattr(campaign_summary, "drawdown", 0.0) or 0.0),
+            recovery_status=str(getattr(recovery_summary, "status", "unavailable")),
+            historical_campaigns=len(campaign_manager.list_campaigns()),
         )
 
     def symbols(self) -> DashboardSymbols:

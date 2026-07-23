@@ -1,5 +1,11 @@
 # StructureIQ Roadmap
 
+## Version 6.0.10 — Durable Paper Runtime State and Validation Campaigns (implemented)
+
+- Durable paper brokerage and lifecycle snapshots for restart-safe multi-day validation.
+- Recovery APIs, orphan quarantine, legacy campaign migration, campaign folders, dashboard projections, and validation checks.
+- No changes to trading logic, scoring, routing, fills, exits, risk, or auto-approval gates.
+
 ## Version 6.0.9 — Paper State Reconciliation and Lifecycle Audit (implemented)
 
 - Read-only reconciliation across paper brokerage, lifecycle, journal, daily report, and orchestrator state.

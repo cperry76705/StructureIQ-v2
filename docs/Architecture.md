@@ -38,6 +38,10 @@ The Runtime Session Manager adds optional wall-clock and completed-cycle limits 
 
 `PaperStateReconciliationEngine` is a read-only audit layer over PaperBrokerage, TradeLifecycleManager, PaperTradeJournal, DailyReportEngine, and PaperTradingOrchestrator recent actions. It explains expected drift between process-local state and persisted append-only journal history after restarts, and it flags critical contradictions such as duplicate IDs, impossible R values, or inconsistent P/L. It never repairs state, rebuilds positions, approves candidates, closes trades, changes risk, or affects any trading decision.
 
+## Durable Paper Runtime and Campaign Boundary
+
+Durable paper runtime storage restores paper brokerage and lifecycle memory from local JSON files so multi-day paper validation can survive application restarts. Recovery loads durable account/position/lifecycle state, reads the append-only journal, runs reconciliation, and quarantines unmatched journal trades as orphans rather than deleting them. Validation Campaigns isolate formal paper runs into `validation_campaigns/<campaign_id>/` folders and migrate pre-6.0.10 journal history into a legacy campaign. These systems are persistence and observability boundaries only; they do not alter analysis decisions, setup selection, strategy routing, risk, fills, exits, or auto-approval gates.
+
 ## Daily Report Boundary
 
 `DailyReportEngine` is a pure read-side projection over journal, lifecycle, brokerage, monitor, calibration, readiness, and risk state. Report generation never invokes analysis, monitoring, order evaluation, or account mutation. Dated JSON artifacts are immutable unless overwrite is explicitly requested. GPT payload export is local structured data only; no model, email, network, or broker integration exists.

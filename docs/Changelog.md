@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 6.0.10 — Durable Paper Runtime State and Validation Campaigns — 2026-07-23
+
+- Added durable paper account, open-position, closed-trade, and lifecycle state storage for restart-safe paper validation.
+- Added paper recovery APIs that restore durable state, run reconciliation, and quarantine unmatched journal trades in `research/paper_orphans.json`.
+- Added validation campaign folders with metadata, summaries, journal exports, validation/reconciliation placeholders, and legacy journal migration.
+- Added `--campaign-name` to the paper CLI and campaign/recovery dashboard fields.
+- Added system-validation checks for recovery and campaign storage.
+- Trading logic, strategy routing, candidate generation, scoring, fills, exits, risk, lifecycle rules, and auto-approval gates remain unchanged.
+
 ## Version 6.0.9 — Paper Trading State Reconciliation and Trade Lifecycle Audit — 2026-07-07
 
 - Added a read-only reconciliation engine comparing paper brokerage, lifecycle, journal, daily report, and orchestrator state.

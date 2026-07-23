@@ -31,6 +31,8 @@ class PaperAccountConfig(BaseModel):
     allow_duplicate_symbol_positions: bool = False
     allow_duplicate_setup_positions: bool = False
     persistence_path: str | None = None
+    durable_state: bool = False
+    persistence_dir: str = "research"
 
     @model_validator(mode="after")
     def validate_default_risk(self) -> "PaperAccountConfig":
@@ -149,7 +151,10 @@ class PaperBrokerageEngine:
         self.config = config or PaperAccountConfig()
         self._lock = threading.RLock()
         self._listeners: list[Any] = []
-        self.reset(self.config)
+        if self.config.durable_state:
+            self._load_or_initialize()
+        else:
+            self.reset(self.config)
 
     def add_listener(self, listener: Any) -> None:
         """Register an advisory observer without transferring account authority."""
@@ -169,6 +174,13 @@ class PaperBrokerageEngine:
             self._peak_balance = self._balance
             self._max_drawdown = 0.0
             self._persist()
+            return self.account()
+
+    def recover_from_storage(self) -> PaperAccount:
+        """Reload durable paper state from disk without notifying observers."""
+        with self._lock:
+            if self.config.durable_state:
+                self._load_or_initialize()
             return self.account()
 
     def open_position(self, request: PaperOpenRequest) -> PaperTrade:
@@ -351,17 +363,86 @@ class PaperBrokerageEngine:
             self._daily_realized_pl = 0.0
 
     def _persist(self) -> None:
-        if not self.config.persistence_path:
-            return
-        path = Path(self.config.persistence_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "balance": self._balance,
+            "equity": self._balance + sum(item.unrealized_pl for item in self._open.values()),
+            "realized_pl": self._balance - self.config.starting_balance,
+            "unrealized_pl": sum(item.unrealized_pl for item in self._open.values()),
+            "total_r": sum(item.realized_r or 0.0 for item in self._closed),
+            "risk_per_trade": self.config.risk_per_trade_percent,
+            "account_settings": self.config.model_dump(),
             "open_positions": [asdict(item) for item in self._open.values()],
             "closed_trades": [asdict(item) for item in self._closed],
+            "daily_date": self._daily_date.isoformat(),
+            "daily_realized_pl": self._daily_realized_pl,
+            "peak_balance": self._peak_balance,
+            "max_drawdown": self._max_drawdown,
             "updated_at": _now(),
         }
-        path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        if self.config.persistence_path:
+            path = Path(self.config.persistence_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+        if self.config.durable_state:
+            root = Path(self.config.persistence_dir)
+            root.mkdir(parents=True, exist_ok=True)
+            (root / "paper_account.json").write_text(
+                json.dumps({k: v for k, v in payload.items() if k not in {"open_positions", "closed_trades"}}, indent=2),
+                encoding="utf-8",
+            )
+            (root / "paper_open_positions.json").write_text(
+                json.dumps(payload["open_positions"], indent=2),
+                encoding="utf-8",
+            )
+            (root / "paper_closed_trades.json").write_text(
+                json.dumps(payload["closed_trades"], indent=2),
+                encoding="utf-8",
+            )
+
+    def _load_or_initialize(self) -> None:
+        root = Path(self.config.persistence_dir)
+        account_path = root / "paper_account.json"
+        open_path = root / "paper_open_positions.json"
+        closed_path = root / "paper_closed_trades.json"
+        root.mkdir(parents=True, exist_ok=True)
+        if not account_path.exists():
+            self._balance = self.config.starting_balance
+            self._open = {}
+            self._closed = []
+            self._daily_date = date.today()
+            self._daily_realized_pl = 0.0
+            self._peak_balance = self._balance
+            self._max_drawdown = 0.0
+            self._persist()
+            return
+        try:
+            account = json.loads(account_path.read_text(encoding="utf-8"))
+            raw_open = json.loads(open_path.read_text(encoding="utf-8")) if open_path.exists() else []
+            raw_closed = json.loads(closed_path.read_text(encoding="utf-8")) if closed_path.exists() else []
+            self._balance = float(account.get("balance", self.config.starting_balance))
+            self._open = {
+                item["trade_id"]: PaperTrade(**item)
+                for item in raw_open
+                if isinstance(item, dict) and item.get("trade_id")
+            }
+            self._closed = [
+                PaperTrade(**item)
+                for item in raw_closed
+                if isinstance(item, dict) and item.get("trade_id")
+            ]
+            self._daily_date = date.fromisoformat(account.get("daily_date", date.today().isoformat()))
+            self._daily_realized_pl = float(account.get("daily_realized_pl", 0.0))
+            self._peak_balance = float(account.get("peak_balance", max(self._balance, self.config.starting_balance)))
+            self._max_drawdown = float(account.get("max_drawdown", 0.0))
+        except (OSError, TypeError, ValueError, KeyError, json.JSONDecodeError):
+            self._balance = self.config.starting_balance
+            self._open = {}
+            self._closed = []
+            self._daily_date = date.today()
+            self._daily_realized_pl = 0.0
+            self._peak_balance = self._balance
+            self._max_drawdown = 0.0
+            self._persist()
 
     def _notify(self, event_type: str, trade: PaperTrade) -> None:
         for listener in tuple(self._listeners):
@@ -398,7 +479,7 @@ def get_global_paper_brokerage() -> PaperBrokerageEngine:
     global _GLOBAL_PAPER_BROKER
     with _GLOBAL_LOCK:
         if _GLOBAL_PAPER_BROKER is None:
-            _GLOBAL_PAPER_BROKER = PaperBrokerageEngine()
+            _GLOBAL_PAPER_BROKER = PaperBrokerageEngine(PaperAccountConfig(durable_state=True))
         return _GLOBAL_PAPER_BROKER
 
 

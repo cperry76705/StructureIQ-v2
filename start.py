@@ -434,6 +434,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--months", type=float, help="Stop paper mode after this many 30-day months.")
     parser.add_argument("--cycles", type=int, help="Stop paper mode after this many completed cycles.")
     parser.add_argument("--label", help="Optional paper runtime session label.")
+    parser.add_argument("--campaign-name", help="Optional validation campaign name for isolated paper statistics.")
     return parser.parse_args(argv)
 
 
@@ -458,6 +459,7 @@ def build_paper_start_payload(args: argparse.Namespace) -> tuple[dict, tuple[str
         raise ValueError("market paper orders require --allow-market-orders")
     payload = {
         "session_label": args.label,
+        "campaign_name": getattr(args, "campaign_name", None),
         "auto_approve_candidates": auto_approve,
         "paper_only": True,
         "live_trading_enabled": False,

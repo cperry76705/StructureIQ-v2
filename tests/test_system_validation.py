@@ -65,7 +65,7 @@ def test_overall_pass_and_every_component_is_timed(tmp_path) -> None:
     assert result.overall_score >= 90
     assert result.paper_trading_ready is True
     assert result.continuous_runtime_ready is True
-    assert result.components_checked == 21
+    assert result.components_checked == 23
     assert all(item.duration_ms >= 0 for item in result.component_results)
     names = {item.component for item in result.component_results}
     assert {"Storage", "Live Monitor", "Paper Brokerage", "Trade Lifecycle Manager", "Paper Journal", "Daily Reports", "Daily Scheduler", "Continuous Paper Trading", "Candidate Diagnostics", "Calibration Analytics", "Dashboard", "Observability"} <= names

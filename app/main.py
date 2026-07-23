@@ -117,6 +117,17 @@ from core.paper_state_reconciliation import (
     PaperStateReconciliationEngine,
     ReconciledTradeRecord,
 )
+from core.paper_recovery import (
+    PaperRecoveryEngine,
+    PaperRecoveryResult,
+    PaperRecoverySummary,
+)
+from core.validation_campaigns import (
+    CampaignSummary,
+    ValidationCampaign,
+    ValidationCampaignManager,
+    get_global_validation_campaign_manager,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -277,6 +288,26 @@ def get_paper_state_reconciliation_engine(
     )
 
 
+def get_paper_recovery_engine(
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+    reconciliation: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine),
+) -> PaperRecoveryEngine:
+    return PaperRecoveryEngine(
+        broker=broker,
+        lifecycle=lifecycle,
+        journal=journal,
+        reconciliation=reconciliation,
+    )
+
+
+def get_validation_campaign_manager(
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+) -> ValidationCampaignManager:
+    return get_global_validation_campaign_manager(journal)
+
+
 def get_daily_report_scheduler(
     reports: DailyReportEngine = Depends(get_daily_report_engine),
 ) -> DailyReportScheduler:
@@ -314,6 +345,8 @@ def get_system_validation_harness(
     orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator),
     dashboard: ResearchDashboardService = Depends(get_research_dashboard_service),
     reconciliation: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine),
+    recovery: PaperRecoveryEngine = Depends(get_paper_recovery_engine),
+    campaigns: ValidationCampaignManager = Depends(get_validation_campaign_manager),
 ) -> SystemValidationHarness:
     return SystemValidationHarness(
         health_engine=health, market_data_provider=provider,
@@ -321,6 +354,8 @@ def get_system_validation_harness(
         journal=journal, reports=reports, scheduler=scheduler,
         orchestrator=orchestrator, dashboard=dashboard,
         reconciliation=reconciliation,
+        recovery=recovery,
+        campaigns=campaigns,
         api_paths_provider=lambda: set(app.openapi()["paths"]),
     )
 
@@ -960,6 +995,54 @@ def paper_reconciliation_trades(engine: PaperStateReconciliationEngine = Depends
 @app.post("/paper-reconciliation/run", response_model=PaperReconciliationResult, tags=["paper-reconciliation"])
 def paper_reconciliation_run(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationResult:
     return engine.run()
+
+
+@app.get("/paper-recovery/status", response_model=PaperRecoverySummary, tags=["paper-recovery"])
+def paper_recovery_status(engine: PaperRecoveryEngine = Depends(get_paper_recovery_engine)) -> PaperRecoverySummary:
+    return engine.status()
+
+
+@app.get("/paper-recovery/summary", response_model=PaperRecoverySummary, tags=["paper-recovery"])
+def paper_recovery_summary(engine: PaperRecoveryEngine = Depends(get_paper_recovery_engine)) -> PaperRecoverySummary:
+    return engine.summary()
+
+
+@app.post("/paper-recovery/run", response_model=PaperRecoveryResult, tags=["paper-recovery"])
+def paper_recovery_run(engine: PaperRecoveryEngine = Depends(get_paper_recovery_engine)) -> PaperRecoveryResult:
+    return engine.run()
+
+
+@app.get("/campaigns", response_model=list[ValidationCampaign], tags=["campaigns"])
+def campaigns(manager: ValidationCampaignManager = Depends(get_validation_campaign_manager)) -> list[ValidationCampaign]:
+    return list(manager.list_campaigns())
+
+
+@app.get("/campaigns/current", response_model=ValidationCampaign | None, tags=["campaigns"])
+def campaigns_current(manager: ValidationCampaignManager = Depends(get_validation_campaign_manager)) -> ValidationCampaign | None:
+    return manager.current()
+
+
+@app.get("/campaigns/{campaign_id}", response_model=ValidationCampaign, tags=["campaigns"])
+def campaigns_by_id(campaign_id: str, manager: ValidationCampaignManager = Depends(get_validation_campaign_manager)) -> ValidationCampaign:
+    campaign = manager.get(campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=404, detail="campaign was not found")
+    return campaign
+
+
+@app.get("/campaigns/{campaign_id}/summary", response_model=CampaignSummary, tags=["campaigns"])
+def campaigns_summary(campaign_id: str, manager: ValidationCampaignManager = Depends(get_validation_campaign_manager)) -> CampaignSummary:
+    try:
+        return manager.summary(campaign_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="campaign was not found") from exc
+
+
+@app.get("/campaigns/{campaign_id}/journal", response_model=list[dict[str, Any]], tags=["campaigns"])
+def campaigns_journal(campaign_id: str, manager: ValidationCampaignManager = Depends(get_validation_campaign_manager)) -> list[dict[str, Any]]:
+    if manager.get(campaign_id) is None:
+        raise HTTPException(status_code=404, detail="campaign was not found")
+    return list(manager.journal_rows(campaign_id))
 
 
 @app.get("/reports/scheduler/status", response_model=DailyReportSchedulerStatus, tags=["reports"])
