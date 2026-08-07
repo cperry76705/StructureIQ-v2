@@ -423,6 +423,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--urls", action="store_true", help="Print useful localhost URLs and exit.")
     parser.add_argument("--paper", action="store_true", help="Run an explicitly controlled paper-only session.")
     parser.add_argument("--auto-approve-paper", action="store_true", help="Enable gated paper-only candidate auto-approval.")
+    parser.add_argument("--auto-approve", action="store_true", help="Enable gated paper-only candidate auto-approval for this run.")
+    parser.add_argument("--no-auto-approve", action="store_true", help="Disable paper candidate auto-approval for this run.")
     parser.add_argument("--max-trades-per-cycle", type=int, default=1, help="Maximum new paper trades per cycle (default: 1).")
     parser.add_argument("--max-candidates-per-cycle", type=int, default=3, help="Maximum candidates evaluated per cycle (default: 3).")
     parser.add_argument("--allow-market-orders", action="store_true", help="Explicitly allow simulated market paper orders.")
@@ -452,13 +454,17 @@ def build_paper_start_payload(args: argparse.Namespace) -> tuple[dict, tuple[str
     max_candidates = getattr(args, "max_candidates_per_cycle", 3)
     allow_market = bool(getattr(args, "allow_market_orders", False))
     order_type = getattr(args, "order_type", "limit_retest")
-    auto_approve = bool(getattr(args, "auto_approve_paper", False))
+    if bool(getattr(args, "auto_approve", False)) and bool(getattr(args, "no_auto_approve", False)):
+        raise ValueError("choose either --auto-approve or --no-auto-approve, not both")
+    auto_approve = bool(getattr(args, "auto_approve_paper", False) or getattr(args, "auto_approve", False))
+    if bool(getattr(args, "no_auto_approve", False)):
+        auto_approve = False
     if max_trades <= 0 or max_candidates <= 0:
         raise ValueError("paper candidate and trade limits must be greater than zero")
     if order_type == "market" and not allow_market:
         raise ValueError("market paper orders require --allow-market-orders")
     payload = {
-        "session_label": args.label,
+        "session_label": args.label or getattr(args, "campaign_name", None),
         "campaign_name": getattr(args, "campaign_name", None),
         "auto_approve_candidates": auto_approve,
         "paper_only": True,
@@ -580,9 +586,19 @@ def run_paper_mode(
             print("Paper mode blocked because system validation failed.")
             return 2
         status = api_call("/continuous-paper/start", method="POST", payload=payload)
+        try:
+            campaign = api_call("/campaigns/current")
+        except Exception:
+            campaign = None
         if args.open_browser and not args.no_browser: open_docs_browser()
         print("Starting continuous paper trading...")
-        print(f"Session: {status.get('session_label') or 'Unlabeled local session'}")
+        campaign_name = (campaign or {}).get("name") if isinstance(campaign, dict) else None
+        campaign_id = (campaign or {}).get("campaign_id") if isinstance(campaign, dict) else None
+        display_label = campaign_name or status.get("session_label") or "Unlabeled local session"
+        if campaign_name:
+            print(f"Campaign Name: {campaign_name}")
+            print(f"Campaign ID: {campaign_id}")
+        print(f"Session Label: {display_label}")
         print(f"Duration: {duration}")
         print(f"Auto Approval: {str(bool(payload['auto_approve_candidates'])).lower()}")
         print(f"Order Type: {payload['default_order_type']}")
@@ -594,13 +610,13 @@ def run_paper_mode(
             if status.get("final_session_summary"): break
             sleep(.5)
             status = api_call("/continuous-paper/status")
-        _print_final_paper_summary(status)
+        _print_final_paper_summary(status, api_call=api_call)
         return 0
     except KeyboardInterrupt:
         print("\nStopping paper session early...")
         try: status = api_call("/continuous-paper/stop", method="POST")
         except Exception: status = {}
-        _print_final_paper_summary(status)
+        _print_final_paper_summary(status, api_call=api_call)
         return 130
     except Exception as exc:
         print(f"Paper mode failed safely: {exc}")
@@ -609,7 +625,7 @@ def run_paper_mode(
         _stop_process(process)
 
 
-def _print_final_paper_summary(status: dict) -> None:
+def _print_final_paper_summary(status: dict, *, api_call=_api_json) -> None:
     summary = status.get("final_session_summary") or {}
     print("\nPaper trading session completed.")
     print(f"Cycles: {summary.get('cycle_count', status.get('cycle_count', 0))}")
@@ -618,6 +634,18 @@ def _print_final_paper_summary(status: dict) -> None:
     print(f"Reports Generated: {summary.get('total_reports_generated', status.get('total_reports_generated', 0))}")
     print(f"Reports Skipped Existing: {summary.get('total_reports_skipped_existing', status.get('total_reports_skipped_existing', 0))}")
     print(f"Stop Reason: {summary.get('stop_reason', status.get('stop_reason', 'unknown'))}")
+    try:
+        pipeline = api_call("/candidate-diagnostics/summary")
+        cycle = (pipeline.get("pipeline") or {})
+        latest = cycle.get("latest_cycle") or {}
+        if latest:
+            print(f"Symbols Scanned: {latest.get('symbols_scanned', 0)}")
+            print(f"Symbols With Data: {latest.get('symbols_with_market_data', 0)}")
+            if latest.get("zero_candidate_explanation"):
+                print("\nZero Candidate Explanation:")
+                print(latest["zero_candidate_explanation"])
+    except Exception:
+        pass
 
 
 def main(argv: Sequence[str] | None = None) -> int:

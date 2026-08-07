@@ -18,6 +18,7 @@ from fastapi.encoders import jsonable_encoder
 from app.config import APP_VERSION
 from core.analysis_engine import AnalysisEngine
 from core.candidate_diagnostics import get_global_candidate_diagnostics
+from core.candidate_pipeline_diagnostics import get_global_candidate_pipeline_diagnostics
 from core.calibration_analytics import CalibrationAnalyticsEngine, get_global_calibration_analytics
 from core.daily_report_engine import DailyReportEngine
 from core.live_market_monitor import LiveMarketMonitor, MonitorConfig
@@ -74,10 +75,13 @@ class SystemValidationHarness:
         "/dashboard/overview", "/system/validation/run",
         "/continuous-paper/status",
         "/candidate-diagnostics/summary",
+        "/candidate-diagnostics/rejections",
         "/calibration-analytics/summary",
         "/paper-reconciliation/status",
+        "/paper-reconciliation/summary",
         "/paper-recovery/status",
         "/campaigns",
+        "/campaigns/legacy_campaign/audit",
     }
 
     def __init__(
@@ -311,12 +315,16 @@ class SystemValidationHarness:
 
     def _candidate_diagnostics(self):
         engine = get_global_candidate_diagnostics()
+        pipeline = get_global_candidate_pipeline_diagnostics()
         if not engine.writable():
             return _fail("Candidate Diagnostics persistence is not writable.")
+        if not pipeline.writable():
+            return _fail("Candidate Pipeline Diagnostics persistence is not writable.")
         summary = engine.summary()
         if summary.markets_analyzed < 0 or summary.candidates_created < 0:
             return _fail("Candidate Diagnostics statistics are invalid.")
-        return _pass("Candidate Diagnostics is available, writable, and statistically operational.")
+        pipeline.summary()
+        return _pass("Candidate Diagnostics and cycle pipeline diagnostics are available, writable, and statistically operational.")
 
     def _calibration_analytics(self):
         engine = get_global_calibration_analytics()
@@ -401,6 +409,8 @@ class SystemValidationHarness:
         if result.summary.status == "FAIL":
             return _fail("Paper Runtime Recovery reports critical reconciliation issues.")
         if result.summary.status == "WATCHLIST":
+            if result.summary.runtime_recovery_status == "PASS" and result.summary.active_campaign_recovery_status == "PASS":
+                return _watch(result.warnings, "Paper Runtime Recovery is healthy for current runtime; legacy recovery drift remains visible.")
             return _watch(result.warnings, result.human_readable_summary)
         return _pass("Paper Runtime Recovery can run safely and preserves restored state.")
 
@@ -411,6 +421,11 @@ class SystemValidationHarness:
         if not self.campaigns.writable():
             return _fail("Validation Campaign storage is not writable.")
         self.campaigns.list_campaigns()
+        try:
+            if self.campaigns.get("legacy_campaign") is not None:
+                self.campaigns.legacy_audit()
+        except Exception as exc:
+            return _watch((f"Legacy campaign audit is unavailable: {exc}",), "Validation Campaign storage is available but legacy audit needs review.")
         return _pass("Validation Campaign storage is available and readable.")
 
     def _observability(self):

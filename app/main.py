@@ -101,6 +101,12 @@ from core.candidate_diagnostics import (
     CandidateDiagnosticsSummary,
     get_global_candidate_diagnostics,
 )
+from core.candidate_pipeline_diagnostics import (
+    CandidatePipelineCycleDiagnostic,
+    CandidatePipelineDiagnosticsEngine,
+    CandidatePipelineSummary,
+    get_global_candidate_pipeline_diagnostics,
+)
 from core.calibration_analytics import (
     CalibrationAnalyticsEngine,
     CalibrationAnalyticsSummary,
@@ -124,6 +130,8 @@ from core.paper_recovery import (
 )
 from core.validation_campaigns import (
     CampaignSummary,
+    CampaignSummaryRefreshResult,
+    LegacyCampaignAudit,
     ValidationCampaign,
     ValidationCampaignManager,
     get_global_validation_campaign_manager,
@@ -279,13 +287,19 @@ def get_paper_state_reconciliation_engine(
     reports: DailyReportEngine = Depends(get_daily_report_engine),
     orchestrator: PaperTradingOrchestrator = Depends(get_paper_trading_orchestrator),
 ) -> PaperStateReconciliationEngine:
+    campaigns = get_global_validation_campaign_manager(journal)
     return PaperStateReconciliationEngine(
         broker=broker,
         lifecycle=lifecycle,
         journal=journal,
         reports=reports,
         orchestrator=orchestrator,
+        campaigns=campaigns,
     )
+
+
+def get_candidate_pipeline_diagnostics_engine() -> CandidatePipelineDiagnosticsEngine:
+    return get_global_candidate_pipeline_diagnostics()
 
 
 def get_paper_recovery_engine(
@@ -973,28 +987,52 @@ def paper_trading_recent_actions(limit: int | None = None, orchestrator: PaperTr
 
 
 @app.get("/paper-reconciliation/status", response_model=PaperReconciliationSummary, tags=["paper-reconciliation"])
-def paper_reconciliation_status(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationSummary:
-    return engine.status()
+def paper_reconciliation_status(scope: str = "global", campaign_id: str | None = None, engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationSummary:
+    try:
+        return _scoped_call(engine.status, scope=scope, campaign_id=campaign_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/paper-reconciliation/summary", response_model=PaperReconciliationSummary, tags=["paper-reconciliation"])
-def paper_reconciliation_summary(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationSummary:
-    return engine.summary()
+def paper_reconciliation_summary(scope: str = "global", campaign_id: str | None = None, engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationSummary:
+    try:
+        return _scoped_call(engine.summary, scope=scope, campaign_id=campaign_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/paper-reconciliation/discrepancies", response_model=list[PaperStateDiscrepancy], tags=["paper-reconciliation"])
-def paper_reconciliation_discrepancies(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> list[PaperStateDiscrepancy]:
-    return list(engine.discrepancies())
+def paper_reconciliation_discrepancies(scope: str = "global", campaign_id: str | None = None, engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> list[PaperStateDiscrepancy]:
+    try:
+        return list(_scoped_call(engine.discrepancies, scope=scope, campaign_id=campaign_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.get("/paper-reconciliation/trades", response_model=list[ReconciledTradeRecord], tags=["paper-reconciliation"])
-def paper_reconciliation_trades(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> list[ReconciledTradeRecord]:
-    return list(engine.trades())
+def paper_reconciliation_trades(scope: str = "global", campaign_id: str | None = None, engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> list[ReconciledTradeRecord]:
+    try:
+        return list(_scoped_call(engine.trades, scope=scope, campaign_id=campaign_id))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/paper-reconciliation/run", response_model=PaperReconciliationResult, tags=["paper-reconciliation"])
-def paper_reconciliation_run(engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationResult:
-    return engine.run()
+def paper_reconciliation_run(scope: str = "global", campaign_id: str | None = None, engine: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine)) -> PaperReconciliationResult:
+    try:
+        return _scoped_call(engine.run, scope=scope, campaign_id=campaign_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+def _scoped_call(method, *, scope: str, campaign_id: str | None):
+    try:
+        return method(scope=scope, campaign_id=campaign_id)
+    except TypeError:
+        if scope == "global" and campaign_id is None:
+            return method()
+        raise
 
 
 @app.get("/paper-recovery/status", response_model=PaperRecoverySummary, tags=["paper-recovery"])
@@ -1043,6 +1081,22 @@ def campaigns_journal(campaign_id: str, manager: ValidationCampaignManager = Dep
     if manager.get(campaign_id) is None:
         raise HTTPException(status_code=404, detail="campaign was not found")
     return list(manager.journal_rows(campaign_id))
+
+
+@app.get("/campaigns/legacy_campaign/audit", response_model=LegacyCampaignAudit, tags=["campaigns"])
+def campaigns_legacy_audit(manager: ValidationCampaignManager = Depends(get_validation_campaign_manager)) -> LegacyCampaignAudit:
+    try:
+        return manager.legacy_audit()
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="legacy campaign was not found") from exc
+
+
+@app.post("/campaigns/{campaign_id}/refresh-summary", response_model=CampaignSummaryRefreshResult, tags=["campaigns"])
+def campaigns_refresh_summary(campaign_id: str, manager: ValidationCampaignManager = Depends(get_validation_campaign_manager)) -> CampaignSummaryRefreshResult:
+    try:
+        return manager.refresh_summary(campaign_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="campaign was not found") from exc
 
 
 @app.get("/reports/scheduler/status", response_model=DailyReportSchedulerStatus, tags=["reports"])
@@ -1169,9 +1223,18 @@ def continuous_paper_sessions(limit: int | None = None, runtime: ContinuousPaper
     return list(runtime.sessions(limit))
 
 
-@app.get("/candidate-diagnostics/summary", response_model=CandidateDiagnosticsSummary, tags=["candidate-diagnostics"])
-def candidate_diagnostics_summary(engine: CandidateDiagnosticsEngine = Depends(get_candidate_diagnostics_engine)) -> CandidateDiagnosticsSummary:
-    return engine.summary()
+@app.get("/candidate-diagnostics/summary", response_model=dict[str, Any], tags=["candidate-diagnostics"])
+def candidate_diagnostics_summary(
+    campaign_id: str | None = None,
+    symbol: str | None = None,
+    rejection_stage: str | None = None,
+    engine: CandidateDiagnosticsEngine = Depends(get_candidate_diagnostics_engine),
+    pipeline: CandidatePipelineDiagnosticsEngine = Depends(get_candidate_pipeline_diagnostics_engine),
+) -> dict[str, Any]:
+    from fastapi.encoders import jsonable_encoder
+    market = jsonable_encoder(engine.summary())
+    cycle = jsonable_encoder(pipeline.summary(campaign_id=campaign_id, symbol=symbol, rejection_stage=rejection_stage))
+    return {**market, "pipeline": cycle}
 
 
 @app.get("/candidate-diagnostics/recent", response_model=list[CandidateDiagnostic], tags=["candidate-diagnostics"])
@@ -1189,6 +1252,24 @@ def candidate_diagnostics_reasons(engine: CandidateDiagnosticsEngine = Depends(g
 def candidate_diagnostics_near_misses(limit: int = 100, engine: CandidateDiagnosticsEngine = Depends(get_candidate_diagnostics_engine)) -> list[CandidateDiagnostic]:
     if not 1 <= limit <= 10_000: raise HTTPException(status_code=422, detail="limit must be between 1 and 10000")
     return list(engine.near_misses(limit))
+
+
+@app.get("/candidate-diagnostics/cycles/{cycle_id}", response_model=CandidatePipelineCycleDiagnostic, tags=["candidate-diagnostics"])
+def candidate_diagnostics_cycle(cycle_id: str, pipeline: CandidatePipelineDiagnosticsEngine = Depends(get_candidate_pipeline_diagnostics_engine)) -> CandidatePipelineCycleDiagnostic:
+    cycle = pipeline.cycle(cycle_id)
+    if cycle is None:
+        raise HTTPException(status_code=404, detail="candidate diagnostic cycle was not found")
+    return cycle
+
+
+@app.get("/candidate-diagnostics/rejections", response_model=dict[str, Any], tags=["candidate-diagnostics"])
+def candidate_diagnostics_rejections(campaign_id: str | None = None, pipeline: CandidatePipelineDiagnosticsEngine = Depends(get_candidate_pipeline_diagnostics_engine)) -> dict[str, Any]:
+    return pipeline.rejections(campaign_id=campaign_id)
+
+
+@app.get("/campaigns/{campaign_id}/candidate-diagnostics", response_model=CandidatePipelineSummary, tags=["candidate-diagnostics"])
+def campaign_candidate_diagnostics(campaign_id: str, pipeline: CandidatePipelineDiagnosticsEngine = Depends(get_candidate_pipeline_diagnostics_engine)) -> CandidatePipelineSummary:
+    return pipeline.summary(campaign_id=campaign_id)
 
 
 @app.get("/calibration-analytics/summary", response_model=CalibrationAnalyticsSummary, tags=["calibration-analytics"])

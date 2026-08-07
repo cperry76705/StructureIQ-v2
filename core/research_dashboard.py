@@ -20,6 +20,7 @@ from core.system_health import latest_system_health
 from core.system_validation import latest_system_validation
 from core.continuous_paper_trading import current_continuous_paper_trading
 from core.candidate_diagnostics import current_candidate_diagnostics
+from core.candidate_pipeline_diagnostics import current_candidate_pipeline_diagnostics
 from core.calibration_analytics import get_global_calibration_analytics
 from core.paper_state_reconciliation import latest_paper_reconciliation
 from core.paper_recovery import latest_paper_recovery
@@ -165,6 +166,7 @@ class DashboardOverview:
     latest_reconciliation_summary: str | None = None
     reconciliation_recommended_actions: tuple[str, ...] = ()
     current_campaign_id: str | None = None
+    current_campaign_name: str | None = None
     current_campaign_status: str = "unavailable"
     current_campaign_duration_seconds: float | None = None
     current_campaign_start: str | None = None
@@ -175,6 +177,18 @@ class DashboardOverview:
     current_campaign_total_r: float = 0.0
     current_campaign_drawdown: float = 0.0
     recovery_status: str = "unavailable"
+    active_campaign_reconciliation_status: str = "unavailable"
+    active_campaign_recovery_status: str = "unavailable"
+    legacy_discrepancy_count: int = 0
+    legacy_orphan_count: int = 0
+    legacy_campaign_audit_status: str = "unavailable"
+    candidate_pipeline_latest_cycle: str | None = None
+    candidate_pipeline_symbols_scanned: int = 0
+    candidate_pipeline_data_availability_rate: float = 0.0
+    candidate_pipeline_candidates_created: int = 0
+    candidate_pipeline_trades_opened: int = 0
+    candidate_pipeline_top_rejection_stage: str | None = None
+    candidate_pipeline_top_rejection_reason: str | None = None
     historical_campaigns: int = 0
 
 
@@ -430,6 +444,8 @@ class ResearchDashboardService:
         continuous_status = continuous.status() if continuous is not None else None
         diagnostic_engine = current_candidate_diagnostics()
         candidate_summary = diagnostic_engine.summary() if diagnostic_engine is not None else None
+        pipeline_engine = current_candidate_pipeline_diagnostics()
+        pipeline_summary = pipeline_engine.summary() if pipeline_engine is not None else None
         calibration_summary = get_global_calibration_analytics().summary()
         reconciliation = latest_paper_reconciliation()
         reconciliation_summary = getattr(reconciliation, "summary", None)
@@ -441,6 +457,15 @@ class ResearchDashboardService:
             campaign_manager.summary(current_campaign.campaign_id)
             if current_campaign is not None else None
         )
+        legacy_audit_status = "unavailable"
+        try:
+            if campaign_manager.get("legacy_campaign") is not None:
+                campaign_manager.legacy_audit()
+                legacy_audit_status = "available"
+        except Exception:
+            legacy_audit_status = "watchlist"
+        top_stage = (pipeline_summary.top_rejection_stages[0][0] if pipeline_summary and pipeline_summary.top_rejection_stages else None)
+        top_reason = (pipeline_summary.top_rejection_reasons[0][0] if pipeline_summary and pipeline_summary.top_rejection_reasons else None)
         return DashboardOverview(
             app_version=APP_VERSION,
             latest_research_status=getattr(
@@ -591,6 +616,7 @@ class ResearchDashboardService:
             latest_reconciliation_summary=getattr(reconciliation_summary, "human_readable_summary", None),
             reconciliation_recommended_actions=tuple(getattr(reconciliation, "recommended_actions", ()) or ()),
             current_campaign_id=getattr(current_campaign, "campaign_id", None),
+            current_campaign_name=getattr(current_campaign, "name", None),
             current_campaign_status=str(getattr(current_campaign, "status", "unavailable")),
             current_campaign_duration_seconds=getattr(campaign_summary, "duration_seconds", None),
             current_campaign_start=getattr(campaign_summary, "started_at", None),
@@ -601,6 +627,21 @@ class ResearchDashboardService:
             current_campaign_total_r=float(getattr(campaign_summary, "total_r", 0.0) or 0.0),
             current_campaign_drawdown=float(getattr(campaign_summary, "drawdown", 0.0) or 0.0),
             recovery_status=str(getattr(recovery_summary, "status", "unavailable")),
+            active_campaign_reconciliation_status=(
+                "PASS" if reconciliation_summary and getattr(reconciliation_summary, "active_campaign_discrepancy_count", 0) == 0
+                else "WATCHLIST" if reconciliation_summary else "unavailable"
+            ),
+            active_campaign_recovery_status=str(getattr(recovery_summary, "active_campaign_recovery_status", "unavailable")),
+            legacy_discrepancy_count=int(getattr(reconciliation_summary, "legacy_discrepancy_count", 0) or 0),
+            legacy_orphan_count=int(getattr(recovery_summary, "legacy_orphaned_trades", 0) or 0),
+            legacy_campaign_audit_status=legacy_audit_status,
+            candidate_pipeline_latest_cycle=getattr(getattr(pipeline_summary, "latest_cycle", None), "cycle_id", None),
+            candidate_pipeline_symbols_scanned=int(getattr(pipeline_summary, "symbols_scanned", 0) or 0),
+            candidate_pipeline_data_availability_rate=float(getattr(pipeline_summary, "data_availability_rate", 0.0) or 0.0),
+            candidate_pipeline_candidates_created=int(getattr(pipeline_summary, "candidates_created", 0) or 0),
+            candidate_pipeline_trades_opened=int(getattr(pipeline_summary, "trades_opened", 0) or 0),
+            candidate_pipeline_top_rejection_stage=top_stage,
+            candidate_pipeline_top_rejection_reason=top_reason,
             historical_campaigns=len(campaign_manager.list_campaigns()),
         )
 

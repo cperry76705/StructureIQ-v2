@@ -15,6 +15,10 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.backtesting import parse_price_level
+from core.candidate_pipeline_diagnostics import (
+    CandidatePipelineCycleDiagnostic,
+    get_global_candidate_pipeline_diagnostics,
+)
 from core.daily_report_engine import DailyReportEngine, DailyReportError
 from core.live_market_monitor import LiveMarketMonitor, MonitorCycleResult, MonitorEvent
 from core.paper_brokerage import PaperBrokerageEngine
@@ -78,6 +82,7 @@ class PaperTradingCycleResult:
     journal_updates: int
     daily_report_generated: bool
     daily_report_status: str
+    candidate_pipeline_diagnostics: CandidatePipelineCycleDiagnostic | None
     blocked_reasons: tuple[str, ...]
     errors: tuple[str, ...]
     status: str
@@ -260,6 +265,15 @@ class PaperTradingOrchestrator:
 
         completed = _now()
         status = "completed_with_errors" if errors else "completed"
+        candidate_pipeline = self._record_candidate_pipeline(
+            cycle_id=cycle_id,
+            started_at=started,
+            completed_at=completed,
+            monitor_result=monitor_result,
+            orders_created=orders,
+            trades_opened=trades_opened,
+            cycle_status=status,
+        )
         result = PaperTradingCycleResult(
             cycle_id=cycle_id, started_at=started, completed_at=completed,
             monitor_result=monitor_result, candidates_seen=len(candidates),
@@ -269,6 +283,7 @@ class PaperTradingOrchestrator:
             trades_opened=trades_opened, trades_closed=trades_closed,
             journal_updates=journal_updates, daily_report_generated=report_generated,
             daily_report_status=report_status,
+            candidate_pipeline_diagnostics=candidate_pipeline,
             blocked_reasons=tuple(dict.fromkeys(blocked)), errors=tuple(errors),
             status=status,
             human_readable_summary=f"Paper-trading cycle completed with {len(candidates)} candidates, {trades_opened} new trades, and daily report {report_status}.",
@@ -382,6 +397,43 @@ class PaperTradingOrchestrator:
         path = Path(self.config.cycles_path); path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(jsonable_encoder(result), separators=(",", ":")) + "\n")
+
+    def _record_candidate_pipeline(
+        self,
+        *,
+        cycle_id: str,
+        started_at: str,
+        completed_at: str,
+        monitor_result: MonitorCycleResult,
+        orders_created: int,
+        trades_opened: int,
+        cycle_status: str,
+    ) -> CandidatePipelineCycleDiagnostic | None:
+        try:
+            campaign_id = None
+            try:
+                from core.validation_campaigns import get_global_validation_campaign_manager
+                campaign = get_global_validation_campaign_manager().current()
+                campaign_id = campaign.campaign_id if campaign else None
+            except Exception:
+                campaign_id = None
+            recent_count = max(1, len(self.monitor.config.symbols) * len(self.monitor.config.timeframes) + len(monitor_result.errors))
+            recent = tuple(getattr(self.monitor, "candidate_diagnostics").recent(recent_count))
+            return get_global_candidate_pipeline_diagnostics().record_cycle(
+                cycle_id=cycle_id,
+                campaign_id=campaign_id,
+                started_at=started_at,
+                completed_at=completed_at,
+                monitor_result=monitor_result,
+                orders_created=orders_created,
+                trades_opened=trades_opened,
+                cycle_status=cycle_status,
+                configured_symbols=tuple(self.monitor.config.symbols),
+                configured_timeframes=tuple(self.monitor.config.timeframes),
+                recent_market_diagnostics=recent,
+            )
+        except Exception:
+            return None
 
 
 def _empty_monitor_result(error: str) -> MonitorCycleResult:

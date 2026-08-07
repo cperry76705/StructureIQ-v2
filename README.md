@@ -1,5 +1,22 @@
 # StructureIQ
 
+## Validation baseline cleanup and candidate diagnostics (v6.0.11)
+
+Version 6.0.11 improves validation hygiene without changing trading behavior:
+
+- reconciliation supports `scope=global`, `scope=active_campaign`, `scope=legacy`, and `scope=campaign&campaign_id=...`
+- orphan records include explicit classifications such as `LEGACY_PRE_PERSISTENCE`, `JOURNAL_ONLY`, and `CLOSED_TRADE_NOT_RECOVERED`
+- `/campaigns/legacy_campaign/audit` explains legacy snapshot-vs-current journal differences from actual records
+- `/campaigns/{campaign_id}/refresh-summary` safely rebuilds derived campaign summaries from campaign-scoped journal data
+- per-cycle candidate pipeline diagnostics are appended to `reports/candidate_pipeline_diagnostics.jsonl` and campaign folders
+- paper CLI now supports `--auto-approve` and `--no-auto-approve` aliases and prints campaign name/ID when available
+
+Recommended recovery validation command:
+
+```powershell
+python start.py --paper --hours 2 --campaign-name "Recovery Validation 2" --auto-approve
+```
+
 ## Durable paper runtime and validation campaigns (v6.0.10)
 
 Paper runtime state is now restart-safe for formal validation:

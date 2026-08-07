@@ -2,7 +2,24 @@
 
 ## Overview
 
-StructureIQ `6.0.10` exposes a FastAPI HTTP interface for analysis, durable paper runtime recovery, validation campaigns, paper-state reconciliation, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.11` exposes a FastAPI HTTP interface for analysis, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+
+### Validation cleanup and campaign-scoped diagnostics
+
+Version 6.0.11 adds read-only cleanup and diagnostics:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/paper-reconciliation/summary?scope=active_campaign` | Reconcile only the current campaign so legacy drift does not contaminate active results. |
+| `GET` | `/paper-reconciliation/discrepancies?scope=campaign&campaign_id=<id>` | Read scoped discrepancies for a named campaign. |
+| `GET` | `/paper-reconciliation/trades?scope=legacy` | Inspect legacy-only trade presence. |
+| `GET` | `/campaigns/legacy_campaign/audit` | Explain current-journal versus legacy-campaign record/count/R differences without mutation. |
+| `POST` | `/campaigns/{campaign_id}/refresh-summary` | Refresh derived campaign summary files from campaign-scoped journal rows. |
+| `GET` | `/candidate-diagnostics/cycles/{cycle_id}` | Read a persisted candidate-pipeline cycle diagnostic. |
+| `GET` | `/candidate-diagnostics/rejections` | Summarize rejection stages and reasons across recorded cycles. |
+| `GET` | `/campaigns/{campaign_id}/candidate-diagnostics` | Read candidate-pipeline diagnostics for one campaign. |
+
+Accepted reconciliation scopes are `global`, `active_campaign`, `legacy`, and `campaign`. `campaign` requires `campaign_id`. Orphans are classified explicitly; pre-persistence rows normally appear as `LEGACY_PRE_PERSISTENCE`, which is a WATCHLIST historical classification rather than an active runtime failure.
 
 ### Durable paper recovery and campaigns
 
@@ -112,7 +129,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.10",
+  "app_version": "6.0.11",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,

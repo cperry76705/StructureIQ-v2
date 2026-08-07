@@ -1,5 +1,9 @@
 # StructureIQ Architecture
 
+## Validation Observability Boundary
+
+Version 6.0.11 adds scoped reconciliation, orphan classification, legacy campaign audit, campaign-scoped report labels, and candidate-pipeline cycle diagnostics. These modules separate active campaign health from legacy pre-persistence drift and append diagnostics for review only. They never feed back into analysis decisions, setup selection, strategy routing, confidence, setup quality, risk, fills, exits, or auto-approval gates.
+
 ## Calibration Analytics Boundary
 
 `CalibrationAnalyticsEngine` reparses the append-only candidate diagnostics history for every requested projection. It owns no state, writes no files, and cannot call analysis or execution engines. Fixed distributions, overlapping funnels, rejection waterfalls, near-miss summaries, and grouped symbol/strategy/regime views feed only API and dashboard readers. System validation exercises both empty and populated temporary histories without touching operational diagnostics.

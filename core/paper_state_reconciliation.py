@@ -43,6 +43,7 @@ class ReconciledTradeRecord:
     realized_pl: float | None
     lifecycle_event_count: int
     warnings: tuple[str, ...]
+    campaign_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -61,6 +62,13 @@ class PaperReconciliationSummary:
     warning_count: int
     critical_count: int
     human_readable_summary: str
+    scope: str = "global"
+    active_campaign_id: str | None = None
+    active_campaign_status: str | None = None
+    active_campaign_discrepancy_count: int = 0
+    legacy_discrepancy_count: int = 0
+    historical_discrepancy_count: int = 0
+    current_runtime_discrepancy_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -87,6 +95,7 @@ class PaperStateReconciliationEngine:
         journal: Any,
         reports: Any,
         orchestrator: Any,
+        campaigns: Any | None = None,
         history_path: str | Path = "reports/paper_reconciliation_history.jsonl",
     ) -> None:
         self.broker = broker
@@ -94,32 +103,41 @@ class PaperStateReconciliationEngine:
         self.journal = journal
         self.reports = reports
         self.orchestrator = orchestrator
+        self.campaigns = campaigns
         self.history_path = Path(history_path)
 
-    def status(self) -> PaperReconciliationSummary:
+    def status(self, *, scope: str = "global", campaign_id: str | None = None) -> PaperReconciliationSummary:
         """Return a current summary without persisting a reconciliation snapshot."""
 
-        return self.run(persist=False).summary
+        return self.run(persist=False, scope=scope, campaign_id=campaign_id).summary
 
-    def summary(self) -> PaperReconciliationSummary:
+    def summary(self, *, scope: str = "global", campaign_id: str | None = None) -> PaperReconciliationSummary:
         """Return a current summary without persisting a reconciliation snapshot."""
 
-        return self.status()
+        return self.status(scope=scope, campaign_id=campaign_id)
 
-    def discrepancies(self) -> tuple[PaperStateDiscrepancy, ...]:
+    def discrepancies(self, *, scope: str = "global", campaign_id: str | None = None) -> tuple[PaperStateDiscrepancy, ...]:
         """Return current discrepancies without mutating source state."""
 
-        return self.run(persist=False).discrepancies
+        return self.run(persist=False, scope=scope, campaign_id=campaign_id).discrepancies
 
-    def trades(self) -> tuple[ReconciledTradeRecord, ...]:
+    def trades(self, *, scope: str = "global", campaign_id: str | None = None) -> tuple[ReconciledTradeRecord, ...]:
         """Return current reconciled trade rows without mutating source state."""
 
-        return self.run(persist=False).trades
+        return self.run(persist=False, scope=scope, campaign_id=campaign_id).trades
 
-    def run(self, *, persist: bool = True) -> PaperReconciliationResult:
+    def run(
+        self,
+        *,
+        persist: bool = True,
+        scope: str = "global",
+        campaign_id: str | None = None,
+        _include_scope_counts: bool = True,
+    ) -> PaperReconciliationResult:
         """Run a deterministic paper-state reconciliation pass."""
 
         checked_at = _now()
+        resolved_scope, resolved_campaign, active_campaign = self._resolve_scope(scope, campaign_id)
         broker_open = tuple(self.broker.open_positions())
         broker_closed = tuple(self.broker.closed_trades())
         performance = self.broker.performance()
@@ -128,8 +146,18 @@ class PaperStateReconciliationEngine:
         lifecycle_closed = tuple(self.lifecycle.closed_trades())
         lifecycle_events = tuple(self.lifecycle.events())
         journal_entries = tuple(self.journal.entries())
-        journal_summary = self.journal.summary()
         latest_report = self.reports.latest()
+        if resolved_scope != "global":
+            journal_entries = _filter_journal_by_campaign(journal_entries, resolved_campaign, legacy=resolved_scope == "legacy")
+            scoped_trade_ids = {getattr(item, "trade_id", None) for item in journal_entries if getattr(item, "trade_id", None)}
+            broker_open = tuple(item for item in broker_open if getattr(item, "trade_id", None) in scoped_trade_ids)
+            broker_closed = tuple(item for item in broker_closed if getattr(item, "trade_id", None) in scoped_trade_ids)
+            lifecycle_open = tuple(item for item in lifecycle_open if getattr(item, "trade_id", None) in scoped_trade_ids)
+            lifecycle_closed = tuple(item for item in lifecycle_closed if getattr(item, "trade_id", None) in scoped_trade_ids)
+            lifecycle_events = tuple(item for item in lifecycle_events if getattr(item, "trade_id", None) in scoped_trade_ids or getattr(item, "trade_id", None) is None)
+            if getattr(latest_report, "campaign_id", None) != resolved_campaign:
+                latest_report = None
+        journal_summary = _journal_summary_from_entries(journal_entries)
         orchestrator_status = self.orchestrator.status()
         recent_actions = tuple(self.orchestrator.recent_actions())
 
@@ -177,6 +205,17 @@ class PaperStateReconciliationEngine:
             human_readable_summary=_summary_text(
                 status, len(discrepancies), warning_count, critical_count,
             ),
+            scope=resolved_scope,
+            active_campaign_id=active_campaign.campaign_id if active_campaign else None,
+            active_campaign_status=active_campaign.status if active_campaign else None,
+            active_campaign_discrepancy_count=(
+                len(discrepancies) if resolved_scope == "active_campaign" else self._safe_count("active_campaign") if _include_scope_counts else 0
+            ),
+            legacy_discrepancy_count=self._safe_count("legacy") if _include_scope_counts else 0,
+            historical_discrepancy_count=(
+                len(discrepancies) if resolved_scope == "global" else self._safe_count("global") if _include_scope_counts else 0
+            ),
+            current_runtime_discrepancy_count=len(discrepancies) if resolved_scope in {"active_campaign", "campaign"} else 0,
         )
         result = PaperReconciliationResult(
             run_id=_run_id(checked_at),
@@ -193,6 +232,44 @@ class PaperStateReconciliationEngine:
             self._persist(result)
             _set_latest(result)
         return result
+
+    def _resolve_scope(self, scope: str, campaign_id: str | None) -> tuple[str, str | None, Any | None]:
+        accepted = {"global", "active_campaign", "legacy", "campaign"}
+        if scope not in accepted:
+            raise ValueError("unsupported reconciliation scope")
+        manager = self.campaigns
+        if manager is None:
+            try:
+                from core.validation_campaigns import get_global_validation_campaign_manager
+                manager = get_global_validation_campaign_manager(self.journal)
+            except Exception:
+                manager = None
+        active = manager.current() if manager is not None else None
+        if scope == "global":
+            return scope, None, active
+        if scope == "active_campaign":
+            if active is None:
+                return scope, "__no_active_campaign__", None
+            return scope, active.campaign_id, active
+        if scope == "legacy":
+            return scope, "legacy_campaign", active
+        if not campaign_id:
+            raise ValueError("campaign_id is required when scope=campaign")
+        return scope, campaign_id, active
+
+    def _safe_count(self, scope: str) -> int:
+        try:
+            if scope == "global":
+                return len(self.run(persist=False, scope="global", _include_scope_counts=False).discrepancies)
+            if scope == "legacy":
+                return len(self.run(persist=False, scope="legacy", _include_scope_counts=False).discrepancies)
+            if scope == "active_campaign":
+                return len(self.run(persist=False, scope="active_campaign", _include_scope_counts=False).discrepancies)
+        except RecursionError:
+            return 0
+        except Exception:
+            return 0
+        return 0
 
     def writable(self) -> bool:
         try:
@@ -325,6 +402,8 @@ class PaperStateReconciliationEngine:
     def _compare_daily_report(self, latest_report: Any | None, journal_summary: Any, discrepancies: list[PaperStateDiscrepancy]) -> None:
         if latest_report is None:
             return
+        if getattr(latest_report, "report_scope", "global") != "global":
+            return
         report_total = float(getattr(latest_report.summary, "total_r", 0.0) or 0.0)
         journal_total = float(getattr(journal_summary, "total_r", 0.0) or 0.0)
         if not _close(report_total, journal_total):
@@ -424,8 +503,29 @@ def _trade_records(
             realized_pl=getattr(source, "realized_pl", None),
             lifecycle_event_count=len(getattr(je, "lifecycle_events", ()) or ()) if je is not None else 0,
             warnings=tuple(getattr(je, "warnings", ()) or ()) if je is not None else (),
+            campaign_id=getattr(je, "campaign_id", None) if je is not None else None,
         )
     return records
+
+
+def _filter_journal_by_campaign(entries: tuple[Any, ...], campaign_id: str | None, *, legacy: bool = False) -> tuple[Any, ...]:
+    if legacy:
+        return tuple(item for item in entries if getattr(item, "campaign_id", None) in {None, "legacy_campaign"})
+    return tuple(item for item in entries if getattr(item, "campaign_id", None) == campaign_id)
+
+
+class _JournalSummary:
+    def __init__(self, entries: tuple[Any, ...]) -> None:
+        closed = tuple(item for item in entries if getattr(item, "status", None) == "closed" and getattr(item, "realized_r", None) is not None)
+        self.total_journaled_trades = len(entries)
+        self.open_trades = sum(getattr(item, "status", None) == "open" for item in entries)
+        self.closed_trades = len(closed)
+        self.total_r = round(sum(float(getattr(item, "realized_r", 0.0) or 0.0) for item in closed), 6)
+        self.realized_pl = round(sum(float(getattr(item, "realized_pl", 0.0) or 0.0) for item in closed), 6)
+
+
+def _journal_summary_from_entries(entries: tuple[Any, ...]) -> _JournalSummary:
+    return _JournalSummary(entries)
 
 
 def _find(items: tuple[Any, ...], trade_id: str) -> Any | None:

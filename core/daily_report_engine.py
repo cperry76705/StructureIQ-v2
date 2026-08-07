@@ -67,6 +67,13 @@ class DailyPaperTradingReport:
     recommended_actions: tuple[str, ...]
     human_readable_summary: str
     campaign_id: str | None = None
+    report_scope: str = "global"
+    journal_record_count: int = 0
+    closed_trade_count: int = 0
+    open_trade_count: int = 0
+    realized_r: float = 0.0
+    unrealized_r: float = 0.0
+    total_r: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -191,7 +198,12 @@ class DailyReportEngine:
         )
 
     def _build(self, day: date) -> DailyPaperTradingReport:
-        records = self.journal.entries()
+        campaign_id = _current_campaign_id()
+        all_records = self.journal.entries()
+        records = tuple(
+            item for item in all_records
+            if campaign_id is None or getattr(item, "campaign_id", None) == campaign_id
+        )
         closed = tuple(item for item in records if item.status == "closed" and _same_day(item.closed_at, day))
         open_records = tuple(item for item in records if item.status == "open" and _opened_by(item.opened_at, day))
         lifecycle_only = tuple(
@@ -257,7 +269,14 @@ class DailyReportEngine:
             readiness_summary=jsonable_encoder(self.readiness_context) if self.readiness_context is not None else {"status": "unavailable"},
             key_findings=findings, recommended_actions=actions,
             human_readable_summary=_human_summary(status, summary),
-            campaign_id=_current_campaign_id(),
+            campaign_id=campaign_id,
+            report_scope="campaign" if campaign_id else "global",
+            journal_record_count=len(records),
+            closed_trade_count=len(closed),
+            open_trade_count=len(open_records),
+            realized_r=summary.total_r,
+            unrealized_r=0.0,
+            total_r=summary.total_r,
         )
 
     def _path(self, day: date) -> Path:
@@ -337,6 +356,13 @@ def _current_campaign_id() -> str | None:
 
 
 def _report_from_dict(raw: dict[str, Any]) -> DailyPaperTradingReport:
+    raw.setdefault("report_scope", "campaign" if raw.get("campaign_id") else "global")
+    raw.setdefault("journal_record_count", len(raw.get("trades", ())) + len(raw.get("open_positions", ())))
+    raw.setdefault("closed_trade_count", raw.get("summary", {}).get("closed_trades", 0))
+    raw.setdefault("open_trade_count", raw.get("summary", {}).get("open_trades", 0))
+    raw.setdefault("realized_r", raw.get("summary", {}).get("total_r", 0.0))
+    raw.setdefault("unrealized_r", 0.0)
+    raw.setdefault("total_r", raw.get("summary", {}).get("total_r", 0.0))
     return DailyPaperTradingReport(
         **{**raw, "summary": DailyReportSummary(**raw["summary"]),
            "trades": tuple(raw.get("trades", ())), "open_positions": tuple(raw.get("open_positions", ())),

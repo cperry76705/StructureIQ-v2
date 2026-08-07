@@ -1,5 +1,12 @@
 # StructureIQ Roadmap
 
+## Version 6.0.11 — Validation Baseline Cleanup and Candidate Diagnostics (implemented)
+
+- Campaign-aware console output, scoped reconciliation, orphan classifications, and legacy import audit.
+- Campaign-scoped summary/report labeling and append-only candidate-pipeline diagnostics.
+- Explicit `--auto-approve` / `--no-auto-approve` validation CLI controls.
+- No trading logic, thresholds, routing, risk, fills, exits, or live-trading behavior changes.
+
 ## Version 6.0.10 — Durable Paper Runtime State and Validation Campaigns (implemented)
 
 - Durable paper brokerage and lifecycle snapshots for restart-safe multi-day validation.

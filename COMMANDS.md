@@ -4,9 +4,11 @@
 
 ```powershell
 .\.venv\Scripts\python.exe start.py --paper --hours 2 --label "Auto Approval Validation" --auto-approve-paper --max-trades-per-cycle 1 --max-candidates-per-cycle 3 --order-type limit_retest
+python start.py --paper --hours 2 --campaign-name "Recovery Validation 2" --auto-approve
+python start.py --paper --hours 24 --campaign-name "Stability Validation" --no-auto-approve
 ```
 
-Auto-approval is off unless `--auto-approve-paper` is present. Simulated market orders additionally require `--allow-market-orders --order-type market`.
+Auto-approval is off unless `--auto-approve-paper` or `--auto-approve` is present. `--no-auto-approve` forces manual approval for that run. Simulated market orders additionally require `--allow-market-orders --order-type market`.
 
 Full manual: [docs/Operations/README.md](docs/Operations/README.md)
 
@@ -61,16 +63,23 @@ Invoke-RestMethod http://localhost:8000/dashboard/overview
 Invoke-RestMethod http://localhost:8000/dashboard/risks
 Invoke-RestMethod http://localhost:8000/paper-journal/summary
 Invoke-RestMethod http://localhost:8000/candidate-diagnostics/summary
+Invoke-RestMethod http://localhost:8000/candidate-diagnostics/rejections
+Invoke-RestMethod http://localhost:8000/candidate-diagnostics/cycles/<cycle_id>
 Invoke-RestMethod http://localhost:8000/candidate-diagnostics/near-misses?limit=20
 Invoke-RestMethod http://localhost:8000/calibration-analytics/summary
 Invoke-RestMethod http://localhost:8000/calibration-analytics/conversion-funnel
 Invoke-RestMethod http://localhost:8000/paper-reconciliation/status
+Invoke-RestMethod "http://localhost:8000/paper-reconciliation/summary?scope=active_campaign"
+Invoke-RestMethod "http://localhost:8000/paper-reconciliation/discrepancies?scope=campaign&campaign_id=<campaign_id>"
 Invoke-RestMethod http://localhost:8000/paper-reconciliation/discrepancies
 Invoke-RestMethod -Method Post http://localhost:8000/paper-reconciliation/run
 Invoke-RestMethod http://localhost:8000/paper-recovery/status
 Invoke-RestMethod -Method Post http://localhost:8000/paper-recovery/run
 Invoke-RestMethod http://localhost:8000/campaigns
 Invoke-RestMethod http://localhost:8000/campaigns/current
+Invoke-RestMethod http://localhost:8000/campaigns/legacy_campaign/audit
+Invoke-RestMethod -Method Post http://localhost:8000/campaigns/<campaign_id>/refresh-summary
+Invoke-RestMethod http://localhost:8000/campaigns/<campaign_id>/candidate-diagnostics
 ```
 
 ## Git

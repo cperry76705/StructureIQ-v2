@@ -52,6 +52,52 @@ class CampaignSummary:
     drawdown: float
     legacy_import: bool
     human_readable_summary: str
+    open_trades: int = 0
+    closed_trades: int = 0
+    wins: int = 0
+    losses: int = 0
+    breakeven: int = 0
+    realized_r: float = 0.0
+    unrealized_r: float = 0.0
+
+
+@dataclass(frozen=True)
+class LegacyCampaignAuditRow:
+    trade_id: str
+    campaign_id: str | None
+    journal_status: str
+    included_in_legacy_campaign: bool
+    excluded_from_legacy_campaign: bool
+    exclusion_reason: str | None
+    realized_r: float | None
+    opened_at: str | None
+    closed_at: str | None
+
+
+@dataclass(frozen=True)
+class LegacyCampaignAudit:
+    journal_record_count: int
+    legacy_campaign_trade_count: int
+    journal_closed_count: int
+    journal_open_count: int
+    journal_total_r: float
+    legacy_campaign_total_r: float
+    count_difference: int
+    r_difference: float
+    unassigned_trade_count: int
+    post_import_trade_count: int
+    mismatched_trade_ids: tuple[str, ...]
+    rows: tuple[LegacyCampaignAuditRow, ...]
+    human_readable_summary: str
+
+
+@dataclass(frozen=True)
+class CampaignSummaryRefreshResult:
+    campaign_id: str
+    refreshed_at: str
+    before: CampaignSummary
+    after: CampaignSummary
+    human_readable_summary: str
 
 
 class ValidationCampaignManager:
@@ -141,18 +187,13 @@ class ValidationCampaignManager:
         campaign = self.get(campaign_id)
         if campaign is None:
             raise KeyError("campaign was not found")
-        entries = self.journal.entries() if self.journal is not None else ()
-        filtered = [
-            item for item in entries
-            if getattr(item, "campaign_id", None) in {campaign_id, None if campaign.legacy_import else campaign_id}
-            and (campaign.legacy_import or getattr(item, "campaign_id", None) == campaign_id)
-        ]
-        if campaign.legacy_import:
-            filtered = list(entries)
+        filtered = list(self._campaign_entries(campaign))
         closed = [item for item in filtered if item.status == "closed" and item.realized_r is not None]
+        open_trades = [item for item in filtered if item.status == "open"]
         returns = [float(item.realized_r) for item in closed]
         wins = sum(value > 0 for value in returns)
         losses = sum(value < 0 for value in returns)
+        breakeven = len(returns) - wins - losses
         drawdown = _max_drawdown(returns)
         return CampaignSummary(
             campaign_id=campaign_id,
@@ -167,18 +208,92 @@ class ValidationCampaignManager:
             drawdown=drawdown,
             legacy_import=campaign.legacy_import,
             human_readable_summary=f"Campaign {campaign.name} has {len(closed)} closed journal trades and {sum(returns):+.2f}R.",
+            open_trades=len(open_trades),
+            closed_trades=len(closed),
+            wins=wins,
+            losses=losses,
+            breakeven=breakeven,
+            realized_r=round(sum(returns), 6),
+            unrealized_r=0.0,
         )
 
     def journal_rows(self, campaign_id: str) -> tuple[dict[str, Any], ...]:
         campaign = self.get(campaign_id)
         if campaign is None or self.journal is None:
             return ()
-        entries = self.journal.entries()
-        if campaign.legacy_import:
-            selected = entries
-        else:
-            selected = tuple(item for item in entries if getattr(item, "campaign_id", None) == campaign_id)
+        selected = self._campaign_entries(campaign)
         return tuple(jsonable_encoder(item) for item in selected)
+
+    def legacy_audit(self) -> LegacyCampaignAudit:
+        campaign = self.get("legacy_campaign")
+        if campaign is None:
+            raise KeyError("legacy campaign was not found")
+        current = tuple(self.journal.entries()) if self.journal is not None else ()
+        imported = tuple(self._campaign_entries(campaign))
+        imported_ids = {getattr(item, "trade_id", None) for item in imported}
+        rows: list[LegacyCampaignAuditRow] = []
+        mismatches: list[str] = []
+        for entry in current:
+            included = getattr(entry, "trade_id", None) in imported_ids
+            reason = None
+            if not included:
+                if getattr(entry, "campaign_id", None) not in {None, "legacy_campaign"}:
+                    reason = "record belongs to a post-import validation campaign"
+                elif getattr(entry, "status", None) not in {"open", "closed"}:
+                    reason = "record is a lifecycle-only non-trade journal row"
+                else:
+                    reason = "record was created after the legacy import snapshot"
+                mismatches.append(str(getattr(entry, "trade_id", "")))
+            rows.append(LegacyCampaignAuditRow(
+                trade_id=str(getattr(entry, "trade_id", "")),
+                campaign_id=getattr(entry, "campaign_id", None),
+                journal_status=str(getattr(entry, "status", "")),
+                included_in_legacy_campaign=included,
+                excluded_from_legacy_campaign=not included,
+                exclusion_reason=reason,
+                realized_r=getattr(entry, "realized_r", None),
+                opened_at=getattr(entry, "opened_at", None),
+                closed_at=getattr(entry, "closed_at", None),
+            ))
+        current_closed = [item for item in current if getattr(item, "status", None) == "closed" and getattr(item, "realized_r", None) is not None]
+        imported_closed = [item for item in imported if getattr(item, "status", None) == "closed" and getattr(item, "realized_r", None) is not None]
+        journal_total = round(sum(float(item.realized_r or 0) for item in current_closed), 6)
+        legacy_total = round(sum(float(item.realized_r or 0) for item in imported_closed), 6)
+        return LegacyCampaignAudit(
+            journal_record_count=len(current),
+            legacy_campaign_trade_count=len(imported_closed),
+            journal_closed_count=len(current_closed),
+            journal_open_count=sum(getattr(item, "status", None) == "open" for item in current),
+            journal_total_r=journal_total,
+            legacy_campaign_total_r=legacy_total,
+            count_difference=len(current) - len(imported_closed),
+            r_difference=round(journal_total - legacy_total, 6),
+            unassigned_trade_count=sum(getattr(item, "campaign_id", None) is None for item in current),
+            post_import_trade_count=sum(getattr(item, "campaign_id", None) not in {None, "legacy_campaign"} for item in current),
+            mismatched_trade_ids=tuple(mismatches),
+            rows=tuple(rows),
+            human_readable_summary=(
+                f"Legacy campaign snapshot contains {len(imported_closed)} closed trades for {legacy_total:+.2f}R; "
+                f"the current journal contains {len(current)} records and {journal_total:+.2f}R. "
+                "Differences are listed per trade without mutating journal history."
+            ),
+        )
+
+    def refresh_summary(self, campaign_id: str) -> CampaignSummaryRefreshResult:
+        before = self.summary(campaign_id)
+        campaign = self.get(campaign_id)
+        if campaign is None:
+            raise KeyError("campaign was not found")
+        refreshed = self.summary(campaign_id)
+        self._write_json(self.root / campaign_id / "summary.json", refreshed)
+        self._write_json(self.root / campaign_id / "metrics.json", {"refreshed_at": _now(), **jsonable_encoder(refreshed)})
+        return CampaignSummaryRefreshResult(
+            campaign_id=campaign_id,
+            refreshed_at=_now(),
+            before=before,
+            after=refreshed,
+            human_readable_summary=f"Campaign {campaign_id} summary was refreshed from campaign-scoped journal data.",
+        )
 
     def writable(self) -> bool:
         try:
@@ -264,6 +379,36 @@ class ValidationCampaignManager:
     def _write_json(self, path: Path, value: Any) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(jsonable_encoder(value), indent=2), encoding="utf-8")
+
+    def _campaign_entries(self, campaign: ValidationCampaign) -> tuple[Any, ...]:
+        if campaign.legacy_import:
+            imported = self._journal_snapshot(campaign.campaign_id)
+            if imported:
+                return imported
+        entries = self.journal.entries() if self.journal is not None else ()
+        if campaign.legacy_import:
+            return tuple(item for item in entries if getattr(item, "campaign_id", None) in {None, "legacy_campaign"})
+        return tuple(item for item in entries if getattr(item, "campaign_id", None) == campaign.campaign_id)
+
+    def _journal_snapshot(self, campaign_id: str) -> tuple[Any, ...]:
+        path = self.root / campaign_id / "journal.jsonl"
+        if not path.exists():
+            return ()
+        rows = []
+        try:
+            for line in path.read_text(encoding="utf-8").splitlines():
+                raw = json.loads(line)
+                if isinstance(raw, dict) and "entry" in raw:
+                    raw = raw["entry"]
+                rows.append(_SnapshotEntry(raw))
+        except (OSError, json.JSONDecodeError, TypeError, ValueError):
+            return ()
+        return tuple(rows)
+
+
+class _SnapshotEntry:
+    def __init__(self, raw: dict[str, Any]) -> None:
+        self.__dict__.update(raw)
 
 
 def _campaign_id(name: str, now: str) -> str:

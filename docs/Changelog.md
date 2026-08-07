@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 6.0.11 — Validation Baseline Cleanup and Candidate Diagnostics — 2026-07-23
+
+- Added scoped paper reconciliation for global, active campaign, legacy, and explicit campaign queries.
+- Added orphan classifications so expected legacy pre-persistence drift is separated from current runtime recovery issues.
+- Added legacy campaign audit and safe campaign summary refresh endpoints.
+- Added campaign-scoped daily report labels and candidate-pipeline cycle diagnostics with zero-candidate explanations.
+- Added `--auto-approve` and `--no-auto-approve` CLI aliases and campaign-aware startup output.
+- Trading logic, thresholds, scoring, strategy routing, fills, exits, risk, lifecycle rules, and live trading behavior remain unchanged.
+
 ## Version 6.0.10 — Durable Paper Runtime State and Validation Campaigns — 2026-07-23
 
 - Added durable paper account, open-position, closed-trade, and lifecycle state storage for restart-safe paper validation.
