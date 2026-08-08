@@ -27,6 +27,7 @@ from core.paper_brokerage import PaperBrokerageEngine
 from core.paper_trade_journal import PaperTradeJournal
 from core.paper_state_reconciliation import PaperStateReconciliationEngine
 from core.paper_trading_orchestrator import PaperTradingOrchestrator, PaperTradingOrchestratorConfig
+from core.recovery_test_harness import RecoveryTestHarness
 from core.trade_lifecycle_manager import TradeLifecycleManager
 from models.schemas import AnalysisRequest
 
@@ -82,6 +83,12 @@ class SystemValidationHarness:
         "/paper-recovery/status",
         "/campaigns",
         "/campaigns/legacy_campaign/audit",
+        "/recovery-test/status",
+        "/recovery-test/create-pending-order",
+        "/recovery-test/create-open-trade",
+        "/recovery-test/snapshot",
+        "/recovery-test/verify-after-restart",
+        "/recovery-test/cleanup",
     }
 
     def __init__(
@@ -146,6 +153,7 @@ class SystemValidationHarness:
             ("Paper State Reconciliation", self._paper_reconciliation),
             ("Paper Runtime Recovery", self._paper_recovery),
             ("Validation Campaigns", self._campaigns),
+            ("Recovery Test Harness", self._recovery_test_harness),
             ("Dashboard", self._dashboard),
             ("Observability", self._observability),
             ("API Registration", self._api_registration),
@@ -427,6 +435,32 @@ class SystemValidationHarness:
         except Exception as exc:
             return _watch((f"Legacy campaign audit is unavailable: {exc}",), "Validation Campaign storage is available but legacy audit needs review.")
         return _pass("Validation Campaign storage is available and readable.")
+
+    def _recovery_test_harness(self):
+        from core.paper_recovery import PaperRecoveryEngine
+        campaigns = self.campaigns
+        reconciliation = self.reconciliation or PaperStateReconciliationEngine(
+            broker=self.broker, lifecycle=self.lifecycle, journal=self.journal,
+            reports=self.reports, orchestrator=self.orchestrator, campaigns=campaigns,
+        )
+        recovery = self.recovery or PaperRecoveryEngine(
+            broker=self.broker, lifecycle=self.lifecycle, journal=self.journal,
+            reconciliation=reconciliation,
+        )
+        harness = RecoveryTestHarness(
+            broker=self.broker,
+            lifecycle=self.lifecycle,
+            campaigns=campaigns,
+            reconciliation=reconciliation,
+            recovery=recovery,
+            reports_dir=Path(tempfile.gettempdir()) / "structureiq-validation-recovery-test",
+        )
+        if not harness.writable():
+            return _fail("Recovery Test Harness storage is not writable.")
+        account = self.broker.account()
+        if getattr(account, "paper_trading_enabled", False) or not getattr(account, "advisory_only", True):
+            return _fail("Recovery Test Harness safety check failed; fixture creation would not be paper-only.")
+        return _pass("Recovery Test Harness is available, paper-only, writable, and validation did not create fixtures.")
 
     def _observability(self):
         report = self.health_engine.check(write_log=False)

@@ -12,6 +12,16 @@ Auto-approval is off unless `--auto-approve-paper` or `--auto-approve` is presen
 
 Full manual: [docs/Operations/README.md](docs/Operations/README.md)
 
+## Deterministic recovery infrastructure test
+
+```powershell
+.\.venv\Scripts\python.exe start.py --recovery-test-create
+.\.venv\Scripts\python.exe start.py --recovery-test-verify
+.\.venv\Scripts\python.exe start.py --recovery-test-cleanup
+```
+
+The harness creates only tagged synthetic paper fixtures and excludes them from normal performance, campaign, daily report, calibration, and research statistics.
+
 ## Environment and Startup
 
 ```powershell
@@ -75,6 +85,14 @@ Invoke-RestMethod http://localhost:8000/paper-reconciliation/discrepancies
 Invoke-RestMethod -Method Post http://localhost:8000/paper-reconciliation/run
 Invoke-RestMethod http://localhost:8000/paper-recovery/status
 Invoke-RestMethod -Method Post http://localhost:8000/paper-recovery/run
+Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/create-pending-order
+Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/create-open-trade
+Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/create-closed-trade
+Invoke-RestMethod http://localhost:8000/recovery-test/status
+Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/snapshot
+Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/verify-after-restart
+Invoke-RestMethod http://localhost:8000/recovery-test/history
+Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/cleanup
 Invoke-RestMethod http://localhost:8000/campaigns
 Invoke-RestMethod http://localhost:8000/campaigns/current
 Invoke-RestMethod http://localhost:8000/campaigns/legacy_campaign/audit

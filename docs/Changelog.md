@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 6.0.12 — Deterministic Paper Recovery Test Harness — 2026-08-08
+
+- Added paper-only recovery-test fixtures for pending orders, open trades, and closed trades.
+- Added snapshot, restart verification, history, cleanup, API, CLI, dashboard, and system validation support for recovery infrastructure tests.
+- Synthetic fixtures use real durable paper brokerage and lifecycle persistence while carrying explicit performance/research/campaign/report exclusion flags.
+- Cleanup removes only explicitly tagged synthetic fixtures and refuses to infer from ID prefixes alone.
+- Normal strategy, scoring, thresholds, candidate creation, risk, fill, exit, broker, GPT, email, and live-trading behavior remain unchanged.
+
 ## Version 6.0.11 — Validation Baseline Cleanup and Candidate Diagnostics — 2026-07-23
 
 - Added scoped paper reconciliation for global, active campaign, legacy, and explicit campaign queries.

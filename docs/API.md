@@ -2,7 +2,30 @@
 
 ## Overview
 
-StructureIQ `6.0.11` exposes a FastAPI HTTP interface for analysis, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.12` exposes a FastAPI HTTP interface for analysis, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+
+### Deterministic recovery test harness
+
+Version 6.0.12 adds a paper-only infrastructure harness for proving durable recovery without waiting for natural market candidates. Synthetic fixtures are written through paper brokerage and lifecycle persistence, tagged as `test_fixture=true`, and excluded from performance, calibration, campaign, daily report, dashboard performance, and research statistics.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/recovery-test/create-pending-order` | Create a synthetic pending paper order. |
+| `POST` | `/recovery-test/create-open-trade` | Create a synthetic open paper trade. |
+| `POST` | `/recovery-test/create-closed-trade` | Create a synthetic closed paper trade for persistence checks only. |
+| `GET` | `/recovery-test/status` | Show active recovery-test campaign and fixture counts. |
+| `POST` | `/recovery-test/snapshot` | Persist `reports/recovery_test_snapshot.json` before restart. |
+| `POST` | `/recovery-test/verify-after-restart` | Compare recovered state against the snapshot. |
+| `GET` | `/recovery-test/history` | Read append-only `reports/recovery_test_history.jsonl`. |
+| `POST` | `/recovery-test/cleanup` | Remove only explicitly tagged recovery-test fixtures. |
+
+Recommended sequence:
+
+```powershell
+.\.venv\Scripts\python.exe start.py --recovery-test-create
+.\.venv\Scripts\python.exe start.py --recovery-test-verify
+.\.venv\Scripts\python.exe start.py --recovery-test-cleanup
+```
 
 ### Validation cleanup and campaign-scoped diagnostics
 
@@ -129,7 +152,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.11",
+  "app_version": "6.0.12",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,

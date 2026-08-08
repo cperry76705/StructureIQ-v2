@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi.encoders import jsonable_encoder
 
-from core.paper_brokerage import PaperAccount, PaperBrokerageEngine, PaperTrade
+from core.paper_brokerage import PaperAccount, PaperBrokerageEngine, PaperTrade, is_synthetic_recovery_fixture
 from core.trade_lifecycle_manager import LifecycleEvent, TradeLifecycleManager
 
 
@@ -57,11 +57,21 @@ class PaperTradeJournalEntry:
     rule_violations: tuple[str, ...]
     human_readable_summary: str
     campaign_id: str | None = None
+    test_fixture: bool = False
+    synthetic_recovery_test: bool = False
+    exclude_from_performance: bool = False
+    exclude_from_calibration: bool = False
+    exclude_from_campaign_metrics: bool = False
+    exclude_from_daily_reports: bool = False
+    exclude_from_research: bool = False
 
 
 @dataclass(frozen=True)
 class PaperTradeJournalSummary:
     total_journaled_trades: int
+    real_trades: int
+    synthetic_test_trades: int
+    performance_trade_count: int
     open_trades: int
     closed_trades: int
     wins: int
@@ -116,7 +126,8 @@ class PaperTradeJournal:
 
     def summary(self) -> PaperTradeJournalSummary:
         records = self.entries()
-        closed = [item for item in records if item.status == "closed" and item.realized_r is not None]
+        performance_records = [item for item in records if not _excluded_from_performance(item)]
+        closed = [item for item in performance_records if item.status == "closed" and item.realized_r is not None]
         returns = [float(item.realized_r) for item in closed]
         wins = sum(value > 0 for value in returns); losses = sum(value < 0 for value in returns)
         breakeven = len(returns) - wins - losses
@@ -124,7 +135,10 @@ class PaperTradeJournal:
         warnings = [warning for item in records for warning in item.warnings]
         return PaperTradeJournalSummary(
             total_journaled_trades=len(records),
-            open_trades=sum(item.status == "open" for item in records),
+            real_trades=len(performance_records),
+            synthetic_test_trades=sum(_excluded_from_performance(item) for item in records),
+            performance_trade_count=len(performance_records),
+            open_trades=sum(item.status == "open" for item in performance_records),
             closed_trades=len(closed), wins=wins, losses=losses, breakeven=breakeven,
             win_rate=round(wins / len(closed) * 100, 6) if closed else 0.0,
             total_r=round(sum(returns), 6),
@@ -136,8 +150,8 @@ class PaperTradeJournal:
             best_strategy=_best_group(closed, "strategy", True), worst_strategy=_best_group(closed, "strategy", False),
             average_setup_quality=round(mean(qualities), 3) if qualities else None,
             most_common_warning=Counter(warnings).most_common(1)[0][0] if warnings else None,
-            rule_violation_count=sum(len(item.rule_violations) for item in records),
-            human_readable_summary=f"Paper journal contains {len(records)} trades, {len(closed)} closed, with {sum(returns):.2f}R total performance.",
+            rule_violation_count=sum(len(item.rule_violations) for item in performance_records),
+            human_readable_summary=f"Paper journal contains {len(records)} records, {len(performance_records)} real trades, and {sum(returns):.2f}R total performance.",
         )
 
     def rebuild_from_paper_state(self) -> PaperTradeJournalSummary:
@@ -179,8 +193,9 @@ class PaperTradeJournal:
             warnings = existing.warnings if existing else ()
             violations = existing.rule_violations if existing else ()
             metadata = trade.metadata or {}
+            flags = _fixture_flags(metadata)
             if event_type == "paper_trade_opened":
-                campaign_id = _current_campaign_id()
+                campaign_id = metadata.get("campaign_id") or _current_campaign_id()
                 entry = PaperTradeJournalEntry(
                     journal_id=_journal_id(trade.trade_id), trade_id=trade.trade_id,
                     source_event_id=trade.source_event_id, symbol=trade.symbol,
@@ -199,6 +214,7 @@ class PaperTradeJournal:
                     lifecycle_events=lifecycle_history, warnings=warnings, rule_violations=violations,
                     human_readable_summary=f"Paper trade opened from {trade.symbol} {trade.timeframe} {trade.setup} setup.",
                     campaign_id=campaign_id,
+                    **flags,
                 )
                 if existing_key and existing_key != trade.trade_id:
                     self._entries.pop(existing_key, None)
@@ -240,7 +256,8 @@ class PaperTradeJournal:
                     adaptive_strategy_router=None, strategy_rating=None, setup_rating=None,
                     lifecycle_events=(), warnings=(), rule_violations=(),
                     human_readable_summary=f"Lifecycle record is {event.state_after}: {event.message}",
-                    campaign_id=_current_campaign_id(),
+                    campaign_id=event.metadata.get("campaign_id") or _current_campaign_id(),
+                    **_fixture_flags(event.metadata),
                 )
                 if event.source_event_id:
                     self._source_index[event.source_event_id] = key
@@ -278,6 +295,13 @@ class PaperTradeJournal:
                 raw["warnings"] = tuple(raw.get("warnings", ()))
                 raw["rule_violations"] = tuple(raw.get("rule_violations", ()))
                 raw.setdefault("campaign_id", None)
+                raw.setdefault("test_fixture", False)
+                raw.setdefault("synthetic_recovery_test", False)
+                raw.setdefault("exclude_from_performance", False)
+                raw.setdefault("exclude_from_calibration", False)
+                raw.setdefault("exclude_from_campaign_metrics", False)
+                raw.setdefault("exclude_from_daily_reports", False)
+                raw.setdefault("exclude_from_research", False)
                 entry = PaperTradeJournalEntry(**raw)
                 self._entries[entry.trade_id] = entry
                 if entry.source_event_id:
@@ -298,6 +322,22 @@ def _best_group(records, field: str, best: bool) -> str | None:
 
 def _dict(value: Any) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
+
+
+def _fixture_flags(metadata: dict[str, Any]) -> dict[str, bool]:
+    return {
+        "test_fixture": bool(metadata.get("test_fixture")),
+        "synthetic_recovery_test": bool(metadata.get("synthetic_recovery_test")),
+        "exclude_from_performance": bool(metadata.get("exclude_from_performance")),
+        "exclude_from_calibration": bool(metadata.get("exclude_from_calibration")),
+        "exclude_from_campaign_metrics": bool(metadata.get("exclude_from_campaign_metrics")),
+        "exclude_from_daily_reports": bool(metadata.get("exclude_from_daily_reports")),
+        "exclude_from_research": bool(metadata.get("exclude_from_research")),
+    }
+
+
+def _excluded_from_performance(value: Any) -> bool:
+    return bool(getattr(value, "exclude_from_performance", False) or is_synthetic_recovery_fixture(value))
 
 
 def _close_reason(events: tuple[dict[str, Any], ...]) -> str:

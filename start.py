@@ -422,6 +422,9 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--no-browser", action="store_true", help="Never open a browser window.")
     parser.add_argument("--urls", action="store_true", help="Print useful localhost URLs and exit.")
     parser.add_argument("--paper", action="store_true", help="Run an explicitly controlled paper-only session.")
+    parser.add_argument("--recovery-test-create", action="store_true", help="Create deterministic paper recovery fixtures and snapshot them.")
+    parser.add_argument("--recovery-test-verify", action="store_true", help="Verify recovery fixtures after a restart.")
+    parser.add_argument("--recovery-test-cleanup", action="store_true", help="Remove explicitly tagged recovery-test fixtures.")
     parser.add_argument("--auto-approve-paper", action="store_true", help="Enable gated paper-only candidate auto-approval.")
     parser.add_argument("--auto-approve", action="store_true", help="Enable gated paper-only candidate auto-approval for this run.")
     parser.add_argument("--no-auto-approve", action="store_true", help="Disable paper candidate auto-approval for this run.")
@@ -625,6 +628,85 @@ def run_paper_mode(
         _stop_process(process)
 
 
+def run_recovery_test_mode(
+    action: str,
+    *,
+    process_factory=None,
+    api_call=_api_json,
+    sleep=time.sleep,
+    port_available=None,
+) -> int:
+    """Drive the deterministic paper recovery test harness through the API."""
+
+    started_process = None
+    try:
+        if (port_available or is_local_port_available)():
+            print("Starting API...")
+            factory = process_factory or subprocess.Popen
+            started_process = factory(build_uvicorn_command(reload=False), cwd=str(PROJECT_ROOT))
+            if not wait_for_local_api(api_call=api_call, sleep=sleep):
+                print("Local API did not become ready in time.")
+                return 2
+        else:
+            api_call("/health")
+
+        if action == "create":
+            pending = api_call("/recovery-test/create-pending-order", method="POST", payload={})
+            trade = api_call("/recovery-test/create-open-trade", method="POST", payload={})
+            snapshot = api_call("/recovery-test/snapshot", method="POST")
+            print("StructureIQ Recovery Test")
+            print()
+            print(f"Campaign: {snapshot.get('campaign_id')}")
+            print()
+            print("Pending Order:")
+            print(f"Order ID: {pending.get('order_id')}")
+            print()
+            print("Open Trade:")
+            print(f"Trade ID: {trade.get('trade_id')}")
+            print()
+            print(f"Snapshot: {snapshot.get('snapshot_status')}")
+            print()
+            print("Now:")
+            print("1. Press CTRL+C")
+            print("2. Restart StructureIQ")
+            print("3. Run:")
+            print("   python start.py --recovery-test-verify")
+            return 0 if snapshot.get("snapshot_status") in {"PASS", "WATCHLIST"} else 2
+
+        if action == "verify":
+            api_call("/paper-recovery/run", method="POST")
+            api_call("/paper-reconciliation/run", method="POST")
+            result = api_call("/recovery-test/verify-after-restart", method="POST")
+            print("StructureIQ Recovery Test Verification")
+            print(f"Status: {result.get('status')}")
+            print(f"Pending Orders: {result.get('pending_orders_recovered')}/{result.get('pending_orders_expected')}")
+            print(f"Open Trades: {result.get('open_trades_recovered')}/{result.get('open_trades_expected')}")
+            print(f"Order IDs Match: {str(bool(result.get('order_ids_match'))).lower()}")
+            print(f"Trade IDs Match: {str(bool(result.get('trade_ids_match'))).lower()}")
+            print(f"Price Geometry Match: {str(bool(result.get('price_geometry_match'))).lower()}")
+            print(f"Lifecycle State Match: {str(bool(result.get('lifecycle_state_match'))).lower()}")
+            print(result.get("human_readable_summary"))
+            return {"PASS": 0, "WATCHLIST": 1, "FAIL": 2}.get(str(result.get("status")), 2)
+
+        if action == "cleanup":
+            result = api_call("/recovery-test/cleanup", method="POST")
+            print("StructureIQ Recovery Test Cleanup")
+            print(f"Status: {result.get('status')}")
+            print(f"Fixtures Archived: {result.get('fixtures_archived')}")
+            print(f"Active Test Fixtures Remaining: {result.get('active_test_fixtures_remaining')}")
+            print(result.get("human_readable_summary"))
+            return 0 if result.get("status") == "PASS" else 1
+
+        print(f"Unknown recovery-test action: {action}")
+        return 2
+    except Exception as exc:
+        print(f"Recovery test failed safely: {exc}")
+        return 2
+    finally:
+        if started_process is not None:
+            _stop_process(started_process)
+
+
 def _print_final_paper_summary(status: dict, *, api_call=_api_json) -> None:
     summary = status.get("final_session_summary") or {}
     print("\nPaper trading session completed.")
@@ -696,6 +778,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"StructureIQ v{version}")
         exit_code = run_paper_mode(args)
         write_startup_log(result="paper_session", argv=raw_argv, version=version, details=f"exit_code={exit_code}")
+        return exit_code
+    recovery_modes = [
+        flag for flag, enabled in (
+            ("create", args.recovery_test_create),
+            ("verify", args.recovery_test_verify),
+            ("cleanup", args.recovery_test_cleanup),
+        )
+        if enabled
+    ]
+    if recovery_modes:
+        if len(recovery_modes) > 1:
+            print("Choose only one recovery-test mode.")
+            return 2
+        print(f"StructureIQ v{version}")
+        exit_code = run_recovery_test_mode(recovery_modes[0])
+        write_startup_log(result=f"recovery_test_{recovery_modes[0]}", argv=raw_argv, version=version, details=f"exit_code={exit_code}")
         return exit_code
     print_banner(version)
     print_health(health)

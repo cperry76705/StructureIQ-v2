@@ -338,6 +338,123 @@ class TradeLifecycleManager:
     def closed_trades(self) -> tuple[PaperTrade, ...]:
         return tuple(item for item in self.broker.closed_trades() if item.trade_id in self._managed_trade_ids)
 
+    def create_recovery_test_pending_order(
+        self,
+        *,
+        fixture_id: str,
+        campaign_id: str,
+        symbol: str,
+        timeframe: str,
+        higher_timeframe: str,
+        action: str,
+        setup: str,
+        strategy: str,
+        order_type: OrderType,
+        entry_price: float,
+        stop_loss: float,
+        target: float,
+        risk_per_trade_percent: float,
+        metadata: dict[str, Any],
+    ) -> PendingPaperOrder:
+        """Create an explicitly tagged synthetic pending order for recovery testing."""
+
+        with self._lock:
+            _validate_geometry(action, entry_price, stop_loss, target)
+            now = _now()
+            source_event_id = metadata.get("source_event_id") or fixture_id
+            order_id = metadata.get("order_id") or hashlib.sha256(f"recovery-test-order:{fixture_id}".encode()).hexdigest()[:24]
+            payload = {**metadata, "fixture_id": fixture_id, "campaign_id": campaign_id}
+            order = PendingPaperOrder(
+                order_id=order_id,
+                source_event_id=source_event_id,
+                symbol=symbol,
+                timeframe=timeframe,
+                higher_timeframe=higher_timeframe,
+                action=action,
+                setup=setup,
+                strategy=strategy,
+                order_type=order_type.value,
+                entry_price=float(entry_price),
+                stop_loss=float(stop_loss),
+                target=float(target),
+                created_at=now,
+                expires_after_candles=self.config.pending_order_expiration_candles,
+                candles_evaluated=0,
+                status="pending",
+                trade_id=None,
+                risk_per_trade_percent=risk_per_trade_percent,
+                metadata=payload,
+            )
+            self._orders[order_id] = order
+            self._processed_candidates.add(source_event_id)
+            self._append_event(
+                "recovery_test_pending_order_created",
+                symbol,
+                timeframe,
+                source_event_id,
+                None,
+                "candidate",
+                "pending",
+                "Synthetic recovery-test pending order created.",
+                {**payload, "order_id": order_id},
+            )
+            self._persist_state()
+            return order
+
+    def register_recovery_test_open_trade(self, trade: PaperTrade) -> None:
+        """Register an explicitly tagged synthetic open trade in lifecycle state."""
+
+        with self._lock:
+            metadata = dict(trade.metadata or {})
+            if not metadata.get("test_fixture"):
+                raise LifecycleError("recovery test lifecycle registration requires test_fixture=true")
+            self._managed_trade_ids.add(trade.trade_id)
+            self._trade_states[trade.trade_id] = "open" if trade.status == "open" else "closed"
+            self._append_event(
+                "recovery_test_trade_registered",
+                trade.symbol,
+                trade.timeframe,
+                trade.source_event_id,
+                trade.trade_id,
+                "filled" if trade.status == "open" else "open",
+                "open" if trade.status == "open" else "closed",
+                "Synthetic recovery-test trade registered in lifecycle state.",
+                metadata,
+            )
+            self._persist_state()
+
+    def remove_recovery_test_fixtures(self) -> int:
+        """Remove only explicitly tagged synthetic recovery-test lifecycle state."""
+
+        with self._lock:
+            fixture_trade_ids = {
+                trade.trade_id
+                for trade in (*self.broker.open_positions(), *self.broker.closed_trades())
+                if (trade.metadata or {}).get("test_fixture")
+            }
+            orders_before = len(self._orders)
+            self._orders = {
+                order_id: order
+                for order_id, order in self._orders.items()
+                if not (order.metadata or {}).get("test_fixture")
+            }
+            managed_before = len(self._managed_trade_ids)
+            self._managed_trade_ids = {
+                trade_id for trade_id in self._managed_trade_ids
+                if trade_id not in fixture_trade_ids
+            }
+            self._trade_states = {
+                trade_id: state for trade_id, state in self._trade_states.items()
+                if trade_id not in fixture_trade_ids
+            }
+            self._events = [
+                event for event in self._events
+                if not (event.metadata or {}).get("test_fixture")
+            ]
+            removed = (orders_before - len(self._orders)) + (managed_before - len(self._managed_trade_ids))
+            self._persist_state()
+            return removed
+
     def _fill_order(self, order: PendingPaperOrder, candidate: MonitorEvent) -> PendingPaperOrder:
         try:
             trade = self.broker.open_monitor_event(candidate, risk_per_trade_percent=order.risk_per_trade_percent)

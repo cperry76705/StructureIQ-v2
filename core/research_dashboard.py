@@ -24,6 +24,7 @@ from core.candidate_pipeline_diagnostics import current_candidate_pipeline_diagn
 from core.calibration_analytics import get_global_calibration_analytics
 from core.paper_state_reconciliation import latest_paper_reconciliation
 from core.paper_recovery import latest_paper_recovery
+from core.recovery_test_harness import latest_recovery_test_status
 from core.validation_campaigns import get_global_validation_campaign_manager
 
 
@@ -190,6 +191,13 @@ class DashboardOverview:
     candidate_pipeline_top_rejection_stage: str | None = None
     candidate_pipeline_top_rejection_reason: str | None = None
     historical_campaigns: int = 0
+    recovery_test_status: str = "unavailable"
+    recovery_test_campaign_id: str | None = None
+    recovery_test_pending_fixtures: int = 0
+    recovery_test_open_fixtures: int = 0
+    recovery_test_closed_fixtures: int = 0
+    recovery_test_ready_for_restart: bool = False
+    recovery_test_summary: str | None = None
 
 
 @dataclass(frozen=True)
@@ -446,6 +454,7 @@ class ResearchDashboardService:
         candidate_summary = diagnostic_engine.summary() if diagnostic_engine is not None else None
         pipeline_engine = current_candidate_pipeline_diagnostics()
         pipeline_summary = pipeline_engine.summary() if pipeline_engine is not None else None
+        recovery_test = latest_recovery_test_status()
         calibration_summary = get_global_calibration_analytics().summary()
         reconciliation = latest_paper_reconciliation()
         reconciliation_summary = getattr(reconciliation, "summary", None)
@@ -643,6 +652,13 @@ class ResearchDashboardService:
             candidate_pipeline_top_rejection_stage=top_stage,
             candidate_pipeline_top_rejection_reason=top_reason,
             historical_campaigns=len(campaign_manager.list_campaigns()),
+            recovery_test_status="ready" if getattr(recovery_test, "ready_for_restart_test", False) else "available" if recovery_test else "unavailable",
+            recovery_test_campaign_id=getattr(recovery_test, "active_test_campaign_id", None),
+            recovery_test_pending_fixtures=int(getattr(recovery_test, "pending_fixture_count", 0) or 0),
+            recovery_test_open_fixtures=int(getattr(recovery_test, "open_fixture_count", 0) or 0),
+            recovery_test_closed_fixtures=int(getattr(recovery_test, "closed_fixture_count", 0) or 0),
+            recovery_test_ready_for_restart=bool(getattr(recovery_test, "ready_for_restart_test", False)),
+            recovery_test_summary=getattr(recovery_test, "human_readable_summary", None),
         )
 
     def symbols(self) -> DashboardSymbols:

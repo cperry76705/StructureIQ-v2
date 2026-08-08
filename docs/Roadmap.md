@@ -1,5 +1,12 @@
 # StructureIQ Roadmap
 
+## Version 6.0.12 — Deterministic Paper Recovery Test Harness (implemented)
+
+- Synthetic paper-only pending order, open trade, and closed trade fixtures for restart recovery tests.
+- Pre-restart snapshots, post-restart verification, append-only history, cleanup, dashboard, system validation, and CLI helpers.
+- Explicit exclusion from performance, campaign, daily report, calibration, and research analytics.
+- No trading logic, candidate logic, thresholds, routing, risk, fills, exits, broker, GPT, email, or live-trading behavior changes.
+
 ## Version 6.0.11 — Validation Baseline Cleanup and Candidate Diagnostics (implemented)
 
 - Campaign-aware console output, scoped reconciliation, orphan classifications, and legacy import audit.

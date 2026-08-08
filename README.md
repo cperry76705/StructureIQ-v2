@@ -1,5 +1,20 @@
 # StructureIQ
 
+## Deterministic paper recovery test harness (v6.0.12)
+
+Version 6.0.12 adds a paper-only infrastructure harness for restart recovery validation. It can create explicitly tagged synthetic pending orders, open trades, and closed trades through the same durable paper brokerage and lifecycle persistence used by normal paper mode.
+
+Synthetic fixtures are marked `test_fixture=true`, `synthetic_recovery_test=true`, and excluded from performance, calibration, campaign metrics, daily reports, and research. They do not pass through strategy eligibility and never alter normal trading logic.
+
+Recommended recovery infrastructure test:
+
+```powershell
+.\.venv\Scripts\python.exe start.py --recovery-test-create
+# Stop/restart StructureIQ
+.\.venv\Scripts\python.exe start.py --recovery-test-verify
+.\.venv\Scripts\python.exe start.py --recovery-test-cleanup
+```
+
 ## Validation baseline cleanup and candidate diagnostics (v6.0.11)
 
 Version 6.0.11 improves validation hygiene without changing trading behavior:

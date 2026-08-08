@@ -145,7 +145,10 @@ class PaperStateReconciliationEngine:
         lifecycle_open = tuple(self.lifecycle.open_trades())
         lifecycle_closed = tuple(self.lifecycle.closed_trades())
         lifecycle_events = tuple(self.lifecycle.events())
-        journal_entries = tuple(self.journal.entries())
+        journal_entries = tuple(
+            item for item in self.journal.entries()
+            if not getattr(item, "synthetic_recovery_test", False)
+        )
         latest_report = self.reports.latest()
         if resolved_scope != "global":
             journal_entries = _filter_journal_by_campaign(journal_entries, resolved_campaign, legacy=resolved_scope == "legacy")
@@ -447,6 +450,8 @@ class PaperStateReconciliationEngine:
 
     def _check_pending_orders(self, lifecycle_pending: tuple[Any, ...], discrepancies: list[PaperStateDiscrepancy]) -> None:
         for order in lifecycle_pending:
+            if (getattr(order, "metadata", None) or {}).get("test_fixture"):
+                continue
             if self.lifecycle.monitor.find_event(order.source_event_id) is None:
                 discrepancies.append(PaperStateDiscrepancy(
                     "warning", "trade_lifecycle_manager", None,

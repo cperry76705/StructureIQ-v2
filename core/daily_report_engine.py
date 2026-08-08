@@ -204,6 +204,7 @@ class DailyReportEngine:
             item for item in all_records
             if campaign_id is None or getattr(item, "campaign_id", None) == campaign_id
         )
+        records = tuple(item for item in records if not getattr(item, "exclude_from_daily_reports", False))
         closed = tuple(item for item in records if item.status == "closed" and _same_day(item.closed_at, day))
         open_records = tuple(item for item in records if item.status == "open" and _opened_by(item.opened_at, day))
         lifecycle_only = tuple(

@@ -12,7 +12,7 @@ def test_release_identity_is_exposed_without_changing_health_contract() -> None:
     health_response = client.get("/health")
     openapi_response = client.get("/openapi.json")
 
-    assert APP_VERSION == "6.0.11"
+    assert APP_VERSION == "6.0.12"
     assert health_response.status_code == 200
     assert health_response.json() == {"status": "ok", "app": APP_NAME}
     assert openapi_response.status_code == 200
@@ -48,6 +48,14 @@ def test_openapi_preserves_complete_stable_endpoint_surface() -> None:
         "/campaigns/{campaign_id}": {"get"},
         "/campaigns/{campaign_id}/summary": {"get"},
         "/campaigns/{campaign_id}/journal": {"get"},
+        "/recovery-test/create-pending-order": {"post"},
+        "/recovery-test/create-open-trade": {"post"},
+        "/recovery-test/create-closed-trade": {"post"},
+        "/recovery-test/status": {"get"},
+        "/recovery-test/snapshot": {"post"},
+        "/recovery-test/verify-after-restart": {"post"},
+        "/recovery-test/history": {"get"},
+        "/recovery-test/cleanup": {"post"},
     }
 
     for path, methods in expected_methods.items():

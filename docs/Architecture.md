@@ -1,5 +1,11 @@
 # StructureIQ Architecture
 
+## Recovery Test Harness Boundary
+
+Version 6.0.12 adds a deterministic, paper-only recovery test harness. The harness can create synthetic pending orders, open trades, and closed trades through the same durable Paper Brokerage and Trade Lifecycle Manager persistence used by normal paper mode. Every fixture is explicitly tagged with `test_fixture=true`, `synthetic_recovery_test=true`, and exclusion flags for performance, calibration, campaign metrics, daily reports, and research.
+
+The harness is infrastructure-only. It does not call strategy routing, setup eligibility, scoring, risk threshold selection, fill logic, exits, broker integrations, GPT, email, or notifications. Cleanup refuses to remove untagged real state and removes only objects that carry explicit fixture metadata.
+
 ## Validation Observability Boundary
 
 Version 6.0.11 adds scoped reconciliation, orphan classification, legacy campaign audit, campaign-scoped report labels, and candidate-pipeline cycle diagnostics. These modules separate active campaign health from legacy pre-persistence drift and append diagnostics for review only. They never feed back into analysis decisions, setup selection, strategy routing, confidence, setup quality, risk, fills, exits, or auto-approval gates.

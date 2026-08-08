@@ -144,6 +144,17 @@ class PaperPerformance:
     human_readable_summary: str
 
 
+def is_synthetic_recovery_fixture(value: Any) -> bool:
+    """Return true for explicit recovery-test fixtures that must not affect performance."""
+
+    metadata = getattr(value, "metadata", None) or {}
+    return bool(
+        metadata.get("test_fixture")
+        or metadata.get("synthetic_recovery_test")
+        or metadata.get("exclude_from_performance")
+    )
+
+
 class PaperBrokerageEngine:
     """Maintain paper positions without any live-broker or automatic-trading path."""
 
@@ -265,10 +276,11 @@ class PaperBrokerageEngine:
             )
             del self._open[trade_id]
             self._closed.append(closed)
-            self._balance += realized_pl
-            self._daily_realized_pl += realized_pl
-            self._peak_balance = max(self._peak_balance, self._balance)
-            self._max_drawdown = max(self._max_drawdown, self._peak_balance - self._balance)
+            if not is_synthetic_recovery_fixture(closed):
+                self._balance += realized_pl
+                self._daily_realized_pl += realized_pl
+                self._peak_balance = max(self._peak_balance, self._balance)
+                self._max_drawdown = max(self._max_drawdown, self._peak_balance - self._balance)
             self._persist()
             self._notify("paper_trade_closed", closed)
             return closed
@@ -284,7 +296,8 @@ class PaperBrokerageEngine:
                 balance=round(self._balance, 6), equity=round(self._balance + unrealized, 6),
                 unrealized_pl=round(unrealized, 6),
                 realized_pl=round(self._balance - self.config.starting_balance, 6),
-                open_positions_count=len(self._open), closed_trades_count=len(self._closed),
+                open_positions_count=len(self._open),
+                closed_trades_count=sum(not is_synthetic_recovery_fixture(item) for item in self._closed),
                 available_risk_capacity=max(0, self.config.max_open_positions - len(self._open)),
                 daily_realized_pl=round(self._daily_realized_pl, 6),
                 daily_return_percent=round(daily_percent, 6),
@@ -305,7 +318,8 @@ class PaperBrokerageEngine:
 
     def performance(self) -> PaperPerformance:
         with self._lock:
-            returns = [item.realized_r or 0.0 for item in self._closed]
+            closed = [item for item in self._closed if not is_synthetic_recovery_fixture(item)]
+            returns = [item.realized_r or 0.0 for item in closed]
             wins = sum(value > 0 for value in returns); losses = sum(value < 0 for value in returns)
             breakeven = len(returns) - wins - losses
             positives = sum(value for value in returns if value > 0); negatives = abs(sum(value for value in returns if value < 0))
@@ -314,11 +328,27 @@ class PaperBrokerageEngine:
                 win_rate=round(wins / len(returns) * 100, 6) if returns else 0.0,
                 total_r=round(sum(returns), 6),
                 average_r=round(sum(returns) / len(returns), 6) if returns else 0.0,
-                realized_pl=round(self._balance - self.config.starting_balance, 6),
+                realized_pl=round(sum(float(item.realized_pl or 0.0) for item in closed), 6),
                 profit_factor=round(positives / negatives, 6) if negatives else None,
                 max_drawdown=round(self._max_drawdown, 6),
                 human_readable_summary=f"Paper account has {len(returns)} closed trades and {sum(returns):.2f}R total performance.",
             )
+
+    def remove_recovery_test_fixtures(self) -> int:
+        """Remove only explicitly tagged recovery-test paper fixtures from durable state."""
+
+        with self._lock:
+            open_before = len(self._open)
+            closed_before = len(self._closed)
+            self._open = {
+                trade_id: trade
+                for trade_id, trade in self._open.items()
+                if not is_synthetic_recovery_fixture(trade)
+            }
+            self._closed = [trade for trade in self._closed if not is_synthetic_recovery_fixture(trade)]
+            removed = (open_before - len(self._open)) + (closed_before - len(self._closed))
+            self._persist()
+            return removed
 
     def _validate_risk_limits(self, request: PaperOpenRequest, risk_percent: float) -> None:
         if request.action not in {"buy", "sell"}:

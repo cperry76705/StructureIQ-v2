@@ -157,6 +157,51 @@ class ValidationCampaignManager:
         self._current_id_path.write_text(campaign_id, encoding="utf-8")
         return campaign
 
+    def recovery_test_campaign(self) -> ValidationCampaign:
+        """Return or create the dedicated synthetic recovery infrastructure campaign."""
+
+        current = self.current()
+        if current and current.paper_settings.get("infrastructure_test") and current.paper_settings.get("synthetic"):
+            return current
+        for campaign in self.list_campaigns():
+            if campaign.status == "running" and campaign.paper_settings.get("infrastructure_test") and campaign.paper_settings.get("synthetic"):
+                self._current_id_path.write_text(campaign.campaign_id, encoding="utf-8")
+                return campaign
+        now = _now()
+        suffix = hashlib.sha256(f"recovery-test:{now}".encode()).hexdigest()[:8]
+        campaign_id = f"recovery_test_{now[:10].replace('-', '_')}_{suffix}"
+        path = self.root / campaign_id
+        path.mkdir(parents=True, exist_ok=False)
+        campaign = ValidationCampaign(
+            campaign_id=campaign_id,
+            name="Recovery Infrastructure Test",
+            status="running",
+            started_at=now,
+            ended_at=None,
+            duration_seconds=None,
+            cli=None,
+            runtime="paper",
+            strategy_version=APP_VERSION,
+            engine_version=APP_VERSION,
+            commit_hash=_commit_hash(),
+            paper_settings={
+                "infrastructure_test": True,
+                "synthetic": True,
+                "exclude_from_performance": True,
+            },
+            legacy_import=False,
+            trades=0,
+            wins=0,
+            losses=0,
+            total_r=0.0,
+            metadata_path=str(path / "metadata.json"),
+            human_readable_summary="Synthetic recovery infrastructure test campaign is running.",
+        )
+        self._write_campaign(campaign)
+        self._write_default_files(path)
+        self._current_id_path.write_text(campaign_id, encoding="utf-8")
+        return campaign
+
     def finish(self, campaign_id: str, *, status: str = "completed", results: dict[str, Any] | None = None) -> ValidationCampaign | None:
         campaign = self.get(campaign_id)
         if campaign is None:
@@ -187,7 +232,10 @@ class ValidationCampaignManager:
         campaign = self.get(campaign_id)
         if campaign is None:
             raise KeyError("campaign was not found")
-        filtered = list(self._campaign_entries(campaign))
+        filtered = [
+            item for item in self._campaign_entries(campaign)
+            if not getattr(item, "exclude_from_campaign_metrics", False)
+        ]
         closed = [item for item in filtered if item.status == "closed" and item.realized_r is not None]
         open_trades = [item for item in filtered if item.status == "open"]
         returns = [float(item.realized_r) for item in closed]
@@ -221,7 +269,10 @@ class ValidationCampaignManager:
         campaign = self.get(campaign_id)
         if campaign is None or self.journal is None:
             return ()
-        selected = self._campaign_entries(campaign)
+        selected = tuple(
+            item for item in self._campaign_entries(campaign)
+            if not getattr(item, "exclude_from_campaign_metrics", False)
+        )
         return tuple(jsonable_encoder(item) for item in selected)
 
     def legacy_audit(self) -> LegacyCampaignAudit:

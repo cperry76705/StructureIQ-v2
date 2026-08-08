@@ -136,6 +136,16 @@ from core.validation_campaigns import (
     ValidationCampaignManager,
     get_global_validation_campaign_manager,
 )
+from core.recovery_test_harness import (
+    RecoveryTestCleanupResult,
+    RecoveryTestFixture,
+    RecoveryTestFixtureRequest,
+    RecoveryTestHarness,
+    RecoveryTestSnapshot,
+    RecoveryTestStatus,
+    RecoveryTestVerification,
+    get_global_recovery_test_harness,
+)
 from core.providers.yahoo import YahooFinanceMarketDataProvider
 from core.research_engine import (
     ContinuousResearchRankings,
@@ -314,6 +324,17 @@ def get_paper_recovery_engine(
         journal=journal,
         reconciliation=reconciliation,
     )
+
+
+def get_recovery_test_harness(
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+    reconciliation: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine),
+    recovery: PaperRecoveryEngine = Depends(get_paper_recovery_engine),
+) -> RecoveryTestHarness:
+    campaigns = get_global_validation_campaign_manager(journal)
+    return get_global_recovery_test_harness(broker, lifecycle, campaigns, reconciliation, recovery)
 
 
 def get_validation_campaign_manager(
@@ -1048,6 +1069,66 @@ def paper_recovery_summary(engine: PaperRecoveryEngine = Depends(get_paper_recov
 @app.post("/paper-recovery/run", response_model=PaperRecoveryResult, tags=["paper-recovery"])
 def paper_recovery_run(engine: PaperRecoveryEngine = Depends(get_paper_recovery_engine)) -> PaperRecoveryResult:
     return engine.run()
+
+
+@app.post("/recovery-test/create-pending-order", response_model=RecoveryTestFixture, tags=["recovery-test"])
+def recovery_test_create_pending_order(
+    request: RecoveryTestFixtureRequest | None = None,
+    harness: RecoveryTestHarness = Depends(get_recovery_test_harness),
+) -> RecoveryTestFixture:
+    try:
+        return harness.create_pending_order(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/recovery-test/create-open-trade", response_model=RecoveryTestFixture, tags=["recovery-test"])
+def recovery_test_create_open_trade(
+    request: RecoveryTestFixtureRequest | None = None,
+    harness: RecoveryTestHarness = Depends(get_recovery_test_harness),
+) -> RecoveryTestFixture:
+    try:
+        return harness.create_open_trade(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/recovery-test/create-closed-trade", response_model=RecoveryTestFixture, tags=["recovery-test"])
+def recovery_test_create_closed_trade(
+    request: RecoveryTestFixtureRequest | None = None,
+    harness: RecoveryTestHarness = Depends(get_recovery_test_harness),
+) -> RecoveryTestFixture:
+    try:
+        return harness.create_closed_trade(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/recovery-test/status", response_model=RecoveryTestStatus, tags=["recovery-test"])
+def recovery_test_status(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestStatus:
+    return harness.status()
+
+
+@app.post("/recovery-test/snapshot", response_model=RecoveryTestSnapshot, tags=["recovery-test"])
+def recovery_test_snapshot(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestSnapshot:
+    return harness.snapshot()
+
+
+@app.post("/recovery-test/verify-after-restart", response_model=RecoveryTestVerification, tags=["recovery-test"])
+def recovery_test_verify_after_restart(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestVerification:
+    return harness.verify_after_restart()
+
+
+@app.get("/recovery-test/history", response_model=list[dict[str, Any]], tags=["recovery-test"])
+def recovery_test_history(limit: int = 100, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> list[dict[str, Any]]:
+    if not 1 <= limit <= 100_000:
+        raise HTTPException(status_code=422, detail="limit must be between 1 and 100000")
+    return list(harness.history(limit))
+
+
+@app.post("/recovery-test/cleanup", response_model=RecoveryTestCleanupResult, tags=["recovery-test"])
+def recovery_test_cleanup(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestCleanupResult:
+    return harness.cleanup()
 
 
 @app.get("/campaigns", response_model=list[ValidationCampaign], tags=["campaigns"])
