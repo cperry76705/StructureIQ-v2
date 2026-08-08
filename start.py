@@ -267,6 +267,34 @@ def print_local_urls() -> None:
         print(f"{label}:\n{url}")
 
 
+def print_market_sessions(symbols: Sequence[str] | None = None) -> None:
+    """Print current session status and the automatically active watchlist."""
+
+    try:
+        from core.market_session_engine import get_global_market_session_engine
+        engine = get_global_market_session_engine()
+        sessions = engine.sessions()
+        watchlist = engine.active_watchlist(symbols or ("BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"))
+        print()
+        print("Market Sessions")
+        print(f"Crypto: {sessions['crypto'].status.value}")
+        print(f"Forex: {sessions['forex'].status.value}")
+        if sessions["forex"].next_open:
+            print(f"Next Forex Open: {sessions['forex'].next_open}")
+        print()
+        print("Active Watchlist")
+        for symbol in watchlist.active_symbols:
+            print(symbol)
+        if watchlist.skipped_symbols:
+            print()
+            print("Skipped")
+            for symbol in watchlist.skipped_symbols:
+                print(f"{symbol} - {watchlist.reasons.get(symbol, 'Market Closed')}")
+    except Exception:
+        print()
+        print("Market Sessions: unavailable")
+
+
 def open_docs_browser(*, opener=None) -> bool:
     """Open Swagger locally; browser failures are warning-only."""
     try:
@@ -607,6 +635,16 @@ def run_paper_mode(
         print(f"Order Type: {payload['default_order_type']}")
         print(f"Max Trades/Cycle: {payload['max_trades_per_cycle']}")
         print(f"Max Candidates/Cycle: {payload['max_candidates_per_cycle']}")
+        try:
+            watchlist = api_call("/watchlist/active")
+            print("Market Sessions")
+            print(f"Active Watchlist: {', '.join(watchlist.get('active_symbols', ()) or ['none'])}")
+            skipped = watchlist.get("skipped_symbols", ()) or ()
+            if skipped:
+                print(f"Skipped: {', '.join(skipped)}")
+                print(f"Reasons: {watchlist.get('reasons', {})}")
+        except Exception:
+            pass
         print("Paper Only: true")
         print("\nPaper trading is running.\nPress CTRL+C to stop early.")
         while status.get("running") or status.get("paused"):
@@ -797,6 +835,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return exit_code
     print_banner(version)
     print_health(health)
+    print_market_sessions()
     print_future_sections()
     if args.open_browser and not args.no_browser:
         schedule_browser_open()

@@ -1,5 +1,11 @@
 # StructureIQ Architecture
 
+## Market Session Awareness Boundary
+
+Version 6.0.13 adds a Market Session Engine that classifies configured symbols as `CRYPTO`, `FOREX`, `US_EQUITY`, `ETF`, `INDEX`, `FUTURES`, or `UNKNOWN` and determines whether the market is currently tradable. The Live Market Monitor uses this only as a pre-analysis gate. Closed symbols are skipped before provider calls, candle downloads, analysis, confidence scoring, setup quality, candidate generation, risk checks, lifecycle, or brokerage.
+
+Session awareness is configurable with `auto_market_sessions=true` by default and `ignore_market_sessions=true` for tests or intentional legacy behavior. Skips are recorded in cycle diagnostics and campaign summaries as skipped markets, not rejected candidates.
+
 ## Recovery Test Harness Boundary
 
 Version 6.0.12 adds a deterministic, paper-only recovery test harness. The harness can create synthetic pending orders, open trades, and closed trades through the same durable Paper Brokerage and Trade Lifecycle Manager persistence used by normal paper mode. Every fixture is explicitly tagged with `test_fixture=true`, `synthetic_recovery_test=true`, and exclusion flags for performance, calibration, campaign metrics, daily reports, and research.

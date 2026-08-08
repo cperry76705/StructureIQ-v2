@@ -2,7 +2,18 @@
 
 ## Overview
 
-StructureIQ `6.0.12` exposes a FastAPI HTTP interface for analysis, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.13` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+
+### Market sessions and active watchlist
+
+Version 6.0.13 adds pre-analysis session awareness. Closed markets are skipped before candle downloads and do not produce candidates, confidence scores, setup-quality evaluations, or rejection diagnostics.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/market-sessions` | Return current Crypto and Forex session status plus next Forex open/close timestamps. |
+| `GET` | `/watchlist/active` | Return configured symbols, currently active symbols, skipped symbols, and skip reasons. |
+
+Crypto is currently `OPEN` 24/7. Forex is `OPEN` from Sunday 5 PM Central through Friday 4 PM Central.
 
 ### Deterministic recovery test harness
 
@@ -152,7 +163,7 @@ Example `/dashboard/overview` response:
 
 ```json
 {
-  "app_version": "6.0.12",
+  "app_version": "6.0.13",
   "latest_research_status": "No completed calibration research is available yet.",
   "total_symbols_profiled": 0,
   "best_symbol": null,

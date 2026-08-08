@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from core.analysis_engine import AnalysisEngine
 from core.candidate_diagnostics import CandidateDiagnosticsEngine, get_global_candidate_diagnostics
 from core.market_data import MarketDataError, MarketDataProvider
+from core.market_session_engine import ActiveWatchlist, MarketSessionEngine, get_global_market_session_engine
 from models.schemas import AnalysisRequest, AnalysisResponse
 
 
@@ -38,6 +39,8 @@ class MonitorConfig(BaseModel):
     write_events: bool = True
     events_path: str = "research/live_monitor_events.jsonl"
     max_events_in_memory: int = Field(default=500, ge=1, le=10_000)
+    auto_market_sessions: bool = True
+    ignore_market_sessions: bool = False
 
     @field_validator("symbols")
     @classmethod
@@ -85,6 +88,13 @@ class MonitorCycleResult:
     events: tuple[MonitorEvent, ...]
     completed_at: str
     human_readable_summary: str
+    markets_configured: int = 0
+    markets_open: int = 0
+    markets_closed: int = 0
+    markets_skipped: int = 0
+    active_symbols: tuple[str, ...] = ()
+    skipped_symbols: tuple[str, ...] = ()
+    skipped_reasons: dict[str, str] | None = None
 
 
 @dataclass(frozen=True)
@@ -112,11 +122,13 @@ class LiveMarketMonitor:
         *,
         analysis_engine_factory: Callable[[MarketDataProvider], Any] | None = None,
         candidate_diagnostics: CandidateDiagnosticsEngine | None = None,
+        market_sessions: MarketSessionEngine | None = None,
     ) -> None:
         self.provider = provider
         self.config = config or MonitorConfig()
         self._analysis_engine_factory = analysis_engine_factory or AnalysisEngine
         self.candidate_diagnostics = candidate_diagnostics or get_global_candidate_diagnostics()
+        self.market_sessions = market_sessions or get_global_market_session_engine()
         self._events: deque[MonitorEvent] = deque(maxlen=self.config.max_events_in_memory)
         self._emitted_keys: set[tuple[str, str, int, str, str]] = set()
         self._lock = threading.RLock()
@@ -145,10 +157,15 @@ class LiveMarketMonitor:
         if config is not None:
             self.update_config(config)
         engine = self._analysis_engine_factory(self.provider)
+        watchlist = self.market_sessions.active_watchlist(
+            self.config.symbols,
+            auto_market_sessions=self.config.auto_market_sessions,
+            ignore_market_sessions=self.config.ignore_market_sessions,
+        )
         created: list[MonitorEvent] = []
         errors: list[str] = []
         analyzed = duplicates = 0
-        for symbol in self.config.symbols:
+        for symbol in watchlist.active_symbols:
             for timeframe in self.config.timeframes:
                 try:
                     candles = self.provider.get_candles(
@@ -218,8 +235,15 @@ class LiveMarketMonitor:
             completed_at=completed,
             human_readable_summary=(
                 f"Monitor analyzed {analyzed} markets and emitted {len(created)} new candidate events; "
-                f"{duplicates} duplicates and {len(errors)} errors were recorded."
+                f"{duplicates} duplicates, {len(errors)} errors, and {watchlist.markets_skipped} market-session skips were recorded."
             ),
+            markets_configured=watchlist.markets_configured * len(self.config.timeframes),
+            markets_open=watchlist.markets_open * len(self.config.timeframes),
+            markets_closed=watchlist.markets_closed * len(self.config.timeframes),
+            markets_skipped=watchlist.markets_skipped * len(self.config.timeframes),
+            active_symbols=watchlist.active_symbols,
+            skipped_symbols=watchlist.skipped_symbols,
+            skipped_reasons=watchlist.reasons,
         )
 
     def start(self, config: MonitorConfig | None = None) -> MonitorStatus:

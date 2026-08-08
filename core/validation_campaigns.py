@@ -59,6 +59,12 @@ class CampaignSummary:
     breakeven: int = 0
     realized_r: float = 0.0
     unrealized_r: float = 0.0
+    markets_configured: int = 0
+    markets_analyzed: int = 0
+    markets_skipped: int = 0
+    skipped_by_market_closed: int = 0
+    skipped_by_provider_failure: int = 0
+    skipped_by_configuration: int = 0
 
 
 @dataclass(frozen=True)
@@ -243,6 +249,7 @@ class ValidationCampaignManager:
         losses = sum(value < 0 for value in returns)
         breakeven = len(returns) - wins - losses
         drawdown = _max_drawdown(returns)
+        market_stats = _campaign_market_stats(campaign_id)
         return CampaignSummary(
             campaign_id=campaign_id,
             status=campaign.status,
@@ -263,6 +270,12 @@ class ValidationCampaignManager:
             breakeven=breakeven,
             realized_r=round(sum(returns), 6),
             unrealized_r=0.0,
+            markets_configured=market_stats["configured"],
+            markets_analyzed=market_stats["analyzed"],
+            markets_skipped=market_stats["skipped"],
+            skipped_by_market_closed=market_stats["market_closed"],
+            skipped_by_provider_failure=market_stats["provider_failure"],
+            skipped_by_configuration=market_stats["configuration"],
         )
 
     def journal_rows(self, campaign_id: str) -> tuple[dict[str, Any], ...]:
@@ -483,6 +496,29 @@ def _max_drawdown(values: list[float]) -> float:
         peak = max(peak, equity)
         worst = max(worst, peak - equity)
     return round(worst, 6)
+
+
+def _campaign_market_stats(campaign_id: str) -> dict[str, int]:
+    try:
+        from core.candidate_pipeline_diagnostics import current_candidate_pipeline_diagnostics
+        engine = current_candidate_pipeline_diagnostics()
+        if engine is None:
+            return _empty_market_stats()
+        summary = engine.summary(campaign_id=campaign_id)
+        return {
+            "configured": int(getattr(summary, "symbols_requested", 0) or 0),
+            "analyzed": int(getattr(summary, "symbols_scanned", 0) or 0),
+            "skipped": int(getattr(summary, "symbols_skipped", 0) or 0),
+            "market_closed": int(getattr(summary, "symbols_skipped_market_closed", 0) or 0),
+            "provider_failure": int(getattr(summary, "symbols_without_data", 0) or 0),
+            "configuration": 0,
+        }
+    except Exception:
+        return _empty_market_stats()
+
+
+def _empty_market_stats() -> dict[str, int]:
+    return {"configured": 0, "analyzed": 0, "skipped": 0, "market_closed": 0, "provider_failure": 0, "configuration": 0}
 
 
 def _now() -> str:

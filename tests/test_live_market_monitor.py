@@ -62,6 +62,7 @@ def _monitor(tmp_path: Path, *, provider=None, resolver=None, write=False):
         symbols=["BTC-USD", "EUR-USD"], timeframes=["5m"],
         higher_timeframe="1h", lookback=50, poll_seconds=60,
         write_events=write, events_path=str(tmp_path / "events.jsonl"),
+        ignore_market_sessions=True,
     )
     return LiveMarketMonitor(
         provider, config,

@@ -25,6 +25,7 @@ from core.calibration_analytics import get_global_calibration_analytics
 from core.paper_state_reconciliation import latest_paper_reconciliation
 from core.paper_recovery import latest_paper_recovery
 from core.recovery_test_harness import latest_recovery_test_status
+from core.market_session_engine import get_global_market_session_engine
 from core.validation_campaigns import get_global_validation_campaign_manager
 
 
@@ -198,6 +199,11 @@ class DashboardOverview:
     recovery_test_closed_fixtures: int = 0
     recovery_test_ready_for_restart: bool = False
     recovery_test_summary: str | None = None
+    market_session_crypto_status: str = "UNKNOWN"
+    market_session_forex_status: str = "UNKNOWN"
+    markets_currently_trading: tuple[str, ...] = ()
+    markets_waiting: tuple[str, ...] = ()
+    next_forex_open: str | None = None
 
 
 @dataclass(frozen=True)
@@ -455,6 +461,11 @@ class ResearchDashboardService:
         pipeline_engine = current_candidate_pipeline_diagnostics()
         pipeline_summary = pipeline_engine.summary() if pipeline_engine is not None else None
         recovery_test = latest_recovery_test_status()
+        session_engine = get_global_market_session_engine()
+        sessions = session_engine.sessions()
+        monitor_status = current_live_market_monitor_status()
+        configured_symbols = tuple(getattr(getattr(monitor_status, "config", None), "symbols", ()) or ("BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"))
+        active_watchlist = session_engine.active_watchlist(configured_symbols)
         calibration_summary = get_global_calibration_analytics().summary()
         reconciliation = latest_paper_reconciliation()
         reconciliation_summary = getattr(reconciliation, "summary", None)
@@ -659,6 +670,11 @@ class ResearchDashboardService:
             recovery_test_closed_fixtures=int(getattr(recovery_test, "closed_fixture_count", 0) or 0),
             recovery_test_ready_for_restart=bool(getattr(recovery_test, "ready_for_restart_test", False)),
             recovery_test_summary=getattr(recovery_test, "human_readable_summary", None),
+            market_session_crypto_status=sessions["crypto"].status.value,
+            market_session_forex_status=sessions["forex"].status.value,
+            markets_currently_trading=active_watchlist.active_symbols,
+            markets_waiting=active_watchlist.skipped_symbols,
+            next_forex_open=sessions["forex"].next_open,
         )
 
     def symbols(self) -> DashboardSymbols:

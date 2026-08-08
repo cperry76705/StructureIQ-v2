@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 6.0.13 — Intelligent Market Session Awareness — 2026-08-08
+
+- Added Market Session Engine with symbol classification and Crypto/Forex session rules.
+- Added pre-analysis watchlist filtering so closed Forex symbols are skipped before provider calls and candidate generation.
+- Added `/market-sessions` and `/watchlist/active` APIs, startup CLI session output, dashboard session fields, candidate-pipeline skip diagnostics, and campaign market-skip counters.
+- Skipped closed markets do not count as rejected candidates or affect candidate conversion.
+- Strategy, market structure, scoring, thresholds, risk, entries, exits, lifecycle, brokerage, recovery, GPT, notifications, and normal paper-trading behavior remain unchanged.
+
 ## Version 6.0.12 — Deterministic Paper Recovery Test Harness — 2026-08-08
 
 - Added paper-only recovery-test fixtures for pending orders, open trades, and closed trades.

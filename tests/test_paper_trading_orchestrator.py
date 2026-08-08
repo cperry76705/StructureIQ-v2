@@ -53,7 +53,7 @@ def _services(tmp_path: Path, *, symbols=None, analysis=None, provider=None, con
     analysis = analysis or _Analysis()
     monitor = LiveMarketMonitor(
         provider,
-        MonitorConfig(symbols=symbols or ["BTC-USD"], timeframes=["5m"], lookback=50, write_events=False),
+        MonitorConfig(symbols=symbols or ["BTC-USD"], timeframes=["5m"], lookback=50, write_events=False, ignore_market_sessions=True),
         analysis_engine_factory=lambda source: analysis,
     )
     broker = PaperBrokerageEngine(broker_config)

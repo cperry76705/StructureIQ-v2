@@ -53,6 +53,9 @@ class CandidateSymbolPipelineDiagnostic:
     rejection_reason: str | None
     exception_type: str | None
     exception_message: str | None
+    analyzed: bool = True
+    skipped: bool = False
+    skipped_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -65,6 +68,8 @@ class CandidatePipelineCycleDiagnostic:
     symbols_scanned: int
     symbols_with_market_data: int
     symbols_without_market_data: int
+    symbols_skipped: int
+    symbols_skipped_market_closed: int
     candidates_created: int
     candidates_rejected: int
     orders_created: int
@@ -83,6 +88,8 @@ class CandidatePipelineSummary:
     symbols_scanned: int
     symbols_with_data: int
     symbols_without_data: int
+    symbols_skipped: int
+    symbols_skipped_market_closed: int
     candidates_created: int
     candidates_rejected: int
     trades_opened: int
@@ -133,9 +140,15 @@ class CandidatePipelineDiagnosticsEngine:
         candidates = int(getattr(monitor_result, "candidates_created", 0) or 0)
         analyzed = int(getattr(monitor_result, "analyzed", 0) or 0)
         symbols_without_data = len(errors)
+        skipped_symbols = tuple(getattr(monitor_result, "skipped_symbols", ()) or ())
+        skipped_count = int(getattr(monitor_result, "markets_skipped", 0) or len(skipped_symbols) * max(1, len(configured_timeframes)))
+        skipped_market_closed = sum(
+            "closed" in str(reason).lower()
+            for reason in (getattr(monitor_result, "skipped_reasons", {}) or {}).values()
+        ) * max(1, len(configured_timeframes))
         scanned = analyzed + symbols_without_data
         rejected = max(0, scanned - candidates)
-        details = _build_symbol_details(recent_market_diagnostics, errors, configured_symbols)
+        details = _build_symbol_details(recent_market_diagnostics, errors, configured_symbols, monitor_result=monitor_result)
         if not details and scanned == 0:
             details = tuple(
                 CandidateSymbolPipelineDiagnostic(
@@ -155,6 +168,9 @@ class CandidatePipelineDiagnosticsEngine:
                     rejection_reason="monitor did not scan this symbol",
                     exception_type=None,
                     exception_message=None,
+                    analyzed=False,
+                    skipped=False,
+                    skipped_reason=None,
                 )
                 for symbol in configured_symbols
             )
@@ -169,6 +185,8 @@ class CandidatePipelineDiagnosticsEngine:
             symbols_scanned=scanned,
             symbols_with_market_data=analyzed,
             symbols_without_market_data=symbols_without_data,
+            symbols_skipped=skipped_count,
+            symbols_skipped_market_closed=skipped_market_closed,
             candidates_created=candidates,
             candidates_rejected=rejected,
             orders_created=int(orders_created or 0),
@@ -198,6 +216,8 @@ class CandidatePipelineDiagnosticsEngine:
         scanned = sum(item.symbols_scanned for item in cycles)
         with_data = sum(item.symbols_with_market_data for item in cycles)
         without_data = sum(item.symbols_without_market_data for item in cycles)
+        skipped = sum(getattr(item, "symbols_skipped", 0) for item in cycles)
+        skipped_closed = sum(getattr(item, "symbols_skipped_market_closed", 0) for item in cycles)
         candidates = sum(item.candidates_created for item in cycles)
         rejected = sum(item.candidates_rejected for item in cycles)
         trades = sum(item.trades_opened for item in cycles)
@@ -209,6 +229,8 @@ class CandidatePipelineDiagnosticsEngine:
             symbols_scanned=scanned,
             symbols_with_data=with_data,
             symbols_without_data=without_data,
+            symbols_skipped=skipped,
+            symbols_skipped_market_closed=skipped_closed,
             candidates_created=candidates,
             candidates_rejected=rejected,
             trades_opened=trades,
@@ -300,12 +322,14 @@ class CandidatePipelineDiagnosticsEngine:
                 raw = json.loads(line)
                 raw["symbol_diagnostics"] = tuple(CandidateSymbolPipelineDiagnostic(**item) for item in raw.get("symbol_diagnostics", ()))
                 raw["persistence_errors"] = tuple(raw.get("persistence_errors", ()))
+                raw.setdefault("symbols_skipped", 0)
+                raw.setdefault("symbols_skipped_market_closed", 0)
                 self._cycles.append(CandidatePipelineCycleDiagnostic(**raw))
             except (TypeError, ValueError, json.JSONDecodeError):
                 continue
 
 
-def _build_symbol_details(records: tuple[Any, ...], errors: tuple[str, ...], configured_symbols: tuple[str, ...]) -> tuple[CandidateSymbolPipelineDiagnostic, ...]:
+def _build_symbol_details(records: tuple[Any, ...], errors: tuple[str, ...], configured_symbols: tuple[str, ...], *, monitor_result: Any | None = None) -> tuple[CandidateSymbolPipelineDiagnostic, ...]:
     details: list[CandidateSymbolPipelineDiagnostic] = []
     for item in records:
         reason = (tuple(getattr(item, "blocked_reasons", ()) or ()) or ("unknown",))[0]
@@ -327,6 +351,9 @@ def _build_symbol_details(records: tuple[Any, ...], errors: tuple[str, ...], con
             rejection_reason=None if getattr(item, "candidate_created", False) else reason,
             exception_type=None,
             exception_message=None,
+            analyzed=True,
+            skipped=False,
+            skipped_reason=None,
         ))
     for error in errors:
         symbol = error.split(" ", 1)[0] if error else "unknown"
@@ -349,6 +376,34 @@ def _build_symbol_details(records: tuple[Any, ...], errors: tuple[str, ...], con
             rejection_reason="market data or analysis failed",
             exception_type="MarketDataError",
             exception_message=error,
+            analyzed=False,
+            skipped=False,
+            skipped_reason=None,
+        ))
+    skipped_reasons = getattr(monitor_result, "skipped_reasons", None) or {}
+    for symbol, reason in skipped_reasons.items():
+        if configured_symbols and symbol not in configured_symbols:
+            continue
+        details.append(CandidateSymbolPipelineDiagnostic(
+            symbol=symbol,
+            market_data_status="skipped",
+            candles_received=0,
+            timeframes_received=0,
+            structure_status="not_run",
+            bias_status="not_run",
+            setup_status="not_run",
+            confidence_score=None,
+            setup_quality_score=None,
+            risk_status="not_run",
+            candidate_status="skipped",
+            final_outcome="market_session_skipped",
+            rejection_stage=None,
+            rejection_reason=None,
+            exception_type=None,
+            exception_message=None,
+            analyzed=False,
+            skipped=True,
+            skipped_reason=str(reason),
         ))
     return tuple(details)
 
@@ -358,6 +413,8 @@ def _counts(cycles: list[CandidatePipelineCycleDiagnostic]) -> tuple[Counter[str
     reasons: Counter[str] = Counter()
     for cycle in cycles:
         for detail in cycle.symbol_diagnostics:
+            if getattr(detail, "skipped", False):
+                continue
             if detail.rejection_stage:
                 stages[detail.rejection_stage] += 1
             if detail.rejection_reason:
@@ -368,8 +425,11 @@ def _counts(cycles: list[CandidatePipelineCycleDiagnostic]) -> tuple[Counter[str
 def _zero_candidate_explanation(details: tuple[CandidateSymbolPipelineDiagnostic, ...], candidates: int) -> str | None:
     if candidates:
         return None
-    stages = Counter(detail.rejection_stage for detail in details if detail.rejection_stage)
+    stages = Counter(detail.rejection_stage for detail in details if detail.rejection_stage and not getattr(detail, "skipped", False))
     if not stages:
+        skipped = [detail for detail in details if getattr(detail, "skipped", False)]
+        if skipped:
+            return f"No candidates were created. {len(skipped)} markets were skipped before analysis because their market session was closed."
         return "No candidates were created and no rejection-stage diagnostics were available."
     stage, count = stages.most_common(1)[0]
     return f"No candidates reached the approval stage. Most symbols were rejected during {stage} ({count} records)."

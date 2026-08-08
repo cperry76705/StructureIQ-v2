@@ -23,6 +23,7 @@ from core.calibration_analytics import CalibrationAnalyticsEngine, get_global_ca
 from core.daily_report_engine import DailyReportEngine
 from core.live_market_monitor import LiveMarketMonitor, MonitorConfig
 from core.market_data import Candle
+from core.market_session_engine import AssetClass, MarketSessionEngine, MarketSessionStatus, classify_symbol
 from core.paper_brokerage import PaperBrokerageEngine
 from core.paper_trade_journal import PaperTradeJournal
 from core.paper_state_reconciliation import PaperStateReconciliationEngine
@@ -70,6 +71,7 @@ class SystemValidationHarness:
 
     REQUIRED_API_PATHS = {
         "/health", "/analysis", "/calibrate", "/system/health",
+        "/market-sessions", "/watchlist/active",
         "/monitor/status", "/paper/account", "/lifecycle/status",
         "/paper-journal/summary", "/reports/daily",
         "/reports/scheduler/status", "/paper-trading/status",
@@ -139,6 +141,7 @@ class SystemValidationHarness:
             ("Storage", self._storage),
             ("Research Files", self._research_files),
             ("Market Data Provider", self._provider),
+            ("Market Session Engine", self._market_sessions),
             ("Analysis Engine", self._analysis),
             ("Live Monitor", self._monitor),
             ("Paper Brokerage", self._brokerage),
@@ -238,6 +241,20 @@ class SystemValidationHarness:
         if self.provider is None:
             return _fail("Market data provider is unavailable.")
         return _pass("Market data provider is configured; validation made no external request.")
+
+    def _market_sessions(self):
+        engine = MarketSessionEngine(clock=lambda: datetime(2026, 8, 8, 18, 0, tzinfo=timezone.utc))
+        if classify_symbol("BTC-USD") is not AssetClass.CRYPTO or classify_symbol("EUR-USD") is not AssetClass.FOREX:
+            return _fail("Market Session Engine symbol classification failed.")
+        watchlist = engine.active_watchlist(("BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"))
+        if watchlist.active_symbols != ("BTC-USD", "ETH-USD"):
+            return _fail("Market Session Engine did not filter weekend Forex symbols correctly.")
+        if engine.session_for_asset_class(AssetClass.CRYPTO).status is not MarketSessionStatus.OPEN:
+            return _fail("Market Session Engine did not mark crypto as open.")
+        bypass = engine.active_watchlist(("BTC-USD", "EUR-USD"), ignore_market_sessions=True)
+        if bypass.active_symbols != ("BTC-USD", "EUR-USD"):
+            return _fail("Market Session Engine ignore mode did not preserve configured symbols.")
+        return _pass("Market Session Engine classifies symbols and filters closed markets before analysis.")
 
     def _analysis(self):
         provider = _SyntheticProvider()

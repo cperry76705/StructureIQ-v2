@@ -1,5 +1,20 @@
 # StructureIQ
 
+## Intelligent market session awareness (v6.0.13)
+
+Version 6.0.13 adds automatic market-session filtering before analysis begins. Crypto is treated as open 24/7; Forex is open from Sunday 5 PM Central through Friday 4 PM Central. Closed markets are skipped before candle downloads, analysis, confidence scoring, setup quality evaluation, and candidate creation.
+
+Weekend default watchlist behavior:
+
+```text
+Configured: BTC-USD, ETH-USD, EUR-USD, GBP-USD
+Active:     BTC-USD, ETH-USD
+Skipped:    EUR-USD, GBP-USD
+Reason:     Forex Market Closed
+```
+
+Use `ignore_market_sessions=true` in monitor configuration only for tests or deliberate legacy behavior.
+
 ## Deterministic paper recovery test harness (v6.0.12)
 
 Version 6.0.12 adds a paper-only infrastructure harness for restart recovery validation. It can create explicitly tagged synthetic pending orders, open trades, and closed trades through the same durable paper brokerage and lifecycle persistence used by normal paper mode.

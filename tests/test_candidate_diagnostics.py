@@ -76,7 +76,7 @@ class _Analysis:
 def test_monitor_records_rejected_market_without_changing_candidate_behavior(tmp_path: Path) -> None:
     diagnostics = CandidateDiagnosticsEngine(tmp_path / "diagnostics.jsonl")
     monitor = LiveMarketMonitor(
-        _Provider(), MonitorConfig(symbols=["EUR-USD"], timeframes=["5m"], lookback=50, write_events=False),
+        _Provider(), MonitorConfig(symbols=["EUR-USD"], timeframes=["5m"], lookback=50, write_events=False, ignore_market_sessions=True),
         analysis_engine_factory=lambda provider: _Analysis(), candidate_diagnostics=diagnostics,
     )
     result = monitor.run_once()

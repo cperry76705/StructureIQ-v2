@@ -32,6 +32,8 @@ python start.py --urls
 python start.py --version
 ```
 
+Startup prints current market sessions and the active/skipped watchlist. Forex symbols are automatically skipped while the Forex session is closed unless monitor configuration explicitly sets `ignore_market_sessions=true`.
+
 ## Validation and Tests
 
 ```powershell
@@ -69,6 +71,8 @@ Invoke-RestMethod http://localhost:8000/reports/daily
 Invoke-RestMethod -Method Post http://localhost:8000/reports/scheduler/run-now
 Invoke-RestMethod http://localhost:8000/system/health
 Invoke-RestMethod http://localhost:8000/system/readiness
+Invoke-RestMethod http://localhost:8000/market-sessions
+Invoke-RestMethod http://localhost:8000/watchlist/active
 Invoke-RestMethod http://localhost:8000/dashboard/overview
 Invoke-RestMethod http://localhost:8000/dashboard/risks
 Invoke-RestMethod http://localhost:8000/paper-journal/summary

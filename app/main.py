@@ -11,6 +11,12 @@ from core.backtesting import BacktestRequest, BacktestResult, BacktestingEngine
 from core.calibration import CalibrationEngine, CalibrationRequest, CalibrationResult
 from core.journal import JournalEntry, JournalStore, JournalSummary, TradeOutcome
 from core.market_data import MarketDataError, MarketDataProvider
+from core.market_session_engine import (
+    ActiveWatchlist,
+    MarketSession,
+    MarketSessionEngine,
+    get_global_market_session_engine,
+)
 from core.live_market_monitor import (
     LiveMarketMonitor,
     MonitorConfig,
@@ -199,6 +205,10 @@ def get_candidate_diagnostics_engine() -> CandidateDiagnosticsEngine:
 
 def get_calibration_analytics_engine() -> CalibrationAnalyticsEngine:
     return get_global_calibration_analytics()
+
+
+def get_market_session_engine() -> MarketSessionEngine:
+    return get_global_market_session_engine()
 
 
 def get_analysis_engine(
@@ -431,6 +441,24 @@ def health() -> HealthResponse:
     """Return a lightweight liveness response."""
 
     return HealthResponse(status="ok", app=APP_NAME)
+
+
+@app.get("/market-sessions", response_model=dict[str, MarketSession], tags=["market-sessions"])
+def market_sessions(engine: MarketSessionEngine = Depends(get_market_session_engine)) -> dict[str, MarketSession]:
+    return engine.sessions()
+
+
+@app.get("/watchlist/active", response_model=ActiveWatchlist, tags=["market-sessions"])
+def watchlist_active(
+    ignore_market_sessions: bool = False,
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+    engine: MarketSessionEngine = Depends(get_market_session_engine),
+) -> ActiveWatchlist:
+    return engine.active_watchlist(
+        monitor.config.symbols,
+        auto_market_sessions=monitor.config.auto_market_sessions,
+        ignore_market_sessions=ignore_market_sessions or monitor.config.ignore_market_sessions,
+    )
 
 
 @app.post(

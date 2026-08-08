@@ -1,5 +1,13 @@
 # StructureIQ Roadmap
 
+## Version 6.0.13 — Intelligent Market Session Awareness (implemented)
+
+- Symbol classification for Crypto, Forex, US equities, ETFs, indices, futures, and unknown markets.
+- Crypto 24/7 and Forex Sunday 5 PM Central through Friday 4 PM Central session rules.
+- Session-aware watchlist filtering before candle downloads and analysis.
+- API, CLI, dashboard, candidate diagnostics, and campaign summary reporting for open/skipped markets.
+- No strategy, scoring, threshold, risk, lifecycle, brokerage, recovery, GPT, notification, or trade-management behavior changes.
+
 ## Version 6.0.12 — Deterministic Paper Recovery Test Harness (implemented)
 
 - Synthetic paper-only pending order, open trade, and closed trade fixtures for restart recovery tests.
