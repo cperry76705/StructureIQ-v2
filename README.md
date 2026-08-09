@@ -1,5 +1,27 @@
 # StructureIQ
 
+## Recovery Test Snapshot Integrity Guard (v6.0.17)
+
+Version 6.0.17 makes the deterministic paper recovery-test harness transactionally safe. Every recovery test now has a durable `recovery_test_run_id` that binds fixture creation, snapshot, verification, cleanup, and history.
+
+Key behavior:
+
+- verification never auto-selects stale or legacy snapshots
+- runs without a valid `SNAPSHOT_READY` snapshot return `NOT_READY`
+- multiple ready runs return `AMBIGUOUS` unless a run ID is provided
+- cleanup is scoped to `recovery_test_run_id`
+- harness precondition failures are separate from genuine recovery differences
+
+Recommended recovery-test flow:
+
+```powershell
+.\.venv\Scripts\python.exe start.py --recovery-test-create
+.\.venv\Scripts\python.exe start.py --recovery-test-verify --recovery-test-run-id recovery_run_YYYY_MM_DD_xxxxxxxx
+.\.venv\Scripts\python.exe start.py --recovery-test-cleanup --recovery-test-run-id recovery_run_YYYY_MM_DD_xxxxxxxx
+```
+
+This release does not change strategy, scoring, risk, entries, exits, fills, normal lifecycle behavior, paper trading behavior, broker integrations, GPT, notifications, or live trading.
+
 ## Integrity remediation and clean validation baseline (v6.0.16)
 
 Version 6.0.16 adds an auditable remediation layer for paper journal integrity. Confirmed invalid paper records are quarantined through append-only metadata in `research/paper_integrity_remediation.jsonl`; raw journal rows are preserved and never silently repaired.

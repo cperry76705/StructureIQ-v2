@@ -11,6 +11,12 @@ Related Entries: [README.md](README.md)
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
 
+## v6.0.17 Knowledge Base Update — 2026-08-09
+
+- Added release documentation for StructureIQ v6.0.17.
+- Updated validation, development, architecture, roadmap, and documentation-impact references for recovery-test run identity and stale-snapshot protection.
+- Preserved the distinction between recovery mechanism failures and harness precondition failures.
+
 ## v6.0.16 Knowledge Base Update — 2026-08-09
 
 - Added release documentation for StructureIQ v6.0.16.

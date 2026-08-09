@@ -119,6 +119,14 @@ class SystemValidationHarness:
         "/campaigns",
         "/campaigns/legacy_campaign/audit",
         "/recovery-test/status",
+        "/recovery-test/runs/create",
+        "/recovery-test/runs",
+        "/recovery-test/runs/current",
+        "/recovery-test/runs/incomplete",
+        "/recovery-test/runs/{run_id}",
+        "/recovery-test/runs/{run_id}/snapshot",
+        "/recovery-test/runs/{run_id}/verify",
+        "/recovery-test/runs/{run_id}/cleanup",
         "/recovery-test/create-pending-order",
         "/recovery-test/create-open-trade",
         "/recovery-test/snapshot",
@@ -536,7 +544,12 @@ class SystemValidationHarness:
         account = self.broker.account()
         if getattr(account, "paper_trading_enabled", False) or not getattr(account, "advisory_only", True):
             return _fail("Recovery Test Harness safety check failed; fixture creation would not be paper-only.")
-        return _pass("Recovery Test Harness is available, paper-only, writable, and validation did not create fixtures.")
+        blocked = harness.verify_after_restart()
+        if blocked.status not in {"NOT_READY", "AMBIGUOUS"}:
+            return _fail("Recovery Test Harness did not fail closed when no run-bound snapshot was available.")
+        if not getattr(blocked, "harness_precondition_failure", False):
+            return _fail("Recovery Test Harness did not distinguish harness preconditions from recovery failure.")
+        return _pass("Recovery Test Harness run identity, stale-snapshot guard, paper-only storage, and fail-closed verification are available; validation did not create fixtures.")
 
     def _symbol_registry(self):
         registry = get_symbol_registry()

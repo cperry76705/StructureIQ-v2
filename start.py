@@ -19,6 +19,7 @@ import socket
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import webbrowser
 from dataclasses import dataclass, field
@@ -467,6 +468,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--recovery-test-create", action="store_true", help="Create deterministic paper recovery fixtures and snapshot them.")
     parser.add_argument("--recovery-test-verify", action="store_true", help="Verify recovery fixtures after a restart.")
     parser.add_argument("--recovery-test-cleanup", action="store_true", help="Remove explicitly tagged recovery-test fixtures.")
+    parser.add_argument("--recovery-test-status", action="store_true", help="Show recovery-test run status.")
+    parser.add_argument("--recovery-test-incomplete", action="store_true", help="List incomplete recovery-test runs.")
+    parser.add_argument("--recovery-test-snapshot", action="store_true", help="Retry snapshot for an existing recovery-test run.")
+    parser.add_argument("--recovery-test-run-id", help="Explicit recovery_test_run_id for verify, cleanup, status, or snapshot retry.")
     parser.add_argument("--auto-approve-paper", action="store_true", help="Enable gated paper-only candidate auto-approval.")
     parser.add_argument("--auto-approve", action="store_true", help="Enable gated paper-only candidate auto-approval for this run.")
     parser.add_argument("--no-auto-approve", action="store_true", help="Disable paper candidate auto-approval for this run.")
@@ -734,6 +739,7 @@ def run_paper_mode(
 def run_recovery_test_mode(
     action: str,
     *,
+    recovery_test_run_id: str | None = None,
     process_factory=None,
     api_call=_api_json,
     sleep=time.sleep,
@@ -754,33 +760,51 @@ def run_recovery_test_mode(
             api_call("/health")
 
         if action == "create":
-            pending = api_call("/recovery-test/create-pending-order", method="POST", payload={})
-            trade = api_call("/recovery-test/create-open-trade", method="POST", payload={})
-            snapshot = api_call("/recovery-test/snapshot", method="POST")
+            result = api_call("/recovery-test/runs/create", method="POST", payload={})
+            if not result.get("recovery_test_run_id"):
+                pending = api_call("/recovery-test/create-pending-order", method="POST", payload={})
+                trade = api_call("/recovery-test/create-open-trade", method="POST", payload={})
+                snapshot = api_call("/recovery-test/snapshot", method="POST")
+                run_id = snapshot.get("recovery_test_run_id")
+                result = {"status": "PASS" if snapshot.get("snapshot_status") in {"PASS", "WATCHLIST"} else "FAIL", "run_state": "SNAPSHOT_READY", "recovery_test_run_id": run_id, "pending_fixture": pending, "open_trade_fixture": trade, "snapshot": snapshot}
+            pending = result.get("pending_fixture") or {}
+            trade = result.get("open_trade_fixture") or {}
+            snapshot = result.get("snapshot") or {}
+            run_id = result.get("recovery_test_run_id")
             print("StructureIQ Recovery Test")
             print()
+            print(f"Run ID: {run_id}")
             print(f"Campaign: {snapshot.get('campaign_id')}")
             print()
             print("Pending Order:")
+            print(f"Fixture ID: {pending.get('fixture_id')}")
             print(f"Order ID: {pending.get('order_id')}")
             print()
             print("Open Trade:")
+            print(f"Fixture ID: {trade.get('fixture_id')}")
             print(f"Trade ID: {trade.get('trade_id')}")
             print()
-            print(f"Snapshot: {snapshot.get('snapshot_status')}")
+            print(f"Snapshot: {snapshot.get('snapshot_id')}")
+            print(f"Snapshot Status: {snapshot.get('snapshot_status')}")
+            print(f"Run State: {result.get('run_state')}")
             print()
             print("Now:")
             print("1. Press CTRL+C")
             print("2. Restart StructureIQ")
             print("3. Run:")
-            print("   python start.py --recovery-test-verify")
-            return 0 if snapshot.get("snapshot_status") in {"PASS", "WATCHLIST"} else 2
+            print(f"   python start.py --recovery-test-verify --recovery-test-run-id {run_id}")
+            return 0 if result.get("status") == "PASS" else 2
 
         if action == "verify":
             api_call("/paper-recovery/run", method="POST")
             api_call("/paper-reconciliation/run", method="POST")
-            result = api_call("/recovery-test/verify-after-restart", method="POST")
+            suffix = f"?recovery_test_run_id={urllib.parse.quote(str(recovery_test_run_id))}" if recovery_test_run_id else ""
+            result = api_call(f"/recovery-test/verify-after-restart{suffix}", method="POST")
             print("StructureIQ Recovery Test Verification")
+            print(f"Run ID: {result.get('recovery_test_run_id')}")
+            print(f"Snapshot ID: {result.get('snapshot_id')}")
+            print(f"Expected Fixture IDs: {', '.join(result.get('expected_fixture_ids') or [])}")
+            print(f"Recovered Fixture IDs: {', '.join(result.get('recovered_fixture_ids') or [])}")
             print(f"Status: {result.get('status')}")
             print(f"Pending Orders: {result.get('pending_orders_recovered')}/{result.get('pending_orders_expected')}")
             print(f"Open Trades: {result.get('open_trades_recovered')}/{result.get('open_trades_expected')}")
@@ -788,17 +812,39 @@ def run_recovery_test_mode(
             print(f"Trade IDs Match: {str(bool(result.get('trade_ids_match'))).lower()}")
             print(f"Price Geometry Match: {str(bool(result.get('price_geometry_match'))).lower()}")
             print(f"Lifecycle State Match: {str(bool(result.get('lifecycle_state_match'))).lower()}")
+            print(f"Reconciliation Status: {result.get('reconciliation_status')}")
             print(result.get("human_readable_summary"))
-            return {"PASS": 0, "WATCHLIST": 1, "FAIL": 2}.get(str(result.get("status")), 2)
+            return {"VERIFIED_PASS": 0, "PASS": 0, "WATCHLIST": 1, "VERIFIED_FAIL": 2, "FAIL": 2, "NOT_READY": 2, "AMBIGUOUS": 2}.get(str(result.get("status")), 2)
 
         if action == "cleanup":
-            result = api_call("/recovery-test/cleanup", method="POST")
+            suffix = f"?recovery_test_run_id={urllib.parse.quote(str(recovery_test_run_id))}" if recovery_test_run_id else ""
+            result = api_call(f"/recovery-test/cleanup{suffix}", method="POST")
             print("StructureIQ Recovery Test Cleanup")
+            print(f"Run ID: {result.get('recovery_test_run_id')}")
+            print(f"Run State: {result.get('run_state')}")
             print(f"Status: {result.get('status')}")
             print(f"Fixtures Archived: {result.get('fixtures_archived')}")
             print(f"Active Test Fixtures Remaining: {result.get('active_test_fixtures_remaining')}")
             print(result.get("human_readable_summary"))
             return 0 if result.get("status") == "PASS" else 1
+
+        if action == "status":
+            suffix = f"?recovery_test_run_id={urllib.parse.quote(str(recovery_test_run_id))}" if recovery_test_run_id else ""
+            result = api_call(f"/recovery-test/status{suffix}")
+            print(json.dumps(result, indent=2))
+            return 0
+
+        if action == "incomplete":
+            print(json.dumps(api_call("/recovery-test/runs/incomplete"), indent=2))
+            return 0
+
+        if action == "snapshot":
+            run_id = recovery_test_run_id
+            if not run_id:
+                print("--recovery-test-snapshot requires --recovery-test-run-id")
+                return 2
+            print(json.dumps(api_call(f"/recovery-test/runs/{urllib.parse.quote(str(run_id))}/snapshot", method="POST"), indent=2))
+            return 0
 
         print(f"Unknown recovery-test action: {action}")
         return 2
@@ -921,6 +967,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             ("create", args.recovery_test_create),
             ("verify", args.recovery_test_verify),
             ("cleanup", args.recovery_test_cleanup),
+            ("status", args.recovery_test_status),
+            ("incomplete", args.recovery_test_incomplete),
+            ("snapshot", args.recovery_test_snapshot),
         )
         if enabled
     ]
@@ -929,7 +978,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print("Choose only one recovery-test mode.")
             return 2
         print(f"StructureIQ v{version}")
-        exit_code = run_recovery_test_mode(recovery_modes[0])
+        exit_code = run_recovery_test_mode(recovery_modes[0], recovery_test_run_id=args.recovery_test_run_id)
         write_startup_log(result=f"recovery_test_{recovery_modes[0]}", argv=raw_argv, version=version, details=f"exit_code={exit_code}")
         return exit_code
     print_banner(version)

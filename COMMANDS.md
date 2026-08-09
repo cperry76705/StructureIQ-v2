@@ -31,11 +31,14 @@ Full manual: [docs/Operations/README.md](docs/Operations/README.md)
 
 ```powershell
 .\.venv\Scripts\python.exe start.py --recovery-test-create
-.\.venv\Scripts\python.exe start.py --recovery-test-verify
-.\.venv\Scripts\python.exe start.py --recovery-test-cleanup
+.\.venv\Scripts\python.exe start.py --recovery-test-status --recovery-test-run-id recovery_run_YYYY_MM_DD_xxxxxxxx
+.\.venv\Scripts\python.exe start.py --recovery-test-verify --recovery-test-run-id recovery_run_YYYY_MM_DD_xxxxxxxx
+.\.venv\Scripts\python.exe start.py --recovery-test-cleanup --recovery-test-run-id recovery_run_YYYY_MM_DD_xxxxxxxx
+.\.venv\Scripts\python.exe start.py --recovery-test-incomplete
+.\.venv\Scripts\python.exe start.py --recovery-test-snapshot --recovery-test-run-id recovery_run_YYYY_MM_DD_xxxxxxxx
 ```
 
-The harness creates only tagged synthetic paper fixtures and excludes them from normal performance, campaign, daily report, calibration, and research statistics.
+The harness creates only tagged synthetic paper fixtures and excludes them from normal performance, campaign, daily report, calibration, and research statistics. Verification is bound to `recovery_test_run_id`; stale legacy snapshots are never selected automatically.
 
 ## Environment and Startup
 

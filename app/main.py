@@ -184,9 +184,11 @@ from core.validation_campaigns import (
 )
 from core.recovery_test_harness import (
     RecoveryTestCleanupResult,
+    RecoveryTestCreateResult,
     RecoveryTestFixture,
     RecoveryTestFixtureRequest,
     RecoveryTestHarness,
+    RecoveryTestRun,
     RecoveryTestSnapshot,
     RecoveryTestStatus,
     RecoveryTestVerification,
@@ -1482,6 +1484,17 @@ def recovery_test_create_pending_order(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
+@app.post("/recovery-test/runs/create", response_model=RecoveryTestCreateResult, tags=["recovery-test"])
+def recovery_test_create_run(
+    request: RecoveryTestFixtureRequest | None = None,
+    harness: RecoveryTestHarness = Depends(get_recovery_test_harness),
+) -> RecoveryTestCreateResult:
+    try:
+        return harness.create_recovery_test_run(request)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @app.post("/recovery-test/create-open-trade", response_model=RecoveryTestFixture, tags=["recovery-test"])
 def recovery_test_create_open_trade(
     request: RecoveryTestFixtureRequest | None = None,
@@ -1505,18 +1518,54 @@ def recovery_test_create_closed_trade(
 
 
 @app.get("/recovery-test/status", response_model=RecoveryTestStatus, tags=["recovery-test"])
-def recovery_test_status(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestStatus:
-    return harness.status()
+def recovery_test_status(recovery_test_run_id: str | None = None, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestStatus:
+    return harness.status(recovery_test_run_id)
+
+
+@app.get("/recovery-test/runs", response_model=tuple[RecoveryTestRun, ...], tags=["recovery-test"])
+def recovery_test_runs(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> tuple[RecoveryTestRun, ...]:
+    return harness.runs()
+
+
+@app.get("/recovery-test/runs/current", response_model=dict[str, Any], tags=["recovery-test"])
+def recovery_test_current_run(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> dict[str, Any]:
+    run = harness.current_run()
+    if run is None:
+        return {"status": "NOT_READY", "run": None, "human_readable_summary": "No unverified SNAPSHOT_READY recovery-test run exists."}
+    return {"status": "PASS", "run": run, "human_readable_summary": "Exactly one current recovery-test run is ready for verification."}
+
+
+@app.get("/recovery-test/runs/incomplete", response_model=tuple[RecoveryTestRun, ...], tags=["recovery-test"])
+def recovery_test_incomplete_runs(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> tuple[RecoveryTestRun, ...]:
+    return harness.incomplete_runs()
+
+
+@app.get("/recovery-test/runs/{run_id}", response_model=RecoveryTestRun, tags=["recovery-test"])
+def recovery_test_run_by_id(run_id: str, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestRun:
+    run = harness.run(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail="recovery test run not found")
+    return run
 
 
 @app.post("/recovery-test/snapshot", response_model=RecoveryTestSnapshot, tags=["recovery-test"])
-def recovery_test_snapshot(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestSnapshot:
-    return harness.snapshot()
+def recovery_test_snapshot(recovery_test_run_id: str | None = None, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestSnapshot:
+    return harness.snapshot(recovery_test_run_id)
+
+
+@app.post("/recovery-test/runs/{run_id}/snapshot", response_model=RecoveryTestSnapshot, tags=["recovery-test"])
+def recovery_test_run_snapshot(run_id: str, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestSnapshot:
+    return harness.snapshot(run_id)
 
 
 @app.post("/recovery-test/verify-after-restart", response_model=RecoveryTestVerification, tags=["recovery-test"])
-def recovery_test_verify_after_restart(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestVerification:
-    return harness.verify_after_restart()
+def recovery_test_verify_after_restart(recovery_test_run_id: str | None = None, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestVerification:
+    return harness.verify_after_restart(recovery_test_run_id)
+
+
+@app.post("/recovery-test/runs/{run_id}/verify", response_model=RecoveryTestVerification, tags=["recovery-test"])
+def recovery_test_run_verify(run_id: str, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestVerification:
+    return harness.verify_after_restart(run_id)
 
 
 @app.get("/recovery-test/history", response_model=list[dict[str, Any]], tags=["recovery-test"])
@@ -1527,8 +1576,13 @@ def recovery_test_history(limit: int = 100, harness: RecoveryTestHarness = Depen
 
 
 @app.post("/recovery-test/cleanup", response_model=RecoveryTestCleanupResult, tags=["recovery-test"])
-def recovery_test_cleanup(harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestCleanupResult:
-    return harness.cleanup()
+def recovery_test_cleanup(recovery_test_run_id: str | None = None, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestCleanupResult:
+    return harness.cleanup(recovery_test_run_id)
+
+
+@app.post("/recovery-test/runs/{run_id}/cleanup", response_model=RecoveryTestCleanupResult, tags=["recovery-test"])
+def recovery_test_run_cleanup(run_id: str, harness: RecoveryTestHarness = Depends(get_recovery_test_harness)) -> RecoveryTestCleanupResult:
+    return harness.cleanup(run_id)
 
 
 @app.get("/campaigns", response_model=list[ValidationCampaign], tags=["campaigns"])

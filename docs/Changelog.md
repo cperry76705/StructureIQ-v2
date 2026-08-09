@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 6.0.17 — Recovery Test Snapshot Integrity Guard — 2026-08-09
+
+- Added first-class `recovery_test_run_id` binding across recovery-test fixture creation, snapshots, verification, cleanup, and history.
+- Added durable recovery-test run states and run-scoped APIs.
+- Prevented stale or legacy snapshots from being selected automatically.
+- Added fail-closed NOT_READY/AMBIGUOUS behavior for missing, incomplete, or ambiguous harness state.
+- Added run-scoped cleanup and snapshot retry for incomplete runs.
+- Trading behavior, lifecycle execution, scoring, strategy, risk, fills, broker integration, GPT, notifications, and live trading remain unchanged.
+
 ## Version 6.0.16 — Integrity Remediation and Clean Validation Baseline — 2026-08-09
 
 - Added append-only paper integrity remediation registry and preview/apply/history APIs.

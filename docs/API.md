@@ -2,7 +2,22 @@
 
 ## Overview
 
-StructureIQ `6.0.16` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, expanded FX universe validation, Opportunity Coverage Analytics, paper journal integrity remediation, clean validation baselines, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.17` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, expanded FX universe validation, Opportunity Coverage Analytics, paper journal integrity remediation, clean validation baselines, durable paper runtime recovery, recovery-test run identity, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+
+### Recovery test runs
+
+Version 6.0.17 binds deterministic recovery-test fixtures, snapshots, verification, cleanup, and history to `recovery_test_run_id`. Legacy history remains viewable but is never selected automatically.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/recovery-test/runs/create` | Transactionally create pending/open fixtures and a bound snapshot. |
+| `GET` | `/recovery-test/runs` | List recovery-test runs and latest durable states. |
+| `GET` | `/recovery-test/runs/current` | Resolve the single current SNAPSHOT_READY run or return NOT_READY. |
+| `GET` | `/recovery-test/runs/incomplete` | List incomplete runs with recommended action. |
+| `GET` | `/recovery-test/runs/{run_id}` | Inspect one recovery-test run. |
+| `POST` | `/recovery-test/runs/{run_id}/snapshot` | Retry snapshot for the same run when allowed. |
+| `POST` | `/recovery-test/runs/{run_id}/verify` | Verify only the snapshot bound to the requested run. |
+| `POST` | `/recovery-test/runs/{run_id}/cleanup` | Remove only fixtures matching the requested run ID. |
 
 ### Paper integrity
 

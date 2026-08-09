@@ -423,20 +423,20 @@ class TradeLifecycleManager:
             )
             self._persist_state()
 
-    def remove_recovery_test_fixtures(self) -> int:
+    def remove_recovery_test_fixtures(self, recovery_test_run_id: str | None = None) -> int:
         """Remove only explicitly tagged synthetic recovery-test lifecycle state."""
 
         with self._lock:
             fixture_trade_ids = {
                 trade.trade_id
                 for trade in (*self.broker.open_positions(), *self.broker.closed_trades())
-                if (trade.metadata or {}).get("test_fixture")
+                if _matches_recovery_fixture(trade.metadata or {}, recovery_test_run_id)
             }
             orders_before = len(self._orders)
             self._orders = {
                 order_id: order
                 for order_id, order in self._orders.items()
-                if not (order.metadata or {}).get("test_fixture")
+                if not _matches_recovery_fixture(order.metadata or {}, recovery_test_run_id)
             }
             managed_before = len(self._managed_trade_ids)
             self._managed_trade_ids = {
@@ -449,7 +449,7 @@ class TradeLifecycleManager:
             }
             self._events = [
                 event for event in self._events
-                if not (event.metadata or {}).get("test_fixture")
+                if not _matches_recovery_fixture(event.metadata or {}, recovery_test_run_id)
             ]
             removed = (orders_before - len(self._orders)) + (managed_before - len(self._managed_trade_ids))
             self._persist_state()
@@ -647,6 +647,14 @@ def _exit_touches(trade: PaperTrade, candle: Any) -> tuple[bool, bool]:
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _matches_recovery_fixture(metadata: dict[str, Any], recovery_test_run_id: str | None) -> bool:
+    if not metadata.get("test_fixture"):
+        return False
+    if recovery_test_run_id is None:
+        return True
+    return metadata.get("recovery_test_run_id") == recovery_test_run_id
 
 
 _GLOBAL_MANAGER: TradeLifecycleManager | None = None

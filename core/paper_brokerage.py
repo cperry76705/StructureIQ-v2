@@ -155,6 +155,15 @@ def is_synthetic_recovery_fixture(value: Any) -> bool:
     )
 
 
+def _matches_recovery_cleanup(value: Any, recovery_test_run_id: str | None = None) -> bool:
+    if not is_synthetic_recovery_fixture(value):
+        return False
+    if recovery_test_run_id is None:
+        return True
+    metadata = getattr(value, "metadata", None) or {}
+    return metadata.get("recovery_test_run_id") == recovery_test_run_id
+
+
 class PaperBrokerageEngine:
     """Maintain paper positions without any live-broker or automatic-trading path."""
 
@@ -334,7 +343,7 @@ class PaperBrokerageEngine:
                 human_readable_summary=f"Paper account has {len(returns)} closed trades and {sum(returns):.2f}R total performance.",
             )
 
-    def remove_recovery_test_fixtures(self) -> int:
+    def remove_recovery_test_fixtures(self, recovery_test_run_id: str | None = None) -> int:
         """Remove only explicitly tagged recovery-test paper fixtures from durable state."""
 
         with self._lock:
@@ -343,9 +352,9 @@ class PaperBrokerageEngine:
             self._open = {
                 trade_id: trade
                 for trade_id, trade in self._open.items()
-                if not is_synthetic_recovery_fixture(trade)
+                if not _matches_recovery_cleanup(trade, recovery_test_run_id)
             }
-            self._closed = [trade for trade in self._closed if not is_synthetic_recovery_fixture(trade)]
+            self._closed = [trade for trade in self._closed if not _matches_recovery_cleanup(trade, recovery_test_run_id)]
             removed = (open_before - len(self._open)) + (closed_before - len(self._closed))
             self._persist()
             return removed

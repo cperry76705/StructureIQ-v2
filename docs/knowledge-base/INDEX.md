@@ -144,6 +144,7 @@ Related Releases: None
 - [v6.0.14](11-releases/REL-v6.0.14.md)
 - [v6.0.15](11-releases/REL-v6.0.15.md)
 - [v6.0.16](11-releases/REL-v6.0.16.md)
+- [v6.0.17](11-releases/REL-v6.0.17.md)
 
 ## Operations
 
