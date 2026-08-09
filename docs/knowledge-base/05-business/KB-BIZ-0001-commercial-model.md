@@ -7,8 +7,8 @@ Status: APPROVED
 Owner: Founder  
 Created: 2026-08-09  
 Last Updated: 2026-08-09  
-Related Entries: [Subscription Model](../02-product/KB-PROD-0004-subscription-model.md), [Multi-Tenant Architecture](KB-BIZ-0002-multi-tenant-architecture.md)  
-Related ADRs: [ADR-010](../07-decisions/ADR-010-centralized-ai-multitenancy.md), [ADR-021](../07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md)  
+Related Entries: [Subscription Model](../02-product/KB-PROD-0004-subscription-model.md), [Market Intelligence Workspace](../02-product/KB-PROD-0006-market-intelligence-workspace.md), [Multi-Tenant Architecture](KB-BIZ-0002-multi-tenant-architecture.md)  
+Related ADRs: [ADR-010](../07-decisions/ADR-010-centralized-ai-multitenancy.md), [ADR-021](../07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md), [ADR-022](../07-decisions/ADR-022-ai-first-market-research-workspace.md)  
 Related Releases: None
 
 ## Model
@@ -26,5 +26,7 @@ The current commercial ladder is:
 - Elite: **Trade for me.** Elite monetizes optional autonomous execution, advanced automation, and future higher-order portfolio automation capabilities.
 
 StructureIQ does not intentionally weaken core intelligence, research, explanation quality, Command Center quality, or educational review in lower tiers. Higher tiers monetize operational authority, convenience, broker integration, and increasing automation.
+
+Market Intelligence strengthens the commercial position by making StructureIQ an AI Trading Intelligence platform, not merely a signal service or charting application. It synthesizes research, prioritizes attention, explains market conditions, reduces information overload, and teaches users while they analyze.
 
 No authoritative prices are currently recorded in this entry.

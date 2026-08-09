@@ -37,6 +37,32 @@ StructureIQ is intended for discretionary and systematic-minded traders who want
 
 ## Product Layers
 
+### Market Intelligence Workspace
+
+Market Intelligence is the approved AI-first market research workspace. It helps the trader understand the current state of the market before considering a trade.
+
+It answers: **"What is actually happening across the markets right now?"**
+
+Its mission is to transform market data, structure, sessions, volatility, news context, and AI analysis into clear, explainable market understanding so traders know where to focus their attention.
+
+The workspace begins with synthesized intelligence and uses charts as supporting evidence. It is not a buy/sell signals page and should not be overloaded with trade execution controls.
+
+Approved Market Intelligence regions include AI Market Brief, Market Sentiment, Market Health Dashboard, Opportunity Radar, Chart Analysis, AI Analysis Panel, Session Intelligence, Market Drivers, Economic Calendar, Volatility Overview, and AI Observation Timeline.
+
+On mobile, Market Intelligence should behave like a briefing application. AI Market Brief, top markets, selected-market analysis, session status, watchlist, alerts, and key drivers should take priority over chart-first layout.
+
+### Command Center Relationship
+
+Command Center answers: **"What should I know and do today?"**
+
+Market Intelligence answers: **"What is happening across the markets right now?"**
+
+Command Center may surface selected Market Intelligence, but Market Intelligence is the deeper research workspace.
+
+### Future Trade Intelligence Relationship
+
+Trade Intelligence is a separate future workspace. Market Intelligence is market-centric; Trade Intelligence will be opportunity/trade-centric.
+
 ### Internal Intelligence
 
 StructureIQ first creates deterministic, machine-readable output: market structure, timeframe alignment, weighted decisions, evidence, setup qualification, and strategy comparisons. This layer is designed for correctness, testing, APIs, journals, and backtesting.

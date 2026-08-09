@@ -1,5 +1,15 @@
 # StructureIQ Architecture
 
+## Market Intelligence Workspace Design Boundary
+
+Market Intelligence v1.0 is an approved product design baseline for an AI-first market research workspace. It answers: "What is actually happening across the markets right now?"
+
+Architecturally, Market Intelligence is a presentation and research workspace above existing intelligence engines. It may eventually compose market data, market structure, multi-timeframe analysis, indicator context, session awareness, volatility context, market drivers, economic-calendar context, and AI explanations into a trader-facing briefing experience.
+
+The approved design does not claim that frontend components, chart overlays, news feeds, economic-calendar APIs, live Market Drivers, or AI Observation Timeline plumbing already exist. Those remain future implementation work unless separately documented by engineering releases.
+
+Charts are supporting evidence in this workspace. They should not become the primary information hierarchy or turn Market Intelligence into a charting-first platform.
+
 ## Market Session Awareness Boundary
 
 Version 6.0.13 adds a Market Session Engine that classifies configured symbols as `CRYPTO`, `FOREX`, `US_EQUITY`, `ETF`, `INDEX`, `FUTURES`, or `UNKNOWN` and determines whether the market is currently tradable. The Live Market Monitor uses this only as a pre-analysis gate. Closed symbols are skipped before provider calls, candle downloads, analysis, confidence scoring, setup quality, candidate generation, risk checks, lifecycle, or brokerage.

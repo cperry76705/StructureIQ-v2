@@ -7,13 +7,15 @@ Status: APPROVED
 Owner: Founder  
 Created: 2026-08-09  
 Last Updated: 2026-08-09  
-Related Entries: [Product Vision](KB-PROD-0001-product-vision.md), [AI Partnership Model](KB-PROD-0005-ai-partnership-model.md)  
-Related ADRs: [ADR-016](../07-decisions/ADR-016-premium-experience-all-plans.md), [ADR-018](../07-decisions/ADR-018-command-center-decision-focus.md), [ADR-021](../07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md)  
+Related Entries: [Product Vision](KB-PROD-0001-product-vision.md), [AI Partnership Model](KB-PROD-0005-ai-partnership-model.md), [Market Intelligence Workspace](KB-PROD-0006-market-intelligence-workspace.md)  
+Related ADRs: [ADR-016](../07-decisions/ADR-016-premium-experience-all-plans.md), [ADR-018](../07-decisions/ADR-018-command-center-decision-focus.md), [ADR-021](../07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md), [ADR-022](../07-decisions/ADR-022-ai-first-market-research-workspace.md)  
 Related Releases: None
 
 ## Purpose
 
 The Command Center answers: "What should I know and do today?"
+
+Market Intelligence answers: "What is happening across the markets right now?" The Command Center may surface selected intelligence from Market Intelligence, but Market Intelligence is the deeper research workspace.
 
 ## Sections
 

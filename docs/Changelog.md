@@ -1,5 +1,12 @@
 # Changelog
 
+## Documentation — Market Intelligence Workspace v1.0 Approved — 2026-08-09
+
+- Approved Market Intelligence as the AI-first market research workspace.
+- Documented AI Market Brief, Market Sentiment, Market Health, Opportunity Radar, Chart Analysis, AI Analysis Panel, Session Intelligence, Market Drivers, Economic Calendar, Volatility Overview, and AI Observation Timeline.
+- Clarified that Market Intelligence answers what is happening across markets now, while future Trade Intelligence will answer what to do.
+- Confirmed this is a product design baseline only and does not claim frontend implementation or live calendar/news/chart integrations.
+
 ## Version 6.0.17 — Recovery Test Snapshot Integrity Guard — 2026-08-09
 
 - Added first-class `recovery_test_run_id` binding across recovery-test fixture creation, snapshots, verification, cleanup, and history.

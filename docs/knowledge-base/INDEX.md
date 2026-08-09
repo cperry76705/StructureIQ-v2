@@ -26,6 +26,7 @@ Related Releases: None
 - [KB-PROD-0003 Command Center](02-product/KB-PROD-0003-command-center.md)
 - [KB-PROD-0004 Subscription Model](02-product/KB-PROD-0004-subscription-model.md)
 - [KB-PROD-0005 AI Partnership Model](02-product/KB-PROD-0005-ai-partnership-model.md)
+- [KB-PROD-0006 Market Intelligence Workspace](02-product/KB-PROD-0006-market-intelligence-workspace.md)
 
 ## Engineering
 
@@ -65,6 +66,7 @@ Related Releases: None
 - [TL-0013 Commercial Product Design](06-timeline/TL-0013-commercial-product-design.md)
 - [TL-0014 Command Center Approved](06-timeline/TL-0014-command-center-approved.md)
 - [TL-0015 Subscription Execution Authority Model Approved](06-timeline/TL-0015-subscription-execution-authority-model.md)
+- [TL-0016 Market Intelligence Workspace v1.0 Approved](06-timeline/TL-0016-market-intelligence-workspace-approved.md)
 
 ## Decisions
 
@@ -89,6 +91,7 @@ Related Releases: None
 - [ADR-019 Full Trade Lifecycle](07-decisions/ADR-019-full-trade-lifecycle.md)
 - [ADR-020 Knowledge Base Source of Truth](07-decisions/ADR-020-knowledge-base-source-of-truth.md)
 - [ADR-021 Subscription Tiers Based on Execution Authority](07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md)
+- [ADR-022 AI-First Market Research Workspace](07-decisions/ADR-022-ai-first-market-research-workspace.md)
 
 ## Validation
 

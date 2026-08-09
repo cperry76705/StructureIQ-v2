@@ -11,6 +11,22 @@ Related Entries: [README.md](README.md)
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
 
+## Knowledge Base v1.2 — 2026-08-09
+
+Added:
+
+- Approved Market Intelligence Workspace v1.0.
+- Added AI-first market research architecture.
+- Added Market Intelligence design approval.
+- Added Market Intelligence timeline milestone.
+- Added AI Market Brief, Market Health, Opportunity Radar, AI Analysis, Session Intelligence, Market Drivers, Economic Calendar, Volatility Overview, and AI Observation Timeline specifications.
+
+Changed:
+
+- Expanded authenticated product architecture.
+- Reinforced AI Trading Intelligence positioning.
+- Clarified separation between Market Intelligence and Trade Intelligence.
+
 ## Knowledge Base v1.1 — 2026-08-09
 
 Changed:

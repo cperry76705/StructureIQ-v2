@@ -1,5 +1,13 @@
 # StructureIQ Roadmap
 
+## Product Design Baseline — Market Intelligence Workspace v1.0 (approved)
+
+- AI-first market research workspace answering: "What is actually happening across the markets right now?"
+- Approved sections: AI Market Brief, Market Sentiment, Market Health Dashboard, Opportunity Radar, Chart Analysis, AI Analysis Panel, Session Intelligence, Market Drivers, Economic Calendar, Volatility Overview, and AI Observation Timeline.
+- Market Intelligence is market-centric and research-oriented; future Trade Intelligence remains opportunity/trade-centric.
+- Charts support intelligence rather than defining the workspace.
+- Frontend implementation, calendar/news feeds, chart overlays, live market-driver integrations, and observation-timeline plumbing remain future work unless separately implemented.
+
 ## Version 6.0.13 — Intelligent Market Session Awareness (implemented)
 
 - Symbol classification for Crypto, Forex, US equities, ETFs, indices, futures, and unknown markets.

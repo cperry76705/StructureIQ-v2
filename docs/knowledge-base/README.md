@@ -20,7 +20,7 @@ It exists so the project does not depend on memory, scattered chat history, or u
 ## Folder Structure
 
 - `01-company/` — mission, vision, founder story, philosophy, success definition.
-- `02-product/` — product vision, landing page direction, Command Center, plans, AI partnership.
+- `02-product/` — product vision, landing page direction, Command Center, Market Intelligence, plans, AI partnership.
 - `03-engineering/` — architecture, market structure, risk, research labs, environment lessons.
 - `04-ai/` — AI behavior principles and trade lifecycle philosophy.
 - `05-business/` — commercial model, multitenancy, growth, positioning.
