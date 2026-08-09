@@ -75,9 +75,13 @@ AI chooses the initial highest-ranked opportunity; the user may override it at a
 
 On mobile, Trade Intelligence prioritizes AI Top Pick, Priority Opportunities, opportunity status, Trade Plan, execution control, lifecycle, alerts, and critical AI updates instead of shrinking the desktop grid. This approved design baseline does not claim frontend implementation.
 
-### Performance Intelligence Relationship
+### Performance Intelligence Workspace v1.0
 
-Performance Intelligence is a planned flagship workspace that answers: **"How am I performing and improving?"** Its mission covers trading results, decision quality, discipline, risk behavior, and long-term improvement; its full design has not started.
+Performance Intelligence is the approved continuous improvement workspace. It answers: **"How am I performing and improving as a trader?"** Its mission is to turn trading history into actionable intelligence about performance, decision quality, discipline, risk, strengths, weaknesses, repeatability, and improvement.
+
+The approved design uses the shared app shell and includes AI Performance Brief, Decision Quality as the primary behavioral KPI, Performance Summary, Equity Curve, Performance Attribution, Discipline Intelligence, Strengths, Needs Improvement, Missed Opportunity Intelligence, AI Coach, Performance Milestones, Weekly Goal Progress, Quick Insights, and bottom improvement actions. Edge Score remains CONCEPT / FUTURE pending definition and validation.
+
+Performance Intelligence evaluates process alongside outcomes: a good loss differs from a bad win, a correct skip differs from an execution miss, and override quality depends on the information available at decision time. On mobile, behavioral intelligence and coaching take priority while charts and attribution may use drill-down views. This approved baseline does not claim frontend or supporting-engine implementation.
 
 ### Internal Intelligence
 

@@ -29,7 +29,7 @@ Related Releases: None
 - [KB-PROD-0006 Market Intelligence Workspace](02-product/KB-PROD-0006-market-intelligence-workspace.md)
 - [KB-PROD-0007 Navigation & Application Shell Design System](02-product/KB-PROD-0007-navigation-application-shell-design-system.md)
 - [KB-PROD-0008 Trade Intelligence Workspace v1.0 — APPROVED](02-product/KB-PROD-0008-trade-intelligence.md)
-- [KB-PROD-0009 Performance Intelligence](02-product/KB-PROD-0009-performance-intelligence.md)
+- [KB-PROD-0009 Performance Intelligence Workspace v1.0 — APPROVED](02-product/KB-PROD-0009-performance-intelligence.md)
 
 ## Engineering
 
@@ -72,6 +72,7 @@ Related Releases: None
 - [TL-0016 Market Intelligence Workspace v1.0 Approved](06-timeline/TL-0016-market-intelligence-workspace-approved.md)
 - [TL-0017 Global Navigation and Product Naming Standard Approved](06-timeline/TL-0017-global-navigation-and-product-naming-standard-approved.md)
 - [TL-0018 Trade Intelligence Workspace v1.0 Approved](06-timeline/TL-0018-trade-intelligence-workspace-approved.md)
+- [TL-0019 Performance Intelligence Workspace v1.0 Approved](06-timeline/TL-0019-performance-intelligence-workspace-approved.md)
 
 ## Decisions
 
@@ -99,6 +100,7 @@ Related Releases: None
 - [ADR-022 AI-First Market Research Workspace](07-decisions/ADR-022-ai-first-market-research-workspace.md)
 - [ADR-023 Persistent Authenticated Navigation and Naming Standard](07-decisions/ADR-023-persistent-authenticated-navigation-and-naming-standard.md)
 - [ADR-024 AI-Selected Default Opportunity With User Override](07-decisions/ADR-024-ai-selected-default-opportunity-with-user-override.md)
+- [ADR-025 Decision Quality Over Outcome-Only Performance Evaluation](07-decisions/ADR-025-decision-quality-over-outcome-only-performance-evaluation.md)
 
 ## Validation
 

@@ -11,6 +11,23 @@ Related Entries: [README.md](README.md)
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
 
+## Knowledge Base v1.5 — 2026-08-09
+
+Added:
+
+- Approved Performance Intelligence Workspace v1.0.
+- Decision-quality-centered performance philosophy.
+- Performance Attribution, Discipline Intelligence, and Missed Opportunity Intelligence.
+- AI Coach, Performance Milestones, Weekly Goal Progress, and the design approval record.
+- ADR-025 and TL-0019.
+
+Changed:
+
+- Promoted KB-PROD-0009 from DESIGN NOT STARTED to APPROVED.
+- Completed the four-workspace flagship product loop.
+- Established Performance Intelligence as StructureIQ's continuous improvement engine.
+- Preserved StructureIQ Edge Score as CONCEPT / FUTURE pending validation.
+
 ## Knowledge Base v1.4 — 2026-08-09
 
 Added:

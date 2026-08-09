@@ -27,7 +27,8 @@ Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-rele
 12. Continue SaaS workspace design without degrading core intelligence across tiers.
 13. Implement the approved Market Intelligence workspace as an AI-first research experience when frontend work resumes, keeping charts as supporting evidence and preserving approved Trade Intelligence as a separate opportunity-centric workspace.
 14. Apply Navigation & Application Shell Design System v1.0 to future authenticated frontend work: one shell and the four authoritative flagship workspace names.
-15. Implement the approved Trade Intelligence v1.0 product baseline when frontend work resumes without treating Market Explorer as global navigation or claiming unimplemented exploratory analysis; begin Performance Intelligence design separately.
+15. Implement the approved Trade Intelligence v1.0 product baseline when frontend work resumes without treating Market Explorer as global navigation or claiming unimplemented exploratory analysis.
+16. Implement the approved Performance Intelligence v1.0 product baseline when frontend work resumes; validate Decision Quality and behavioral metric logic before representing those metrics as production-ready, and retain Edge Score as CONCEPT / FUTURE.
 
 ## Recently Completed
 
@@ -40,3 +41,4 @@ Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-rele
 - Approved Market Intelligence Workspace v1.0 as a product design baseline.
 - Approved the persistent authenticated navigation and naming standard; reclassified Morning Intelligence as Morning Brief within Command Center.
 - Approved Trade Intelligence Workspace v1.0 with AI Top Pick, user override, Opportunity Workspace, Market Universe, lifecycle guidance, and exploratory-market boundaries.
+- Approved Performance Intelligence Workspace v1.0, completing the four-workspace flagship loop and establishing Decision Quality as its primary behavioral KPI.

@@ -111,7 +111,7 @@ Every trade should contribute to education. Learning content may explain why Str
 
 Market Intelligence is market-centric and answers **“What is happening across the markets right now?”** Trade Intelligence is opportunity-centric and converts relevant market intelligence into a specific opportunity and trade workflow. They remain separate workspaces.
 
-After completion, Trade Intelligence will flow into Performance Intelligence for eventual review of outcomes, decision quality, discipline, execution quality, risk, and long-term improvement. This relationship does not define or approve the planned Performance Intelligence page design.
+After completion, Trade Intelligence flows conceptually into the approved Performance Intelligence workspace for review of outcomes, decision quality, discipline, execution quality, risk, and long-term improvement. Product approval does not claim that this data integration is implemented.
 
 ## Mobile Philosophy
 

@@ -1,11 +1,19 @@
 # StructureIQ Roadmap
 
+## Product Design Baseline — Performance Intelligence Workspace v1.0 (approved)
+
+- Continuous improvement workspace answering: "How am I performing and improving as a trader?"
+- Approved structure includes AI Performance Brief, Decision Quality, Performance Summary, Equity Curve, Performance Attribution, Discipline Intelligence, Strengths, Needs Improvement, Missed Opportunity Intelligence, AI Coach, milestones, weekly goals, Quick Insights, and bottom improvement actions.
+- Decision Quality is more prominent than P&L; evaluation distinguishes good losses, bad wins, correct skips, execution misses, and override quality.
+- StructureIQ Edge Score remains CONCEPT / FUTURE pending definition and validation.
+- This is a product design baseline; frontend and unconfirmed engine capabilities remain future implementation work.
+
 ## Product Design Baseline — Trade Intelligence Workspace v1.0 (approved)
 
 - Opportunity-centric decision and trade-workflow workspace answering: "What should I do next?"
 - Approved structure includes AI Trade Brief, AI Focus, Market Explorer, AI Top Pick, Opportunity Workspace, Market Universe, Trade Plan, explainability, confidence breakdown, tier-aware execution controls, Trade Lifecycle, Alternative Scenarios, AI Observation Timeline, learning content, and the unsupported-market exploratory pathway.
 - AI selects the initial highest-ranked opportunity; the user may override it at any time.
-- Market Intelligence remains market-centric, while completed Trade Intelligence activity will eventually flow into planned Performance Intelligence.
+- Market Intelligence remains market-centric, while completed Trade Intelligence activity flows conceptually into approved Performance Intelligence.
 - This is a product design baseline; frontend and unconfirmed backend capabilities remain future implementation work.
 
 ## Product Design Baseline — Market Intelligence Workspace v1.0 (approved)

@@ -92,3 +92,7 @@ An Elite subscriber may remain in Observer or approval-required mode indefinitel
 All tiers use the same premium authenticated application shell and flagship workspace hierarchy. Navigation must not visually degrade or become a separate shell for Explorer, Professional, or Elite; only authorized behavior changes.
 
 Professional approval and Elite Autopilot do not bypass risk controls. Broker execution must validate applicable controls such as broker connection status, user authorization, allowed symbols, risk percentage, daily loss limits, exposure, open positions, execution/slippage conditions, trade-management permissions, and kill-switch state.
+
+## Performance Intelligence Across Tiers
+
+Every tier receives the same core Performance Intelligence quality. Explorer emphasizes manually executed decisions and behavior. Professional may eventually compare approvals, rejections, assisted execution, and AI recommendations. Elite may eventually compare Autopilot, Co-Pilot, manual overrides, autonomous periods, and user intervention. These contexts do not create visually inferior lower-tier versions or claim that every attribution integration exists.

@@ -1,10 +1,17 @@
 # Changelog
 
+## Documentation — Performance Intelligence Workspace v1.0 Approved — 2026-08-09
+
+- Approved Performance Intelligence as StructureIQ's continuous improvement workspace.
+- Documented Decision Quality, Performance Summary, Equity Curve, Performance Attribution, Discipline Intelligence, Strengths, Needs Improvement, Missed Opportunity Intelligence, AI Coach, milestones, weekly goals, Quick Insights, and bottom improvement actions.
+- Established decision quality over outcome-only evaluation and retained Edge Score as CONCEPT / FUTURE.
+- Confirmed this is a product design baseline and does not claim frontend or unconfirmed engine implementation.
+
 ## Documentation — Trade Intelligence Workspace v1.0 Approved — 2026-08-09
 
 - Approved Trade Intelligence as the opportunity-centric decision and trade-workflow workspace.
 - Documented AI Trade Brief, AI Focus, Market Explorer, AI Top Pick, Opportunity Workspace, Market Universe, Trade Plan, explainable confidence, tier-aware execution controls, Trade Lifecycle, Alternative Scenarios, AI Observation Timeline, learning content, and exploratory-market boundaries.
-- Established AI-selected initial opportunity with user override and clarified the relationship to Market Intelligence and planned Performance Intelligence.
+- Established AI-selected initial opportunity with user override and clarified the relationship to Market Intelligence. At that approval stage Performance Intelligence remained planned; that status is superseded by the Performance Intelligence v1.0 approval above.
 - Confirmed this is a product design baseline and does not claim frontend or unconfirmed backend implementation.
 
 ## Documentation — Market Intelligence Workspace v1.0 Approved — 2026-08-09
