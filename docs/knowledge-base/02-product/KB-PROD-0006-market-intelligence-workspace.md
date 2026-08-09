@@ -32,7 +32,7 @@ Its job is:
 
 Market Intelligence answers: **"What is actually happening across the markets right now?"**
 
-This is distinct from future Trade Intelligence, which will answer: **"What should I do?"**
+This is distinct from Trade Intelligence, which answers: **"What should I do next?"**
 
 ## Governing Design Principle
 
@@ -189,9 +189,9 @@ The Command Center may surface selected intelligence from Market Intelligence, b
 
 ## Relationship to Trade Intelligence
 
-Trade Intelligence is a separate future workspace.
+Trade Intelligence is a separate approved workspace.
 
-Market Intelligence is market-centric. Trade Intelligence will be opportunity/trade-centric. Market Intelligence should not become overloaded with trade execution controls.
+Market Intelligence is market-centric. Trade Intelligence is opportunity-centric and converts relevant research into a specific opportunity and trade workflow. Market Intelligence should not become overloaded with trade execution controls, and the two workspaces must not be collapsed.
 
 ## Future Enhancements
 

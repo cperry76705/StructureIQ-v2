@@ -31,7 +31,7 @@ Market Intelligence must be designed as a research and understanding workspace, 
 
 The primary user experience should begin with market briefings, context, prioritization, and explanatory analysis. Charts remain important, but they validate and illustrate the intelligence instead of forcing the trader to assemble the thesis manually.
 
-Future Trade Intelligence may become opportunity/trade-centric, but Market Intelligence remains market-centric.
+Historical design context: Trade Intelligence was expected to become opportunity/trade-centric while Market Intelligence remained market-centric. The future/conditional wording is superseded by the approved [Trade Intelligence Workspace v1.0](../02-product/KB-PROD-0008-trade-intelligence.md); the separation principle remains authoritative.
 
 ## Implementation Boundary
 

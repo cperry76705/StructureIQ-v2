@@ -11,6 +11,23 @@ Related Entries: [README.md](README.md)
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
 
+## Knowledge Base v1.4 — 2026-08-09
+
+Added:
+
+- Approved Trade Intelligence Workspace v1.0 design baseline.
+- AI Top Pick behavior and AI-selected default opportunity with user override.
+- Opportunity Workspace and supported-versus-exploratory market behavior.
+- Trade Intelligence design approval record, ADR-024, and TL-0018.
+
+Changed:
+
+- Promoted KB-PROD-0008 from DESIGN REVIEW to APPROVED.
+- Replaced Selected Opportunity with Opportunity Workspace in current terminology.
+- Replaced Universe Summary with Market Universe in current terminology.
+- Clarified AI Focus versus Market Explorer behavior.
+- Clarified Trade Intelligence relationships to Market Intelligence and Performance Intelligence.
+
 ## Knowledge Base v1.3 — 2026-08-09
 
 Added:

@@ -17,6 +17,6 @@ StructureIQ is more than a signal platform. It is an AI trading intelligence wor
 
 The product should answer what matters, why it matters, what the trader can do, and when patience is the correct action.
 
-Market Intelligence is the approved research workspace for answering: "What is actually happening across the markets right now?" It begins with synthesized AI context and uses charts as supporting evidence. Trade Intelligence remains a separate future workspace for opportunity/trade-centric questions.
+Market Intelligence is the approved research workspace for answering: "What is actually happening across the markets right now?" It begins with synthesized AI context and uses charts as supporting evidence. Approved Trade Intelligence remains separate and converts relevant research into an explainable opportunity and trade workflow answering: "What should I do next?"
 
 The approved core product loop is Command Center, Market Intelligence, Trade Intelligence, and Performance Intelligence. These flagship workspaces share one persistent authenticated shell. Morning Brief is embedded in Command Center, the user's home workspace.

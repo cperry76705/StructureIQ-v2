@@ -1,10 +1,17 @@
 # Changelog
 
+## Documentation — Trade Intelligence Workspace v1.0 Approved — 2026-08-09
+
+- Approved Trade Intelligence as the opportunity-centric decision and trade-workflow workspace.
+- Documented AI Trade Brief, AI Focus, Market Explorer, AI Top Pick, Opportunity Workspace, Market Universe, Trade Plan, explainable confidence, tier-aware execution controls, Trade Lifecycle, Alternative Scenarios, AI Observation Timeline, learning content, and exploratory-market boundaries.
+- Established AI-selected initial opportunity with user override and clarified the relationship to Market Intelligence and planned Performance Intelligence.
+- Confirmed this is a product design baseline and does not claim frontend or unconfirmed backend implementation.
+
 ## Documentation — Market Intelligence Workspace v1.0 Approved — 2026-08-09
 
 - Approved Market Intelligence as the AI-first market research workspace.
 - Documented AI Market Brief, Market Sentiment, Market Health, Opportunity Radar, Chart Analysis, AI Analysis Panel, Session Intelligence, Market Drivers, Economic Calendar, Volatility Overview, and AI Observation Timeline.
-- Clarified that Market Intelligence answers what is happening across markets now, while future Trade Intelligence will answer what to do.
+- Clarified that Market Intelligence answers what is happening across markets now, while Trade Intelligence answers what to do next.
 - Confirmed this is a product design baseline only and does not claim frontend implementation or live calendar/news/chart integrations.
 
 ## Version 6.0.17 — Recovery Test Snapshot Integrity Guard — 2026-08-09

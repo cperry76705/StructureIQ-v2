@@ -1,10 +1,18 @@
 # StructureIQ Roadmap
 
+## Product Design Baseline — Trade Intelligence Workspace v1.0 (approved)
+
+- Opportunity-centric decision and trade-workflow workspace answering: "What should I do next?"
+- Approved structure includes AI Trade Brief, AI Focus, Market Explorer, AI Top Pick, Opportunity Workspace, Market Universe, Trade Plan, explainability, confidence breakdown, tier-aware execution controls, Trade Lifecycle, Alternative Scenarios, AI Observation Timeline, learning content, and the unsupported-market exploratory pathway.
+- AI selects the initial highest-ranked opportunity; the user may override it at any time.
+- Market Intelligence remains market-centric, while completed Trade Intelligence activity will eventually flow into planned Performance Intelligence.
+- This is a product design baseline; frontend and unconfirmed backend capabilities remain future implementation work.
+
 ## Product Design Baseline — Market Intelligence Workspace v1.0 (approved)
 
 - AI-first market research workspace answering: "What is actually happening across the markets right now?"
 - Approved sections: AI Market Brief, Market Sentiment, Market Health Dashboard, Opportunity Radar, Chart Analysis, AI Analysis Panel, Session Intelligence, Market Drivers, Economic Calendar, Volatility Overview, and AI Observation Timeline.
-- Market Intelligence is market-centric and research-oriented; future Trade Intelligence remains opportunity/trade-centric.
+- Market Intelligence is market-centric and research-oriented; approved Trade Intelligence remains separate and opportunity-centric.
 - Charts support intelligence rather than defining the workspace.
 - Frontend implementation, calendar/news feeds, chart overlays, live market-driver integrations, and observation-timeline plumbing remain future work unless separately implemented.
 

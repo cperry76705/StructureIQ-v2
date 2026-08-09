@@ -65,9 +65,15 @@ Market Intelligence answers: **"What is happening across the markets right now?"
 
 Command Center may surface selected Market Intelligence, but Market Intelligence is the deeper research workspace.
 
-### Trade Intelligence Relationship
+### Trade Intelligence Workspace v1.0
 
-Trade Intelligence is a separate flagship workspace whose full screen remains under design review. Market Intelligence is market-centric; Trade Intelligence is opportunity/trade-centric and answers: **"What should I do next?"**
+Trade Intelligence is the approved opportunity-centric decision and trade-workflow workspace. It answers: **"What should I do next?"** Its mission is to transform StructureIQ market research into disciplined, explainable trading opportunities while guiding the full lifecycle from validation through execution, management, exit, review, and learning.
+
+The approved design uses the persistent app shell and includes an AI Trade Brief, default AI Focus mode, user-driven Market Explorer, AI Top Pick initial selection, Opportunity Workspace, Market Universe, authoritative-backend Trade Plan, supporting and counter-evidence, explainable confidence, tier-aware execution controls, Trade Lifecycle, Alternative Scenarios, opportunity-specific observation timeline, and learning content.
+
+AI chooses the initial highest-ranked opportunity; the user may override it at any time. Supported markets can be analyzed outside AI Focus. Unsupported markets are clearly labeled and may receive informational Exploratory Analysis, but they are ineligible for validated recommendation or automated-execution status.
+
+On mobile, Trade Intelligence prioritizes AI Top Pick, Priority Opportunities, opportunity status, Trade Plan, execution control, lifecycle, alerts, and critical AI updates instead of shrinking the desktop grid. This approved design baseline does not claim frontend implementation.
 
 ### Performance Intelligence Relationship
 
