@@ -11,6 +11,18 @@ Related Entries: [README.md](README.md)
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
 
+## Knowledge Base v1.1 — 2026-08-09
+
+Changed:
+
+- Refined StructureIQ subscription architecture.
+- Defined execution authority as the primary tier differentiator.
+- Clarified Professional as approval-required AI-assisted execution.
+- Clarified Elite as optional autonomous execution.
+- Established the Intelligence Equality Principle.
+- Preserved premium experience across all tiers.
+- Updated AI Authority relationships.
+
 ## v6.0.17 Knowledge Base Update — 2026-08-09
 
 - Added release documentation for StructureIQ v6.0.17.

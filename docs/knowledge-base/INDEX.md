@@ -64,6 +64,7 @@ Related Releases: None
 - [TL-0012 Market Session Awareness](06-timeline/TL-0012-market-session-awareness.md)
 - [TL-0013 Commercial Product Design](06-timeline/TL-0013-commercial-product-design.md)
 - [TL-0014 Command Center Approved](06-timeline/TL-0014-command-center-approved.md)
+- [TL-0015 Subscription Execution Authority Model Approved](06-timeline/TL-0015-subscription-execution-authority-model.md)
 
 ## Decisions
 
@@ -87,6 +88,7 @@ Related Releases: None
 - [ADR-018 Command Center Decision Focus](07-decisions/ADR-018-command-center-decision-focus.md)
 - [ADR-019 Full Trade Lifecycle](07-decisions/ADR-019-full-trade-lifecycle.md)
 - [ADR-020 Knowledge Base Source of Truth](07-decisions/ADR-020-knowledge-base-source-of-truth.md)
+- [ADR-021 Subscription Tiers Based on Execution Authority](07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md)
 
 ## Validation
 

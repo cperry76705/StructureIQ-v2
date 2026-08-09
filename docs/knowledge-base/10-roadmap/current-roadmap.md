@@ -8,7 +8,7 @@ Owner: Founder
 Created: 2026-08-09  
 Last Updated: 2026-08-09  
 Related Entries: [Validation Philosophy](../08-validation/VAL-0001-validation-philosophy.md), [Product Vision](../02-product/KB-PROD-0001-product-vision.md)  
-Related ADRs: [ADR-004](../07-decisions/ADR-004-paper-before-live.md), [ADR-011](../07-decisions/ADR-011-progressive-automation.md), [ADR-014](../07-decisions/ADR-014-expand-opportunity-set-before-lowering-quality.md)  
+Related ADRs: [ADR-004](../07-decisions/ADR-004-paper-before-live.md), [ADR-011](../07-decisions/ADR-011-progressive-automation.md), [ADR-014](../07-decisions/ADR-014-expand-opportunity-set-before-lowering-quality.md), [ADR-021](../07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md)  
 Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-releases/REL-v6.0.14.md), [v6.0.15](../11-releases/REL-v6.0.15.md), [v6.0.16](../11-releases/REL-v6.0.16.md), [v6.0.17](../11-releases/REL-v6.0.17.md)
 
 ## Roadmap
@@ -20,11 +20,11 @@ Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-rele
 5. Evaluate whether trade frequency remains commercially acceptable without lowering quality standards.
 6. Build Trade Management Engine after entry validation.
 7. Build intelligent exit behavior.
-8. Build broker execution architecture.
-9. Build user accounts/subscriptions.
-10. Build assisted execution.
-11. Build autonomous execution.
-12. Continue SaaS workspace design.
+8. Build broker execution architecture that supports Manual → Approval Required → Optional Autopilot authority.
+9. Build user accounts/subscriptions around Explorer, Professional, and Elite execution authority.
+10. Build approval-required assisted execution for Professional.
+11. Build optional autonomous execution for Elite.
+12. Continue SaaS workspace design without degrading core intelligence across tiers.
 
 ## Recently Completed
 

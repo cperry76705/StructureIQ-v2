@@ -8,7 +8,7 @@ Owner: Founder
 Created: 2026-08-09  
 Last Updated: 2026-08-09  
 Related Entries: [Product Vision](KB-PROD-0001-product-vision.md), [AI Partnership Model](KB-PROD-0005-ai-partnership-model.md)  
-Related ADRs: [ADR-016](../07-decisions/ADR-016-premium-experience-all-plans.md), [ADR-018](../07-decisions/ADR-018-command-center-decision-focus.md)  
+Related ADRs: [ADR-016](../07-decisions/ADR-016-premium-experience-all-plans.md), [ADR-018](../07-decisions/ADR-018-command-center-decision-focus.md), [ADR-021](../07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md)  
 Related Releases: None
 
 ## Purpose
@@ -37,4 +37,8 @@ Win Rate is not a primary Command Center tile. It belongs in historical performa
 
 Account balance is available, but not visually dominant.
 
-Every subscription tier receives the same premium visual quality. Plans change AI capability, not UI quality.
+Every subscription tier receives the same premium visual quality and the same core StructureIQ intelligence. Plans change execution authority, not Command Center quality.
+
+Explorer presents execution-related workspace behavior as Signal Center / Manual Trading. Professional presents approval-required Trade Management actions. Elite may present autonomous Trade Management when Autopilot is enabled.
+
+StructureIQ remains one recognizable interface whose behavior adapts to Subscription Tier and current AI Authority Level. It should not become three visually different applications.

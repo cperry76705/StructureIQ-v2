@@ -8,17 +8,23 @@ Owner: Founder
 Created: 2026-08-09  
 Last Updated: 2026-08-09  
 Related Entries: [Subscription Model](KB-PROD-0004-subscription-model.md), [AI Principles](../04-ai/KB-AI-0001-ai-principles.md)  
-Related ADRs: [ADR-011](../07-decisions/ADR-011-progressive-automation.md), [ADR-017](../07-decisions/ADR-017-ai-authority-model.md)  
+Related ADRs: [ADR-011](../07-decisions/ADR-011-progressive-automation.md), [ADR-017](../07-decisions/ADR-017-ai-authority-model.md), [ADR-021](../07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md)  
 Related Releases: [v6.0.14](../11-releases/REL-v6.0.14.md)
 
 ## Authority Levels
 
-- Observer: AI explains and monitors but does not recommend direct action.
-- Advisor: AI recommends actions while the user decides and executes.
-- Co-Pilot: AI assists execution and management with user approval.
-- Autopilot: AI may eventually enter, manage, and exit within user-defined safeguards.
+- Observer: AI provides analysis and explanation only.
+- Advisor: AI recommends actions; the user decides and executes unless assisted execution is separately available.
+- Co-Pilot: StructureIQ prepares and may submit broker actions only after explicit user approval.
+- Autopilot: StructureIQ may execute approved categories of actions automatically within user-defined safeguards.
 
-AI Authority Level is separate from visual subscription quality. UI quality stays premium across plans; authority controls behavior.
+AI Authority Level is separate from Subscription Tier. Subscription Tier defines the maximum execution authority available; AI Authority Level defines how much authority the customer has currently enabled.
+
+Explorer is manual execution only. Professional may use Observer, Advisor, and approval-required Co-Pilot behavior. Elite may use Observer, Advisor, Co-Pilot, or optional Autopilot.
+
+AI Authority Level is also separate from visual subscription quality. UI quality and core intelligence stay premium across plans; authority controls behavior.
+
+Professional approval and Elite Autopilot never bypass execution safeguards, risk controls, user authorization, allowed-symbol checks, exposure limits, daily loss limits, broker connection checks, or kill-switch state.
 
 ## v6.0.14 Product Implication
 
