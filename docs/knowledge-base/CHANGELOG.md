@@ -11,6 +11,12 @@ Related Entries: [README.md](README.md)
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
 
+## v6.0.15 Knowledge Base Update — 2026-08-09
+
+- Added release documentation for StructureIQ v6.0.15.
+- Updated roadmap and operations references for journal integrity and validation-state hygiene.
+- Preserved existing historical uncertainty language and did not rewrite unrelated entries.
+
 ## v6.0.14 Knowledge Base Update — 2026-08-09
 
 - Added release documentation for StructureIQ v6.0.14.

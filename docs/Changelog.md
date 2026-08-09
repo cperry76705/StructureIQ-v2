@@ -1,5 +1,13 @@
 # Changelog
 
+## Version 6.0.15 — Paper Journal Integrity and Validation State Hygiene — 2026-08-09
+
+- Added read-only paper journal integrity audits with exact record classification.
+- Added duplicate, lifecycle, timestamp, quarantine, campaign, recovery, and root-cause report APIs.
+- Added SAFE MODE validation guard for critical journal integrity failures.
+- Added recovery quarantine awareness so hard-quarantined journal records are not treated as active runtime recovery candidates.
+- Strategy, market structure, scoring, setup quality, risk, entries, exits, execution, paper trading rules, AI reasoning, broker behavior, and live trading remain unchanged.
+
 ## Version 6.0.14 — Expanded FX Universe and Opportunity Coverage Analytics — 2026-08-09
 
 - Expanded the default monitored universe to BTC-USD, ETH-USD, and seven major USD Forex pairs.

@@ -364,6 +364,27 @@ class ContinuousPaperTradingRuntime:
             self._record("error", "FAIL", f"Health check failed: {exc}")
             if self.config.pause_on_health_fail: self._pause("System health check could not complete.", stop_reason="safety_pause"); return False
         if run_validation and not self._run_validation_guard(): return False
+        try:
+            from core.journal_integrity import JournalIntegrityAuditor
+            journal = getattr(self.orchestrator, "journal", None)
+            lifecycle = getattr(self.orchestrator, "lifecycle", None)
+            if journal is None:
+                raise LookupError("no paper journal is attached to this orchestrator")
+            auditor = JournalIntegrityAuditor(
+                journal=journal,
+                broker=self.broker,
+                lifecycle=lifecycle,
+            )
+            integrity = auditor.summary()
+            if integrity.safe_mode_required:
+                self._pause("SAFE MODE: paper journal integrity failed.", stop_reason="safe_mode")
+                return False
+        except LookupError:
+            pass
+        except Exception as exc:
+            self._record("error", "FAIL", f"Journal integrity safe-mode check failed: {exc}")
+            self._pause("SAFE MODE: journal integrity could not be verified.", stop_reason="safe_mode")
+            return False
         risk = self.broker.account().risk_status
         if risk == "daily_loss_limit_reached" and self.config.pause_on_daily_loss_limit: self._pause("Paper account daily loss limit reached.", stop_reason="safety_pause"); return False
         if risk == "daily_profit_lock_reached" and self.config.pause_on_daily_profit_lock: self._pause("Paper account daily profit lock reached.", stop_reason="safety_pause"); return False

@@ -144,6 +144,15 @@ from core.paper_recovery import (
     PaperRecoveryResult,
     PaperRecoverySummary,
 )
+from core.journal_integrity import (
+    DuplicateReport,
+    JournalIntegrityAuditor,
+    JournalIntegritySummary,
+    LifecycleAudit,
+    QuarantineSummary,
+    RootCauseReport,
+    TimestampAudit,
+)
 from core.validation_campaigns import (
     CampaignSummary,
     CampaignSummaryRefreshResult,
@@ -347,6 +356,20 @@ def get_paper_recovery_engine(
         lifecycle=lifecycle,
         journal=journal,
         reconciliation=reconciliation,
+    )
+
+
+def get_journal_integrity_auditor(
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+) -> JournalIntegrityAuditor:
+    campaigns = get_global_validation_campaign_manager(journal)
+    return JournalIntegrityAuditor(
+        journal=journal,
+        broker=broker,
+        lifecycle=lifecycle,
+        campaigns=campaigns,
     )
 
 
@@ -1217,6 +1240,65 @@ def paper_recovery_summary(engine: PaperRecoveryEngine = Depends(get_paper_recov
 @app.post("/paper-recovery/run", response_model=PaperRecoveryResult, tags=["paper-recovery"])
 def paper_recovery_run(engine: PaperRecoveryEngine = Depends(get_paper_recovery_engine)) -> PaperRecoveryResult:
     return engine.run()
+
+
+@app.get("/paper-integrity/summary", response_model=JournalIntegritySummary, tags=["paper-integrity"])
+def paper_integrity_summary(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> JournalIntegritySummary:
+    return auditor.summary()
+
+
+@app.get("/paper-integrity/quarantine", response_model=QuarantineSummary, tags=["paper-integrity"])
+def paper_integrity_quarantine(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> QuarantineSummary:
+    return auditor.summary().quarantine
+
+
+@app.get("/paper-integrity/duplicates", response_model=DuplicateReport, tags=["paper-integrity"])
+def paper_integrity_duplicates(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> DuplicateReport:
+    return auditor.duplicate_report()
+
+
+@app.get("/paper-integrity/lifecycle", response_model=LifecycleAudit, tags=["paper-integrity"])
+def paper_integrity_lifecycle(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> LifecycleAudit:
+    return auditor.lifecycle_audit()
+
+
+@app.get("/paper-integrity/timestamps", response_model=TimestampAudit, tags=["paper-integrity"])
+def paper_integrity_timestamps(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> TimestampAudit:
+    return auditor.timestamp_audit()
+
+
+@app.get("/paper-integrity/root-cause/{trade_id}", response_model=RootCauseReport, tags=["paper-integrity"])
+def paper_integrity_root_cause(trade_id: str, auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> RootCauseReport:
+    return auditor.root_cause(trade_id)
+
+
+@app.get("/paper-integrity/campaign", response_model=dict[str, Any], tags=["paper-integrity"])
+def paper_integrity_campaign(campaign_id: str | None = None, auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> dict[str, Any]:
+    summary = auditor.summary()
+    records = [item for item in summary.records if campaign_id is None or item.campaign_id == campaign_id]
+    return {
+        "campaign_id": campaign_id,
+        "records": records,
+        "quarantined_count": sum(item.quarantine_status == "QUARANTINED" for item in records),
+        "human_readable_summary": f"Campaign integrity view contains {len(records)} records.",
+    }
+
+
+@app.get("/paper-integrity/recovery", response_model=dict[str, Any], tags=["paper-integrity"])
+def paper_integrity_recovery(
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+    recovery: PaperRecoveryEngine = Depends(get_paper_recovery_engine),
+) -> dict[str, Any]:
+    summary = auditor.summary()
+    recovery_summary = recovery.summary()
+    return {
+        "integrity_status": summary.status,
+        "safe_mode_required": summary.safe_mode_required,
+        "recovery_status": recovery_summary.status,
+        "orphaned_trades": recovery_summary.orphaned_trades,
+        "quarantined_count": summary.quarantined_count,
+        "human_readable_summary": "Recovery integrity combines journal quarantine state with recovery orphan state.",
+    }
 
 
 @app.post("/recovery-test/create-pending-order", response_model=RecoveryTestFixture, tags=["recovery-test"])

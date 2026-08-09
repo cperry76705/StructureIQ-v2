@@ -29,6 +29,7 @@ from core.live_market_monitor import LiveMarketMonitor, MonitorConfig
 from core.market_data import Candle
 from core.market_session_engine import AssetClass, MarketSessionEngine, MarketSessionStatus, classify_symbol
 from core.opportunity_coverage import OpportunityCoverageEngine
+from core.journal_integrity import JournalIntegrityAuditor
 from core.paper_brokerage import PaperBrokerageEngine
 from core.paper_trade_journal import PaperTradeJournal
 from core.paper_state_reconciliation import PaperStateReconciliationEngine
@@ -96,6 +97,13 @@ class SystemValidationHarness:
         "/paper-reconciliation/status",
         "/paper-reconciliation/summary",
         "/paper-recovery/status",
+        "/paper-integrity/summary",
+        "/paper-integrity/quarantine",
+        "/paper-integrity/duplicates",
+        "/paper-integrity/lifecycle",
+        "/paper-integrity/timestamps",
+        "/paper-integrity/campaign",
+        "/paper-integrity/recovery",
         "/campaigns",
         "/campaigns/legacy_campaign/audit",
         "/recovery-test/status",
@@ -168,6 +176,7 @@ class SystemValidationHarness:
             ("Calibration Analytics", self._calibration_analytics),
             ("Paper State Reconciliation", self._paper_reconciliation),
             ("Paper Runtime Recovery", self._paper_recovery),
+            ("Paper Journal Integrity", self._journal_integrity),
             ("Validation Campaigns", self._campaigns),
             ("Recovery Test Harness", self._recovery_test_harness),
             ("Symbol Registry", self._symbol_registry),
@@ -458,6 +467,22 @@ class SystemValidationHarness:
                 return _watch(result.warnings, "Paper Runtime Recovery is healthy for current runtime; legacy recovery drift remains visible.")
             return _watch(result.warnings, result.human_readable_summary)
         return _pass("Paper Runtime Recovery can run safely and preserves restored state.")
+
+    def _journal_integrity(self):
+        auditor = JournalIntegrityAuditor(
+            journal=self.journal,
+            broker=self.broker,
+            lifecycle=self.lifecycle,
+            campaigns=self.campaigns,
+        )
+        summary = auditor.summary()
+        if summary.safe_mode_required or summary.critical_count:
+            return _fail("Paper Journal Integrity requires SAFE MODE before automation.", tuple(issue.root_cause for issue in summary.issues if issue.severity == "critical"))
+        if summary.status == "WATCHLIST":
+            return _watch(tuple(issue.root_cause for issue in summary.issues), summary.human_readable_summary)
+        if auditor.root_cause("47cbfd066469d49904e4dc23").found:
+            return _watch(("Named v6.0.15 target trade is present and should be reviewed.",), "Root-cause target trade is present.")
+        return _pass("Paper Journal Integrity, lifecycle, duplicate, timestamp, and quarantine checks are safe.")
 
     def _campaigns(self):
         if self.campaigns is None:

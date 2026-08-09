@@ -96,6 +96,12 @@ Invoke-RestMethod http://localhost:8000/paper-reconciliation/discrepancies
 Invoke-RestMethod -Method Post http://localhost:8000/paper-reconciliation/run
 Invoke-RestMethod http://localhost:8000/paper-recovery/status
 Invoke-RestMethod -Method Post http://localhost:8000/paper-recovery/run
+Invoke-RestMethod http://localhost:8000/paper-integrity/summary
+Invoke-RestMethod http://localhost:8000/paper-integrity/quarantine
+Invoke-RestMethod http://localhost:8000/paper-integrity/duplicates
+Invoke-RestMethod http://localhost:8000/paper-integrity/lifecycle
+Invoke-RestMethod http://localhost:8000/paper-integrity/timestamps
+Invoke-RestMethod http://localhost:8000/paper-integrity/root-cause/47cbfd066469d49904e4dc23
 Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/create-pending-order
 Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/create-open-trade
 Invoke-RestMethod -Method Post http://localhost:8000/recovery-test/create-closed-trade

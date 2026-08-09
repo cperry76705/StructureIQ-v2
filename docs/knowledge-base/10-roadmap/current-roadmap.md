@@ -9,23 +9,25 @@ Created: 2026-08-09
 Last Updated: 2026-08-09  
 Related Entries: [Validation Philosophy](../08-validation/VAL-0001-validation-philosophy.md), [Product Vision](../02-product/KB-PROD-0001-product-vision.md)  
 Related ADRs: [ADR-004](../07-decisions/ADR-004-paper-before-live.md), [ADR-011](../07-decisions/ADR-011-progressive-automation.md), [ADR-014](../07-decisions/ADR-014-expand-opportunity-set-before-lowering-quality.md)  
-Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-releases/REL-v6.0.14.md)
+Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-releases/REL-v6.0.14.md), [v6.0.15](../11-releases/REL-v6.0.15.md)
 
 ## Roadmap
 
-1. Run seven-day validation on the 9-symbol default universe.
-2. Use Opportunity Coverage Analytics to identify where markets are lost in the pipeline.
-3. Evaluate whether trade frequency remains commercially acceptable without lowering quality standards.
-4. Build Trade Management Engine after entry validation.
-5. Build intelligent exit behavior.
-6. Build broker execution architecture.
-7. Build user accounts/subscriptions.
-8. Build assisted execution.
-9. Build autonomous execution.
-10. Continue SaaS workspace design.
+1. Resolve any SAFE MODE journal integrity findings before the official seven-day validation.
+2. Run seven-day validation on the 9-symbol default universe.
+3. Use Opportunity Coverage Analytics to identify where markets are lost in the pipeline.
+4. Evaluate whether trade frequency remains commercially acceptable without lowering quality standards.
+5. Build Trade Management Engine after entry validation.
+6. Build intelligent exit behavior.
+7. Build broker execution architecture.
+8. Build user accounts/subscriptions.
+9. Build assisted execution.
+10. Build autonomous execution.
+11. Continue SaaS workspace design.
 
 ## Recently Completed
 
 - Completed market-session awareness in v6.0.13.
 - Expanded the default monitored universe to BTC-USD, ETH-USD, and seven major USD Forex pairs in v6.0.14.
 - Added read-only Opportunity Coverage Analytics for campaign funnel, symbol, asset-class, trade-frequency, and prop-readiness context.
+- Added paper journal integrity, quarantine classification, root-cause reporting, and SAFE MODE validation hygiene in v6.0.15.

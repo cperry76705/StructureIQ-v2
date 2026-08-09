@@ -45,6 +45,7 @@ class PaperRecoverySummary:
     global_reconciliation_status: str = "PASS"
     legacy_orphaned_trades: int = 0
     current_campaign_orphaned_trades: int = 0
+    quarantined_recovery_excluded: int = 0
 
 
 @dataclass(frozen=True)
@@ -93,7 +94,7 @@ class PaperRecoveryEngine:
             self.lifecycle.recover_from_storage()
         # Journal loads in its constructor; keep recovery read-only for journal contents.
         reconciliation = self.reconciliation.run(persist=persist_reconciliation)
-        orphans = self._detect_orphans()
+        orphans, quarantined_excluded = self._detect_orphans()
         self._persist_orphans(orphans)
         account = self.broker.account()
         performance = self.broker.performance()
@@ -127,6 +128,7 @@ class PaperRecoveryEngine:
             global_reconciliation_status=global_status,
             legacy_orphaned_trades=len(legacy_orphans),
             current_campaign_orphaned_trades=len(current_orphans),
+            quarantined_recovery_excluded=quarantined_excluded,
         )
         result = PaperRecoveryResult(
             run_id=f"recovery_{_now_hash()}",
@@ -151,13 +153,28 @@ class PaperRecoveryEngine:
         except OSError:
             return False
 
-    def _detect_orphans(self) -> list[PaperOrphanRecord]:
+    def _detect_orphans(self) -> tuple[list[PaperOrphanRecord], int]:
+        quarantined_ids = set()
+        try:
+            from core.journal_integrity import JournalIntegrityAuditor
+            integrity = JournalIntegrityAuditor(journal=self.journal, broker=self.broker, lifecycle=self.lifecycle).summary()
+            hard_reasons = {"duplicate", "synthetic", "test_fixture", "timestamp_corruption", "invalid_transition", "invalid_state"}
+            quarantined_ids = {
+                item.trade_id for item in integrity.quarantine.records
+                if item.trade_id and any(reason in hard_reasons for reason in item.quarantine_reasons)
+            }
+        except Exception:
+            quarantined_ids = set()
         broker_ids = {item.trade_id for item in (*self.broker.open_positions(), *self.broker.closed_trades())}
         lifecycle_ids = {item.trade_id for item in (*self.lifecycle.open_trades(), *self.lifecycle.closed_trades()) if item.trade_id}
         event_ids = {item.trade_id for item in self.lifecycle.events() if getattr(item, "trade_id", None)}
         orphans: list[PaperOrphanRecord] = []
+        quarantined_excluded = 0
         for entry in self.journal.entries():
             if entry.status not in {"open", "closed"}:
+                continue
+            if entry.trade_id in quarantined_ids:
+                quarantined_excluded += 1
                 continue
             in_broker = entry.trade_id in broker_ids
             in_lifecycle = entry.trade_id in lifecycle_ids or entry.trade_id in event_ids
@@ -183,7 +200,7 @@ class PaperRecoveryEngine:
                     "campaign": getattr(entry, "campaign_id", None) is not None,
                 },
             ))
-        return orphans
+        return orphans, quarantined_excluded
 
     def _persist_orphans(self, orphans: list[PaperOrphanRecord]) -> None:
         self.orphan_path.parent.mkdir(parents=True, exist_ok=True)

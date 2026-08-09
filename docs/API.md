@@ -2,7 +2,22 @@
 
 ## Overview
 
-StructureIQ `6.0.14` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, expanded FX universe validation, Opportunity Coverage Analytics, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.15` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, expanded FX universe validation, Opportunity Coverage Analytics, paper journal integrity, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+
+### Paper integrity
+
+Version 6.0.15 adds read-only journal integrity and quarantine views.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/paper-integrity/summary` | Return full journal integrity status, classifications, issues, and SAFE MODE flag. |
+| `GET` | `/paper-integrity/quarantine` | Return quarantined records and reasons without deleting records. |
+| `GET` | `/paper-integrity/duplicates` | Return duplicate trade/lifecycle/source/campaign/execution-chain findings. |
+| `GET` | `/paper-integrity/lifecycle` | Return missing, duplicate, impossible, and orphan lifecycle findings. |
+| `GET` | `/paper-integrity/timestamps` | Return missing, future, identical, and invalid timestamp findings. |
+| `GET` | `/paper-integrity/root-cause/{trade_id}` | Investigate a specific trade ID. |
+| `GET` | `/paper-integrity/campaign` | Return campaign-scoped integrity records. |
+| `GET` | `/paper-integrity/recovery` | Combine recovery and integrity state. |
 
 ### Opportunity coverage and 7-day readiness
 

@@ -1,5 +1,9 @@
 # StructureIQ
 
+## Paper Journal Integrity and Validation State Hygiene (v6.0.15)
+
+Version 6.0.15 adds read-only paper journal integrity audits, duplicate/timestamp/lifecycle reports, root-cause investigation, quarantine classification, and SAFE MODE validation guards. It does not modify market structure, strategy, scoring, setup quality, risk, entries, exits, execution, paper rules, AI reasoning, broker behavior, or live trading.
+
 ## Expanded FX universe and Opportunity Coverage Analytics (v6.0.14)
 
 Version 6.0.14 expands the default monitored universe to 9 symbols:
