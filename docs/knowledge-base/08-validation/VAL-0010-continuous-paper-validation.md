@@ -1,0 +1,20 @@
+# Continuous Paper Validation
+
+ID: VAL-0010  
+Title: Continuous Paper Validation  
+Category: Validation  
+Status: APPROVED  
+Owner: Founder  
+Created: 2026-08-09  
+Last Updated: 2026-08-09  
+Related Entries: [Continuous Paper Trading Timeline](../06-timeline/TL-0011-continuous-paper-trading.md)  
+Related ADRs: [ADR-004](../07-decisions/ADR-004-paper-before-live.md), [ADR-012](../07-decisions/ADR-012-execution-safeguards.md)  
+Related Releases: [v6.0.8](../11-releases/REL-v6.0.8.md), [v6.0.13](../11-releases/REL-v6.0.13.md)
+
+## Summary
+
+Continuous paper validation includes 24-hour and planned 7-day validation campaigns.
+
+## Purpose
+
+Long-running paper validation tests runtime stability, candidate frequency, lifecycle safety, recovery behavior, diagnostics, and reporting.
