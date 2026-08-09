@@ -19,6 +19,7 @@ from core.analysis_engine import AnalysisEngine
 from core.candidate_diagnostics import CandidateDiagnosticsEngine, get_global_candidate_diagnostics
 from core.market_data import MarketDataError, MarketDataProvider
 from core.market_session_engine import ActiveWatchlist, MarketSessionEngine, get_global_market_session_engine
+from core.symbol_registry import DEFAULT_SYMBOL_UNIVERSE
 from models.schemas import AnalysisRequest, AnalysisResponse
 
 
@@ -29,7 +30,7 @@ class MonitorConfig(BaseModel):
 
     enabled: bool = False
     symbols: list[str] = Field(
-        default_factory=lambda: ["BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"],
+        default_factory=lambda: list(DEFAULT_SYMBOL_UNIVERSE),
         min_length=1,
     )
     timeframes: list[str] = Field(default_factory=lambda: ["5m"], min_length=1)

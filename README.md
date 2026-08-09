@@ -1,5 +1,16 @@
 # StructureIQ
 
+## Expanded FX universe and Opportunity Coverage Analytics (v6.0.14)
+
+Version 6.0.14 expands the default monitored universe to 9 symbols:
+
+```text
+Crypto: BTC-USD, ETH-USD
+Forex:  EUR-USD, GBP-USD, USD-JPY, USD-CHF, USD-CAD, AUD-USD, NZD-USD
+```
+
+Opportunity Coverage Analytics adds read-only funnel, by-symbol, by-asset-class, terminal-reason, trade-frequency, selectivity, and prop-readiness context. Strategy, scoring, thresholds, risk, entries, exits, lifecycle, and brokerage behavior are unchanged.
+
 ## Intelligent market session awareness (v6.0.13)
 
 Version 6.0.13 adds automatic market-session filtering before analysis begins. Crypto is treated as open 24/7; Forex is open from Sunday 5 PM Central through Friday 4 PM Central. Closed markets are skipped before candle downloads, analysis, confidence scoring, setup quality evaluation, and candidate creation.

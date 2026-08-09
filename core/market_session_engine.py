@@ -67,6 +67,7 @@ class ActiveWatchlist:
 
 
 CRYPTO_BASES = {"BTC", "ETH", "SOL", "XRP", "ADA", "DOGE", "LTC", "BCH", "AVAX", "LINK", "DOT", "MATIC"}
+REGISTERED_FOREX_SYMBOLS = {"EUR-USD", "GBP-USD", "USD-JPY", "USD-CHF", "USD-CAD", "AUD-USD", "NZD-USD"}
 FOREX_BASES = {"EUR", "GBP", "USD", "JPY", "CHF", "CAD", "AUD", "NZD"}
 ETF_SYMBOLS = {"SPY", "QQQ", "IWM", "DIA", "TLT", "GLD", "SLV", "USO"}
 INDEX_SYMBOLS = {"^GSPC", "^DJI", "^IXIC", "^RUT", "SPX", "NDX", "DJI"}
@@ -78,6 +79,10 @@ def classify_symbol(symbol: str) -> AssetClass:
     normalized = symbol.strip().upper()
     if not normalized:
         return AssetClass.UNKNOWN
+    if normalized in REGISTERED_FOREX_SYMBOLS:
+        return AssetClass.FOREX
+    if normalized in {"BTC-USD", "ETH-USD"}:
+        return AssetClass.CRYPTO
     if normalized in INDEX_SYMBOLS:
         return AssetClass.INDEX
     if normalized in ETF_SYMBOLS:

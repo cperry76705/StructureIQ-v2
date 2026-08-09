@@ -65,6 +65,28 @@ class CampaignSummary:
     skipped_by_market_closed: int = 0
     skipped_by_provider_failure: int = 0
     skipped_by_configuration: int = 0
+    symbols_configured: int = 0
+    symbols_activated: int = 0
+    symbols_analyzed: int = 0
+    symbols_skipped_market_closed: int = 0
+    raw_setups: int = 0
+    qualified_setups: int = 0
+    candidates_created: int = 0
+    approved_candidates: int = 0
+    orders_created: int = 0
+    trades_opened: int = 0
+    trades_closed: int = 0
+    opportunity_coverage_percent: float | None = None
+    top_terminal_stage: str | None = None
+    top_terminal_reason: str | None = None
+    best_symbol_by_candidate_rate: str | None = None
+    best_symbol_by_trade_rate: str | None = None
+    most_active_symbol: str | None = None
+    least_active_symbol: str | None = None
+    crypto_candidate_rate: float | None = None
+    forex_candidate_rate: float | None = None
+    crypto_trade_rate: float | None = None
+    forex_trade_rate: float | None = None
 
 
 @dataclass(frozen=True)
@@ -250,6 +272,16 @@ class ValidationCampaignManager:
         breakeven = len(returns) - wins - losses
         drawdown = _max_drawdown(returns)
         market_stats = _campaign_market_stats(campaign_id)
+        coverage = _campaign_opportunity_coverage(campaign_id)
+        symbol_rows = tuple(getattr(coverage, "by_symbol", ()) or ())
+        asset_rows = {getattr(row.asset_class, "value", str(row.asset_class)): row for row in getattr(coverage, "by_asset_class", ()) or ()}
+        best_candidate = max((row for row in symbol_rows if row.candidate_rate_percent is not None), key=lambda row: row.candidate_rate_percent or 0, default=None)
+        best_trade = max((row for row in symbol_rows if row.trade_rate_percent is not None), key=lambda row: row.trade_rate_percent or 0, default=None)
+        most_active = max(symbol_rows, key=lambda row: row.markets_analyzed, default=None)
+        least_active = min(symbol_rows, key=lambda row: row.markets_analyzed, default=None)
+        terminal_reason = None
+        if coverage is not None and coverage.terminal_reasons:
+            terminal_reason = max(coverage.terminal_reasons.items(), key=lambda item: item[1])[0]
         return CampaignSummary(
             campaign_id=campaign_id,
             status=campaign.status,
@@ -276,6 +308,28 @@ class ValidationCampaignManager:
             skipped_by_market_closed=market_stats["market_closed"],
             skipped_by_provider_failure=market_stats["provider_failure"],
             skipped_by_configuration=market_stats["configuration"],
+            symbols_configured=market_stats["configured_symbols"],
+            symbols_activated=market_stats["active_symbols"],
+            symbols_analyzed=market_stats["analyzed_symbols"],
+            symbols_skipped_market_closed=market_stats["market_closed_symbols"],
+            raw_setups=int(getattr(getattr(coverage, "summary", None), "raw_setups", 0) or 0),
+            qualified_setups=int(getattr(getattr(coverage, "summary", None), "qualified_setups", 0) or 0),
+            candidates_created=int(getattr(getattr(coverage, "summary", None), "candidates_created", 0) or 0),
+            approved_candidates=int(getattr(getattr(coverage, "summary", None), "approved_candidates", 0) or 0),
+            orders_created=int(getattr(getattr(coverage, "summary", None), "orders_created", 0) or 0),
+            trades_opened=int(getattr(getattr(coverage, "summary", None), "trades_opened", 0) or 0),
+            trades_closed=int(getattr(getattr(coverage, "summary", None), "trades_closed", 0) or 0),
+            opportunity_coverage_percent=getattr(getattr(coverage, "summary", None), "opportunity_coverage_percent", None),
+            top_terminal_stage=getattr(getattr(coverage, "summary", None), "largest_attrition_stage", None),
+            top_terminal_reason=terminal_reason,
+            best_symbol_by_candidate_rate=getattr(best_candidate, "symbol", None),
+            best_symbol_by_trade_rate=getattr(best_trade, "symbol", None),
+            most_active_symbol=getattr(most_active, "symbol", None),
+            least_active_symbol=getattr(least_active, "symbol", None),
+            crypto_candidate_rate=getattr(asset_rows.get("CRYPTO"), "candidate_rate", None),
+            forex_candidate_rate=getattr(asset_rows.get("FOREX"), "candidate_rate", None),
+            crypto_trade_rate=getattr(asset_rows.get("CRYPTO"), "trade_rate", None),
+            forex_trade_rate=getattr(asset_rows.get("FOREX"), "trade_rate", None),
         )
 
     def journal_rows(self, campaign_id: str) -> tuple[dict[str, Any], ...]:
@@ -512,13 +566,29 @@ def _campaign_market_stats(campaign_id: str) -> dict[str, int]:
             "market_closed": int(getattr(summary, "symbols_skipped_market_closed", 0) or 0),
             "provider_failure": int(getattr(summary, "symbols_without_data", 0) or 0),
             "configuration": 0,
+            "configured_symbols": len({detail.symbol for cycle in engine.recent(100_000, campaign_id=campaign_id) for detail in cycle.symbol_diagnostics}),
+            "active_symbols": len({detail.symbol for cycle in engine.recent(100_000, campaign_id=campaign_id) for detail in cycle.symbol_diagnostics if getattr(detail, "analyzed", False)}),
+            "analyzed_symbols": len({detail.symbol for cycle in engine.recent(100_000, campaign_id=campaign_id) for detail in cycle.symbol_diagnostics if getattr(detail, "analyzed", False)}),
+            "market_closed_symbols": len({detail.symbol for cycle in engine.recent(100_000, campaign_id=campaign_id) for detail in cycle.symbol_diagnostics if getattr(detail, "skipped", False) and "closed" in str(getattr(detail, "skipped_reason", "")).lower()}),
         }
     except Exception:
         return _empty_market_stats()
 
 
 def _empty_market_stats() -> dict[str, int]:
-    return {"configured": 0, "analyzed": 0, "skipped": 0, "market_closed": 0, "provider_failure": 0, "configuration": 0}
+    return {
+        "configured": 0, "analyzed": 0, "skipped": 0, "market_closed": 0,
+        "provider_failure": 0, "configuration": 0, "configured_symbols": 0,
+        "active_symbols": 0, "analyzed_symbols": 0, "market_closed_symbols": 0,
+    }
+
+
+def _campaign_opportunity_coverage(campaign_id: str):
+    try:
+        from core.opportunity_coverage import get_global_opportunity_coverage
+        return get_global_opportunity_coverage().report(campaign_id=campaign_id)
+    except Exception:
+        return None
 
 
 def _now() -> str:

@@ -18,18 +18,24 @@ from fastapi.encoders import jsonable_encoder
 from app.config import APP_VERSION
 from core.analysis_engine import AnalysisEngine
 from core.candidate_diagnostics import get_global_candidate_diagnostics
-from core.candidate_pipeline_diagnostics import get_global_candidate_pipeline_diagnostics
+from core.candidate_pipeline_diagnostics import (
+    CandidatePipelineCycleDiagnostic,
+    CandidateSymbolPipelineDiagnostic,
+    get_global_candidate_pipeline_diagnostics,
+)
 from core.calibration_analytics import CalibrationAnalyticsEngine, get_global_calibration_analytics
 from core.daily_report_engine import DailyReportEngine
 from core.live_market_monitor import LiveMarketMonitor, MonitorConfig
 from core.market_data import Candle
 from core.market_session_engine import AssetClass, MarketSessionEngine, MarketSessionStatus, classify_symbol
+from core.opportunity_coverage import OpportunityCoverageEngine
 from core.paper_brokerage import PaperBrokerageEngine
 from core.paper_trade_journal import PaperTradeJournal
 from core.paper_state_reconciliation import PaperStateReconciliationEngine
 from core.paper_trading_orchestrator import PaperTradingOrchestrator, PaperTradingOrchestratorConfig
 from core.recovery_test_harness import RecoveryTestHarness
 from core.trade_lifecycle_manager import TradeLifecycleManager
+from core.symbol_registry import DEFAULT_SYMBOL_UNIVERSE, get_symbol_registry
 from models.schemas import AnalysisRequest
 
 
@@ -80,6 +86,13 @@ class SystemValidationHarness:
         "/candidate-diagnostics/summary",
         "/candidate-diagnostics/rejections",
         "/calibration-analytics/summary",
+        "/opportunity-coverage/summary",
+        "/opportunity-coverage/funnel",
+        "/opportunity-coverage/by-symbol",
+        "/opportunity-coverage/by-asset-class",
+        "/opportunity-coverage/terminal-reasons",
+        "/validation-readiness/7-day",
+        "/symbols/provider-validation",
         "/paper-reconciliation/status",
         "/paper-reconciliation/summary",
         "/paper-recovery/status",
@@ -157,6 +170,9 @@ class SystemValidationHarness:
             ("Paper Runtime Recovery", self._paper_recovery),
             ("Validation Campaigns", self._campaigns),
             ("Recovery Test Harness", self._recovery_test_harness),
+            ("Symbol Registry", self._symbol_registry),
+            ("Opportunity Coverage", self._opportunity_coverage),
+            ("7-Day Validation Readiness", self._seven_day_readiness),
             ("Dashboard", self._dashboard),
             ("Observability", self._observability),
             ("API Registration", self._api_registration),
@@ -244,11 +260,15 @@ class SystemValidationHarness:
 
     def _market_sessions(self):
         engine = MarketSessionEngine(clock=lambda: datetime(2026, 8, 8, 18, 0, tzinfo=timezone.utc))
-        if classify_symbol("BTC-USD") is not AssetClass.CRYPTO or classify_symbol("EUR-USD") is not AssetClass.FOREX:
+        fx = ("EUR-USD", "GBP-USD", "USD-JPY", "USD-CHF", "USD-CAD", "AUD-USD", "NZD-USD")
+        if classify_symbol("BTC-USD") is not AssetClass.CRYPTO or any(classify_symbol(item) is not AssetClass.FOREX for item in fx):
             return _fail("Market Session Engine symbol classification failed.")
-        watchlist = engine.active_watchlist(("BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"))
+        watchlist = engine.active_watchlist(DEFAULT_SYMBOL_UNIVERSE)
         if watchlist.active_symbols != ("BTC-USD", "ETH-USD"):
             return _fail("Market Session Engine did not filter weekend Forex symbols correctly.")
+        weekday = engine.active_watchlist(DEFAULT_SYMBOL_UNIVERSE, as_of=datetime(2026, 8, 10, 18, 0, tzinfo=timezone.utc))
+        if weekday.active_symbols != DEFAULT_SYMBOL_UNIVERSE:
+            return _fail("Market Session Engine did not activate all default symbols while Forex is open.")
         if engine.session_for_asset_class(AssetClass.CRYPTO).status is not MarketSessionStatus.OPEN:
             return _fail("Market Session Engine did not mark crypto as open.")
         bypass = engine.active_watchlist(("BTC-USD", "EUR-USD"), ignore_market_sessions=True)
@@ -479,6 +499,41 @@ class SystemValidationHarness:
             return _fail("Recovery Test Harness safety check failed; fixture creation would not be paper-only.")
         return _pass("Recovery Test Harness is available, paper-only, writable, and validation did not create fixtures.")
 
+    def _symbol_registry(self):
+        registry = get_symbol_registry()
+        if registry.default_symbols() != DEFAULT_SYMBOL_UNIVERSE or len(DEFAULT_SYMBOL_UNIVERSE) != 9:
+            return _fail("Symbol Registry default universe is invalid.")
+        validations = registry.validate_provider_symbols()
+        if sum(item.supported for item in validations) != 9:
+            return _fail("Symbol Registry provider mapping is incomplete.")
+        if registry.validate_provider_symbol("UNKNOWN", "yahoo").supported:
+            return _fail("Symbol Registry incorrectly supports an unknown symbol.")
+        return _pass("Symbol Registry contains 9 defaults and deterministic provider mappings.")
+
+    def _opportunity_coverage(self):
+        with tempfile.TemporaryDirectory() as temp:
+            engine = OpportunityCoverageEngine(_EmptyPipeline(), None, campaigns_root=Path(temp))
+            if engine.summary().markets_analyzed != 0:
+                return _fail("Opportunity Coverage empty state is invalid.")
+            if not engine.funnel().reconciles:
+                return _fail("Opportunity Coverage empty funnel did not reconcile.")
+            populated = _PopulatedPipeline()
+            report = OpportunityCoverageEngine(populated, None, campaigns_root=Path(temp)).report(campaign_id="campaign_validation")
+            path = Path(temp) / "campaign_validation" / "opportunity_coverage.json"
+            if report.summary.markets_analyzed != 2 or report.summary.candidates_created != 1:
+                return _fail("Opportunity Coverage populated-state aggregation is invalid.")
+            if not path.exists():
+                return _fail("Opportunity Coverage campaign isolation file was not written.")
+        return _pass("Opportunity Coverage handles empty/populated states, by-symbol and by-asset aggregation, and campaign isolation safely.")
+
+    def _seven_day_readiness(self):
+        registry = get_symbol_registry()
+        if len(registry.default_symbols()) != 9:
+            return _fail("7-day readiness cannot pass without the 9-symbol default universe.")
+        if not all(item.supported for item in registry.validate_provider_symbols()):
+            return _fail("7-day readiness cannot pass without provider mappings.")
+        return _pass("7-day readiness capability checks can pass without requiring Forex to be open.")
+
     def _observability(self):
         report = self.health_engine.check(write_log=False)
         if report.status == "FAIL":
@@ -536,6 +591,76 @@ class _NoCandidateAnalysis:
             setup_plan=SimpleNamespace(setup_status="developing"),
             trader_analysis=SimpleNamespace(trade_plan=SimpleNamespace(status="waiting")),
         )
+
+
+class _EmptyPipeline:
+    def recent(self, limit: int = 100, *, campaign_id: str | None = None):
+        del limit, campaign_id
+        return ()
+
+
+class _PopulatedPipeline:
+    def recent(self, limit: int = 100, *, campaign_id: str | None = None):
+        del limit
+        cycle = CandidatePipelineCycleDiagnostic(
+            cycle_id="validation_cycle",
+            campaign_id=campaign_id,
+            started_at=_now(),
+            completed_at=_now(),
+            symbols_requested=2,
+            symbols_scanned=2,
+            symbols_with_market_data=2,
+            symbols_without_market_data=0,
+            symbols_skipped=0,
+            symbols_skipped_market_closed=0,
+            candidates_created=1,
+            candidates_rejected=1,
+            orders_created=0,
+            trades_opened=0,
+            cycle_status="completed",
+            cycle_duration_ms=1.0,
+            symbol_diagnostics=(
+                CandidateSymbolPipelineDiagnostic(
+                    symbol="BTC-USD",
+                    market_data_status="available",
+                    candles_received=100,
+                    timeframes_received=1,
+                    structure_status="completed",
+                    bias_status="bullish",
+                    setup_status="pullback",
+                    confidence_score=8.0,
+                    setup_quality_score=80.0,
+                    risk_status="available",
+                    candidate_status="created",
+                    final_outcome="candidate_created",
+                    rejection_stage=None,
+                    rejection_reason=None,
+                    exception_type=None,
+                    exception_message=None,
+                ),
+                CandidateSymbolPipelineDiagnostic(
+                    symbol="ETH-USD",
+                    market_data_status="available",
+                    candles_received=100,
+                    timeframes_received=1,
+                    structure_status="completed",
+                    bias_status="bullish",
+                    setup_status="pullback",
+                    confidence_score=4.0,
+                    setup_quality_score=70.0,
+                    risk_status="available",
+                    candidate_status="rejected",
+                    final_outcome="candidate_rejected",
+                    rejection_stage="CONFIDENCE",
+                    rejection_reason="directional_confidence",
+                    exception_type=None,
+                    exception_message=None,
+                ),
+            ),
+            persistence_errors=(),
+            zero_candidate_explanation=None,
+        )
+        return (cycle,) if campaign_id in {None, "campaign_validation"} else ()
 
 
 def _pass(summary): return "PASS", (), (), (), summary

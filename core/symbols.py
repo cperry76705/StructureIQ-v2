@@ -1,22 +1,12 @@
-"""User-facing to provider-specific symbol normalization."""
+"""Compatibility wrappers for provider-specific symbol normalization."""
 
-
-_YAHOO_SYMBOLS = {
-    "EUR-USD": "EURUSD=X",
-    "GBP-USD": "GBPUSD=X",
-    "USD-JPY": "USDJPY=X",
-    "AUD-USD": "AUDUSD=X",
-    "USD-CAD": "USDCAD=X",
-    "USD-CHF": "USDCHF=X",
-    "NZD-USD": "NZDUSD=X",
-}
+from core.symbol_registry import get_symbol_registry
 
 
 def normalize_yahoo_symbol(symbol: str) -> str:
     """Return Yahoo's symbol while safely passing unknown symbols through."""
 
-    normalized = symbol.strip().upper()
-    return _YAHOO_SYMBOLS.get(normalized, normalized)
+    return get_symbol_registry().provider_symbol(symbol, "yahoo")
 
 
 def normalize_symbol(symbol: str, provider: str = "yahoo") -> str:

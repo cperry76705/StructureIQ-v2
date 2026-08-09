@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 6.0.14 — Expanded FX Universe and Opportunity Coverage Analytics — 2026-08-09
+
+- Expanded the default monitored universe to BTC-USD, ETH-USD, and seven major USD Forex pairs.
+- Added centralized symbol registry and deterministic provider-symbol validation.
+- Added read-only Opportunity Coverage Analytics with summary, funnel, terminal reasons, symbol, asset-class, frequency, selectivity, and prop-readiness context.
+- Added `/validation-readiness/7-day` capability checks and campaign-scoped opportunity coverage.
+- Updated dashboard, CLI, system validation, and Knowledge Base release documentation.
+- Strategy, market structure, scoring, thresholds, setup quality, execution, risk, entries, exits, lifecycle, brokerage, GPT, notifications, and live trading remain unchanged.
+
 ## Version 6.0.13 — Intelligent Market Session Awareness — 2026-08-08
 
 - Added Market Session Engine with symbol classification and Crypto/Forex session rules.

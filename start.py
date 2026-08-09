@@ -272,22 +272,26 @@ def print_market_sessions(symbols: Sequence[str] | None = None) -> None:
 
     try:
         from core.market_session_engine import get_global_market_session_engine
+        from core.symbol_registry import get_symbol_registry
         engine = get_global_market_session_engine()
+        registry = get_symbol_registry()
         sessions = engine.sessions()
-        watchlist = engine.active_watchlist(symbols or ("BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"))
+        configured = tuple(symbols or registry.default_symbols())
+        watchlist = engine.active_watchlist(configured)
         print()
         print("Market Sessions")
+        print(f"Configured Universe: {len(configured)}")
         print(f"Crypto: {sessions['crypto'].status.value}")
         print(f"Forex: {sessions['forex'].status.value}")
         if sessions["forex"].next_open:
             print(f"Next Forex Open: {sessions['forex'].next_open}")
         print()
-        print("Active Watchlist")
+        print("Active Watchlist / Active Markets")
         for symbol in watchlist.active_symbols:
             print(symbol)
         if watchlist.skipped_symbols:
             print()
-            print("Skipped")
+            print("Inactive Markets")
             for symbol in watchlist.skipped_symbols:
                 print(f"{symbol} - {watchlist.reasons.get(symbol, 'Market Closed')}")
     except Exception:
@@ -764,6 +768,29 @@ def _print_final_paper_summary(status: dict, *, api_call=_api_json) -> None:
             if latest.get("zero_candidate_explanation"):
                 print("\nZero Candidate Explanation:")
                 print(latest["zero_candidate_explanation"])
+    except Exception:
+        pass
+    try:
+        coverage = api_call("/opportunity-coverage/summary")
+        print("\nOpportunity Coverage Summary")
+        print(f"Markets Analyzed: {coverage.get('markets_analyzed', 0)}")
+        print(f"Raw Setups: {coverage.get('raw_setups', 0)}")
+        print(f"Qualified Setups: {coverage.get('qualified_setups', 0)}")
+        print(f"Candidates: {coverage.get('candidates_created', 0)}")
+        print(f"Approved: {coverage.get('approved_candidates', 0)}")
+        print(f"Orders: {coverage.get('orders_created', 0)}")
+        print(f"Trades: {coverage.get('trades_opened', 0)}")
+        print(f"Top Attrition Stage: {coverage.get('largest_attrition_stage') or 'unavailable'}")
+    except Exception:
+        pass
+    try:
+        dashboard = api_call("/dashboard/overview")
+        if dashboard.get("prop_current_profit_percent") is not None:
+            print(f"Campaign Profit: {dashboard.get('prop_current_profit_percent')}%")
+        if dashboard.get("prop_max_total_drawdown_percent") is not None:
+            print(f"Max Drawdown: {dashboard.get('prop_max_total_drawdown_percent')}%")
+        if dashboard.get("trade_frequency_trades_per_day") is not None:
+            print(f"Trade Frequency: {dashboard.get('trade_frequency_trades_per_day')} trades/day")
     except Exception:
         pass
 

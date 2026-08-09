@@ -2,7 +2,22 @@
 
 ## Overview
 
-StructureIQ `6.0.13` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.14` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, expanded FX universe validation, Opportunity Coverage Analytics, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+
+### Opportunity coverage and 7-day readiness
+
+Version 6.0.14 adds read-only opportunity coverage analytics over existing diagnostics and paper journal state.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/opportunity-coverage/summary` | Return analysis/setup/candidate/order/trade funnel metrics. |
+| `GET` | `/opportunity-coverage/funnel` | Return stage counts and one primary terminal reason per analyzed market. |
+| `GET` | `/opportunity-coverage/by-symbol` | Compare coverage metrics by canonical symbol. |
+| `GET` | `/opportunity-coverage/by-asset-class` | Compare crypto and Forex opportunity flow. |
+| `GET` | `/opportunity-coverage/terminal-reasons` | Return reconciled terminal attrition counts. |
+| `GET` | `/campaigns/{campaign_id}/opportunity-coverage` | Return campaign-scoped opportunity coverage. |
+| `GET` | `/symbols/provider-validation` | Validate deterministic provider symbol mappings without network calls. |
+| `GET` | `/validation-readiness/7-day` | Check 7-day validation capability without requiring Forex to be open. |
 
 ### Market sessions and active watchlist
 

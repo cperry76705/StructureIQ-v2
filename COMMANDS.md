@@ -82,6 +82,13 @@ Invoke-RestMethod http://localhost:8000/candidate-diagnostics/cycles/<cycle_id>
 Invoke-RestMethod http://localhost:8000/candidate-diagnostics/near-misses?limit=20
 Invoke-RestMethod http://localhost:8000/calibration-analytics/summary
 Invoke-RestMethod http://localhost:8000/calibration-analytics/conversion-funnel
+Invoke-RestMethod http://localhost:8000/opportunity-coverage/summary
+Invoke-RestMethod http://localhost:8000/opportunity-coverage/funnel
+Invoke-RestMethod http://localhost:8000/opportunity-coverage/by-symbol
+Invoke-RestMethod http://localhost:8000/opportunity-coverage/by-asset-class
+Invoke-RestMethod http://localhost:8000/opportunity-coverage/terminal-reasons
+Invoke-RestMethod http://localhost:8000/symbols/provider-validation
+Invoke-RestMethod http://localhost:8000/validation-readiness/7-day
 Invoke-RestMethod http://localhost:8000/paper-reconciliation/status
 Invoke-RestMethod "http://localhost:8000/paper-reconciliation/summary?scope=active_campaign"
 Invoke-RestMethod "http://localhost:8000/paper-reconciliation/discrepancies?scope=campaign&campaign_id=<campaign_id>"
@@ -102,6 +109,7 @@ Invoke-RestMethod http://localhost:8000/campaigns/current
 Invoke-RestMethod http://localhost:8000/campaigns/legacy_campaign/audit
 Invoke-RestMethod -Method Post http://localhost:8000/campaigns/<campaign_id>/refresh-summary
 Invoke-RestMethod http://localhost:8000/campaigns/<campaign_id>/candidate-diagnostics
+Invoke-RestMethod http://localhost:8000/campaigns/<campaign_id>/opportunity-coverage
 ```
 
 ## Git

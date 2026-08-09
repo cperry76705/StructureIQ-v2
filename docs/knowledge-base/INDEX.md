@@ -141,10 +141,12 @@ Related Releases: None
 - [v6.0.7](11-releases/REL-v6.0.7.md)
 - [v6.0.8](11-releases/REL-v6.0.8.md)
 - [v6.0.13](11-releases/REL-v6.0.13.md)
+- [v6.0.14](11-releases/REL-v6.0.14.md)
 
 ## Operations
 
 - [Development Workflow](12-operations/development-workflow.md)
 - [Documentation Workflow](12-operations/documentation-workflow.md)
+- [Documentation Impact Matrix](12-operations/documentation-impact-matrix.md)
 - [Release Workflow](12-operations/release-workflow.md)
 - [Validation Workflow](12-operations/validation-workflow.md)

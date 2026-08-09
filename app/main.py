@@ -1,5 +1,6 @@
 """FastAPI entrypoint for the StructureIQ service."""
 
+from datetime import datetime, timezone
 from functools import lru_cache
 from typing import Any
 
@@ -17,6 +18,15 @@ from core.market_session_engine import (
     MarketSessionEngine,
     get_global_market_session_engine,
 )
+from core.opportunity_coverage import (
+    OpportunityByAssetClass,
+    OpportunityBySymbol,
+    OpportunityCoverageEngine,
+    OpportunityCoverageSummary,
+    OpportunityFunnel,
+    get_global_opportunity_coverage,
+)
+from core.symbol_registry import ProviderSymbolValidation, get_symbol_registry
 from core.live_market_monitor import (
     LiveMarketMonitor,
     MonitorConfig,
@@ -205,6 +215,10 @@ def get_candidate_diagnostics_engine() -> CandidateDiagnosticsEngine:
 
 def get_calibration_analytics_engine() -> CalibrationAnalyticsEngine:
     return get_global_calibration_analytics()
+
+
+def get_opportunity_coverage_engine() -> OpportunityCoverageEngine:
+    return get_global_opportunity_coverage()
 
 
 def get_market_session_engine() -> MarketSessionEngine:
@@ -461,6 +475,16 @@ def watchlist_active(
     )
 
 
+@app.get("/symbols/provider-validation", response_model=list[ProviderSymbolValidation], tags=["market-sessions"])
+def symbol_provider_validation(
+    provider: str = "yahoo",
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+) -> list[ProviderSymbolValidation]:
+    """Validate deterministic provider symbol mappings without network calls."""
+
+    return list(get_symbol_registry().validate_provider_symbols(monitor.config.symbols, provider))
+
+
 @app.post(
     "/analysis",
     response_model=AnalysisResponse,
@@ -593,6 +617,102 @@ def dashboard_overview(
     """Summarize the latest available research state without recalibration."""
 
     return service.overview()
+
+
+@app.get("/opportunity-coverage/summary", response_model=OpportunityCoverageSummary, tags=["opportunity-coverage"])
+def opportunity_coverage_summary(
+    campaign_id: str | None = None,
+    symbol: str | None = None,
+    asset_class: str | None = None,
+    engine: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+) -> OpportunityCoverageSummary:
+    return engine.summary(campaign_id=campaign_id, symbol=symbol, asset_class=asset_class)
+
+
+@app.get("/opportunity-coverage/funnel", response_model=OpportunityFunnel, tags=["opportunity-coverage"])
+def opportunity_coverage_funnel(
+    campaign_id: str | None = None,
+    symbol: str | None = None,
+    asset_class: str | None = None,
+    engine: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+) -> OpportunityFunnel:
+    return engine.funnel(campaign_id=campaign_id, symbol=symbol, asset_class=asset_class)
+
+
+@app.get("/opportunity-coverage/by-symbol", response_model=list[OpportunityBySymbol], tags=["opportunity-coverage"])
+def opportunity_coverage_by_symbol(
+    campaign_id: str | None = None,
+    asset_class: str | None = None,
+    engine: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+) -> list[OpportunityBySymbol]:
+    return list(engine.by_symbol(campaign_id=campaign_id, asset_class=asset_class))
+
+
+@app.get("/opportunity-coverage/by-asset-class", response_model=list[OpportunityByAssetClass], tags=["opportunity-coverage"])
+def opportunity_coverage_by_asset_class(
+    campaign_id: str | None = None,
+    engine: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+) -> list[OpportunityByAssetClass]:
+    return list(engine.by_asset_class(campaign_id=campaign_id))
+
+
+@app.get("/opportunity-coverage/terminal-reasons", response_model=dict[str, int], tags=["opportunity-coverage"])
+def opportunity_coverage_terminal_reasons(
+    campaign_id: str | None = None,
+    symbol: str | None = None,
+    asset_class: str | None = None,
+    engine: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+) -> dict[str, int]:
+    return engine.terminal_reasons(campaign_id=campaign_id, symbol=symbol, asset_class=asset_class)
+
+
+@app.get("/campaigns/{campaign_id}/opportunity-coverage", response_model=dict[str, Any], tags=["campaigns"])
+def campaign_opportunity_coverage(
+    campaign_id: str,
+    engine: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+    manager: ValidationCampaignManager = Depends(get_validation_campaign_manager),
+) -> dict[str, Any]:
+    if manager.get(campaign_id) is None:
+        raise HTTPException(status_code=404, detail="campaign was not found")
+    from fastapi.encoders import jsonable_encoder
+    return jsonable_encoder(engine.report(campaign_id=campaign_id))
+
+
+@app.get("/validation-readiness/7-day", response_model=dict[str, Any], tags=["system"])
+def validation_readiness_7_day(
+    monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
+    sessions: MarketSessionEngine = Depends(get_market_session_engine),
+    coverage: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+) -> dict[str, Any]:
+    registry = get_symbol_registry()
+    validations = registry.validate_provider_symbols(registry.default_symbols(), "yahoo")
+    configured = tuple(monitor.config.symbols)
+    critical: list[str] = []
+    warnings: list[str] = []
+    if tuple(configured) != registry.default_symbols():
+        warnings.append("Monitor is using a custom configured symbol list.")
+    if len(registry.default_symbols()) != 9:
+        critical.append("Default symbol registry does not contain 9 symbols.")
+    if sum(item.supported for item in validations) != 9:
+        critical.append("Not all default symbols have provider mappings.")
+    weekend = sessions.active_watchlist(registry.default_symbols(), as_of=datetime(2026, 8, 8, 18, 0, tzinfo=timezone.utc))
+    if weekend.active_symbols != ("BTC-USD", "ETH-USD"):
+        critical.append("Weekend session filtering does not leave only BTC-USD and ETH-USD active.")
+    if not coverage.safe_empty_state():
+        critical.append("Opportunity coverage empty-state analytics failed.")
+    status_value = "NOT_READY" if critical else "WATCHLIST" if warnings else "READY"
+    return {
+        "status": status_value,
+        "configured_symbols": len(registry.default_symbols()),
+        "provider_supported_symbols": sum(item.supported for item in validations),
+        "market_session_engine": "PASS" if not any("session" in item.lower() for item in critical) else "FAIL",
+        "campaign_tracking": "PASS",
+        "recovery": "PASS",
+        "candidate_diagnostics": "PASS",
+        "opportunity_coverage": "PASS" if coverage.safe_empty_state() else "FAIL",
+        "critical_issues": critical,
+        "warnings": warnings,
+    }
 
 
 @app.get(

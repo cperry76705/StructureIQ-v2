@@ -9,7 +9,7 @@ Created: 2026-08-09
 Last Updated: 2026-08-09  
 Related Entries: [Expanded Market Universe](../08-validation/VAL-0011-expanded-market-universe.md), [Trade Frequency vs Quality](../09-research/trade-frequency-vs-quality.md)  
 Related ADRs: [ADR-009](ADR-009-strategy-before-filter-relaxation.md)  
-Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md)
+Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-releases/REL-v6.0.14.md)
 
 ## Decision
 
@@ -18,3 +18,7 @@ Increase market coverage before weakening trade-quality standards.
 ## Consequences
 
 The platform seeks more valid opportunities without manufacturing low-quality activity.
+
+## v6.0.14 Application
+
+StructureIQ expands the default universe to two crypto markets and seven major USD Forex pairs. Strategy, scoring, risk, entry, exit, and execution rules remain unchanged.

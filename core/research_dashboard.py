@@ -27,6 +27,8 @@ from core.paper_recovery import latest_paper_recovery
 from core.recovery_test_harness import latest_recovery_test_status
 from core.market_session_engine import get_global_market_session_engine
 from core.validation_campaigns import get_global_validation_campaign_manager
+from core.opportunity_coverage import get_global_opportunity_coverage
+from core.symbol_registry import get_symbol_registry
 
 
 _LATEST_CALIBRATION: Any | None = None
@@ -204,6 +206,32 @@ class DashboardOverview:
     markets_currently_trading: tuple[str, ...] = ()
     markets_waiting: tuple[str, ...] = ()
     next_forex_open: str | None = None
+    trading_universe_configured: int = 0
+    trading_universe_crypto: int = 0
+    trading_universe_forex: int = 0
+    trading_universe_active: int = 0
+    opportunity_markets_analyzed: int = 0
+    opportunity_raw_setups: int = 0
+    opportunity_qualified_setups: int = 0
+    opportunity_candidates_created: int = 0
+    opportunity_approved_candidates: int = 0
+    opportunity_orders_created: int = 0
+    opportunity_trades_opened: int = 0
+    opportunity_coverage_percent: float | None = None
+    opportunity_top_terminal_stage: str | None = None
+    best_symbol_by_candidate_rate: str | None = None
+    best_symbol_by_trade_rate: str | None = None
+    most_active_symbol: str | None = None
+    least_active_symbol: str | None = None
+    crypto_candidate_rate: float | None = None
+    forex_candidate_rate: float | None = None
+    crypto_trade_rate: float | None = None
+    forex_trade_rate: float | None = None
+    prop_target_progress_percent: float | None = None
+    prop_current_profit_percent: float | None = None
+    prop_max_daily_drawdown_percent: float | None = None
+    prop_max_total_drawdown_percent: float | None = None
+    trade_frequency_trades_per_day: float | None = None
 
 
 @dataclass(frozen=True)
@@ -466,6 +494,22 @@ class ResearchDashboardService:
         monitor_status = current_live_market_monitor_status()
         configured_symbols = tuple(getattr(getattr(monitor_status, "config", None), "symbols", ()) or ("BTC-USD", "ETH-USD", "EUR-USD", "GBP-USD"))
         active_watchlist = session_engine.active_watchlist(configured_symbols)
+        registry = get_symbol_registry()
+        coverage_report = get_global_opportunity_coverage().report()
+        asset_rows = {row.asset_class.value: row for row in coverage_report.by_asset_class}
+        symbol_rows = tuple(coverage_report.by_symbol)
+        best_candidate = max(
+            (row for row in symbol_rows if row.candidate_rate_percent is not None),
+            key=lambda row: row.candidate_rate_percent or 0,
+            default=None,
+        )
+        best_trade = max(
+            (row for row in symbol_rows if row.trade_rate_percent is not None),
+            key=lambda row: row.trade_rate_percent or 0,
+            default=None,
+        )
+        most_active = max(symbol_rows, key=lambda row: row.markets_analyzed, default=None)
+        least_active = min(symbol_rows, key=lambda row: row.markets_analyzed, default=None)
         calibration_summary = get_global_calibration_analytics().summary()
         reconciliation = latest_paper_reconciliation()
         reconciliation_summary = getattr(reconciliation, "summary", None)
@@ -675,6 +719,32 @@ class ResearchDashboardService:
             markets_currently_trading=active_watchlist.active_symbols,
             markets_waiting=active_watchlist.skipped_symbols,
             next_forex_open=sessions["forex"].next_open,
+            trading_universe_configured=len(registry.default_symbols()),
+            trading_universe_crypto=sum(registry.classify(symbol).value == "CRYPTO" for symbol in registry.default_symbols()),
+            trading_universe_forex=sum(registry.classify(symbol).value == "FOREX" for symbol in registry.default_symbols()),
+            trading_universe_active=len(active_watchlist.active_symbols),
+            opportunity_markets_analyzed=coverage_report.summary.markets_analyzed,
+            opportunity_raw_setups=coverage_report.summary.raw_setups,
+            opportunity_qualified_setups=coverage_report.summary.qualified_setups,
+            opportunity_candidates_created=coverage_report.summary.candidates_created,
+            opportunity_approved_candidates=coverage_report.summary.approved_candidates,
+            opportunity_orders_created=coverage_report.summary.orders_created,
+            opportunity_trades_opened=coverage_report.summary.trades_opened,
+            opportunity_coverage_percent=coverage_report.summary.opportunity_coverage_percent,
+            opportunity_top_terminal_stage=coverage_report.summary.largest_attrition_stage,
+            best_symbol_by_candidate_rate=getattr(best_candidate, "symbol", None),
+            best_symbol_by_trade_rate=getattr(best_trade, "symbol", None),
+            most_active_symbol=getattr(most_active, "symbol", None),
+            least_active_symbol=getattr(least_active, "symbol", None),
+            crypto_candidate_rate=getattr(asset_rows.get("CRYPTO"), "candidate_rate", None),
+            forex_candidate_rate=getattr(asset_rows.get("FOREX"), "candidate_rate", None),
+            crypto_trade_rate=getattr(asset_rows.get("CRYPTO"), "trade_rate", None),
+            forex_trade_rate=getattr(asset_rows.get("FOREX"), "trade_rate", None),
+            prop_target_progress_percent=coverage_report.prop_evaluation_readiness.target_progress_percent,
+            prop_current_profit_percent=coverage_report.prop_evaluation_readiness.profit_percent,
+            prop_max_daily_drawdown_percent=coverage_report.prop_evaluation_readiness.max_daily_drawdown_percent,
+            prop_max_total_drawdown_percent=coverage_report.prop_evaluation_readiness.max_total_drawdown_percent,
+            trade_frequency_trades_per_day=coverage_report.trade_frequency.trades_per_day,
         )
 
     def symbols(self) -> DashboardSymbols:

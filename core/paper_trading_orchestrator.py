@@ -419,7 +419,7 @@ class PaperTradingOrchestrator:
                 campaign_id = None
             recent_count = max(1, len(self.monitor.config.symbols) * len(self.monitor.config.timeframes) + len(monitor_result.errors))
             recent = tuple(getattr(self.monitor, "candidate_diagnostics").recent(recent_count))
-            return get_global_candidate_pipeline_diagnostics().record_cycle(
+            diagnostic = get_global_candidate_pipeline_diagnostics().record_cycle(
                 cycle_id=cycle_id,
                 campaign_id=campaign_id,
                 started_at=started_at,
@@ -432,6 +432,13 @@ class PaperTradingOrchestrator:
                 configured_timeframes=tuple(self.monitor.config.timeframes),
                 recent_market_diagnostics=recent,
             )
+            if campaign_id and not str(campaign_id).startswith("recovery_test_"):
+                try:
+                    from core.opportunity_coverage import get_global_opportunity_coverage
+                    get_global_opportunity_coverage().report(campaign_id=campaign_id)
+                except Exception:
+                    pass
+            return diagnostic
         except Exception:
             return None
 
