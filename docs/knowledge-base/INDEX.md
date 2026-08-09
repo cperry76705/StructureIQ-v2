@@ -143,6 +143,7 @@ Related Releases: None
 - [v6.0.13](11-releases/REL-v6.0.13.md)
 - [v6.0.14](11-releases/REL-v6.0.14.md)
 - [v6.0.15](11-releases/REL-v6.0.15.md)
+- [v6.0.16](11-releases/REL-v6.0.16.md)
 
 ## Operations
 

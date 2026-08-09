@@ -2,21 +2,35 @@
 
 ## Overview
 
-StructureIQ `6.0.15` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, expanded FX universe validation, Opportunity Coverage Analytics, paper journal integrity, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.16` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, expanded FX universe validation, Opportunity Coverage Analytics, paper journal integrity remediation, clean validation baselines, durable paper runtime recovery, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
 
 ### Paper integrity
 
-Version 6.0.15 adds read-only journal integrity and quarantine views.
+Version 6.0.16 extends paper integrity with append-only remediation metadata, clean validation baselines, SAFE MODE exit checks, duplicate source-event analysis, and eligibility-based derived summaries. Raw journal rows are preserved.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `GET` | `/paper-integrity/summary` | Return full journal integrity status, classifications, issues, and SAFE MODE flag. |
+| `GET` | `/paper-integrity/enhanced-summary` | Return v6.0.16 operational eligibility, baseline, and validation-readiness fields. |
 | `GET` | `/paper-integrity/quarantine` | Return quarantined records and reasons without deleting records. |
 | `GET` | `/paper-integrity/duplicates` | Return duplicate trade/lifecycle/source/campaign/execution-chain findings. |
+| `GET` | `/paper-integrity/duplicates/analysis` | Explain duplicate `source_event_id` groups without automatically treating all repeats as duplicate trades. |
+| `GET` | `/paper-integrity/incomplete` | Return evidence-based decisions for records currently classified as incomplete. |
 | `GET` | `/paper-integrity/lifecycle` | Return missing, duplicate, impossible, and orphan lifecycle findings. |
 | `GET` | `/paper-integrity/timestamps` | Return missing, future, identical, and invalid timestamp findings. |
 | `GET` | `/paper-integrity/root-cause/{trade_id}` | Investigate a specific trade ID. |
+| `POST` | `/paper-integrity/remediation/preview` | Preview a remediation action without writing metadata. |
+| `POST` | `/paper-integrity/remediation/apply` | Append an approved remediation record; raw journal evidence is not modified. |
+| `GET` | `/paper-integrity/remediation/history` | Read the full remediation registry. |
+| `GET` | `/paper-integrity/remediation/{trade_id}` | Read remediation history for one trade. |
 | `GET` | `/paper-integrity/campaign` | Return campaign-scoped integrity records. |
+| `GET` | `/paper-integrity/campaign/rebuild` | Recompute a campaign summary from eligible records only without mutation. |
+| `POST` | `/paper-integrity/rebuild-derived-state` | Recompute derived integrity/campaign/report summary views from eligible records only. |
+| `GET` | `/paper-integrity/baseline` | Return the latest clean validation baseline, if one exists. |
+| `GET` | `/paper-integrity/baselines` | List persisted validation baselines. |
+| `GET` | `/paper-integrity/baseline/{baseline_id}` | Read a specific baseline. |
+| `POST` | `/paper-integrity/create-baseline` | Create a clean validation baseline only when unresolved critical eligible records are zero. |
+| `POST` | `/paper-integrity/clear-safe-mode` | Clear SAFE MODE only when all baseline/recovery/reconciliation exit rules pass. |
 | `GET` | `/paper-integrity/recovery` | Combine recovery and integrity state. |
 
 ### Opportunity coverage and 7-day readiness

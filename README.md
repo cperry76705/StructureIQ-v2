@@ -1,5 +1,33 @@
 # StructureIQ
 
+## Integrity remediation and clean validation baseline (v6.0.16)
+
+Version 6.0.16 adds an auditable remediation layer for paper journal integrity. Confirmed invalid paper records are quarantined through append-only metadata in `research/paper_integrity_remediation.jsonl`; raw journal rows are preserved and never silently repaired.
+
+New capabilities:
+
+- remediation preview/apply/history APIs
+- centralized runtime/performance/campaign eligibility checks
+- duplicate source-event explanation instead of automatic invalidation
+- incomplete-record decision reports
+- clean validation baselines in `research/paper_validation_baselines.jsonl`
+- SAFE MODE exit rules with no force override
+- 7-day readiness gating on integrity, baseline, recovery, and reconciliation
+
+Recommended post-remediation sequence:
+
+```powershell
+.\.venv\Scripts\python.exe start.py --integrity-audit
+.\.venv\Scripts\python.exe start.py --integrity-remediate --remediation-trade-id 47cbfd066469d49904e4dc23
+.\.venv\Scripts\python.exe start.py --integrity-remediate --remediation-trade-id 47cbfd066469d49904e4dc23 --remediation-action QUARANTINE --remediation-reason identical_open_close_timestamp_and_missing_lifecycle --confirm-remediation
+.\.venv\Scripts\python.exe start.py --integrity-rebuild
+.\.venv\Scripts\python.exe start.py --integrity-baseline
+.\.venv\Scripts\python.exe start.py --integrity-clear-safe-mode
+.\.venv\Scripts\python.exe start.py --validate
+```
+
+This release does not modify strategy logic, scoring, thresholds, risk, entries, exits, fills, lifecycle execution, broker behavior, GPT, notifications, or live trading.
+
 ## Paper Journal Integrity and Validation State Hygiene (v6.0.15)
 
 Version 6.0.15 adds read-only paper journal integrity audits, duplicate/timestamp/lifecycle reports, root-cause investigation, quarantine classification, and SAFE MODE validation guards. It does not modify market structure, strategy, scoring, setup quality, risk, entries, exits, execution, paper rules, AI reasoning, broker behavior, or live trading.

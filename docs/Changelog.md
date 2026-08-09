@@ -1,5 +1,14 @@
 # Changelog
 
+## Version 6.0.16 — Integrity Remediation and Clean Validation Baseline — 2026-08-09
+
+- Added append-only paper integrity remediation registry and preview/apply/history APIs.
+- Added centralized runtime/performance/campaign eligibility decisions for operational reporting and recovery.
+- Added clean validation baseline persistence, baseline APIs, derived-state rebuild, campaign rebuild, and SAFE MODE clear endpoint with no force override.
+- Added duplicate source-event analysis and incomplete-record decision reporting.
+- Updated 7-day readiness gating and dashboard overview with a separate Paper Integrity section.
+- Raw journal evidence remains preserved; trading behavior, thresholds, strategy, risk, lifecycle execution, broker behavior, GPT, notifications, and live trading remain unchanged.
+
 ## Version 6.0.15 — Paper Journal Integrity and Validation State Hygiene — 2026-08-09
 
 - Added read-only paper journal integrity audits with exact record classification.

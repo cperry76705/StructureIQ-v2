@@ -69,6 +69,11 @@ class PaperReconciliationSummary:
     legacy_discrepancy_count: int = 0
     historical_discrepancy_count: int = 0
     current_runtime_discrepancy_count: int = 0
+    raw_discrepancy_count: int = 0
+    operational_discrepancy_count: int = 0
+    quarantined_discrepancy_count: int = 0
+    critical_operational_count: int = 0
+    warning_operational_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -181,10 +186,16 @@ class PaperStateReconciliationEngine:
         )
         self._check_pending_orders(lifecycle_pending, discrepancies)
 
+        context = self._integrity_context()
+        operational_discrepancies = [item for item in discrepancies if _discrepancy_bucket(item, context) == "operational"]
+        quarantined_discrepancies = [item for item in discrepancies if _discrepancy_bucket(item, context) == "quarantined"]
+        historical_discrepancies = [item for item in discrepancies if _discrepancy_bucket(item, context) == "historical"]
         critical_count = sum(item.severity == "critical" for item in discrepancies)
         warning_count = sum(item.severity == "warning" for item in discrepancies)
+        operational_critical = sum(item.severity == "critical" for item in operational_discrepancies)
+        operational_warning = sum(item.severity == "warning" for item in operational_discrepancies)
         status: ReconciliationStatus = (
-            "FAIL" if critical_count else "WATCHLIST" if warning_count else "PASS"
+            "FAIL" if operational_critical else "WATCHLIST" if operational_warning or quarantined_discrepancies or historical_discrepancies else "PASS"
         )
         daily_total = (
             float(latest_report.summary.total_r)
@@ -219,6 +230,11 @@ class PaperStateReconciliationEngine:
                 len(discrepancies) if resolved_scope == "global" else self._safe_count("global") if _include_scope_counts else 0
             ),
             current_runtime_discrepancy_count=len(discrepancies) if resolved_scope in {"active_campaign", "campaign"} else 0,
+            raw_discrepancy_count=len(discrepancies),
+            operational_discrepancy_count=len(operational_discrepancies),
+            quarantined_discrepancy_count=len(quarantined_discrepancies),
+            critical_operational_count=operational_critical,
+            warning_operational_count=operational_warning,
         )
         result = PaperReconciliationResult(
             run_id=_run_id(checked_at),
@@ -283,6 +299,27 @@ class PaperStateReconciliationEngine:
             return True
         except OSError:
             return False
+
+    def _integrity_context(self) -> dict[str, str]:
+        try:
+            from core.integrity_remediation import RemediationRegistry
+            from core.journal_integrity import JournalIntegrityAuditor
+            summary = JournalIntegrityAuditor(journal=self.journal, broker=self.broker, lifecycle=self.lifecycle, campaigns=self.campaigns).summary()
+            remediations = RemediationRegistry().latest_by_trade()
+            context = {}
+            for record in summary.records:
+                if not record.trade_id:
+                    continue
+                remediation = remediations.get(str(record.trade_id))
+                if remediation and remediation.remediation_action in {"QUARANTINE", "EXCLUDE_FROM_RUNTIME", "EXCLUDE_FROM_CAMPAIGN", "EXCLUDE_FROM_PERFORMANCE", "MARK_LEGACY", "MARK_TEST_FIXTURE", "MARK_INCOMPLETE"}:
+                    context[str(record.trade_id)] = "quarantined"
+                elif record.classification in {"TEST_FIXTURE", "SYNTHETIC"}:
+                    context[str(record.trade_id)] = "historical"
+                else:
+                    context[str(record.trade_id)] = "operational"
+            return context
+        except Exception:
+            return {}
 
     def _compare_trade_presence(self, records: dict[str, ReconciledTradeRecord], discrepancies: list[PaperStateDiscrepancy]) -> None:
         for record in records.values():
@@ -511,6 +548,12 @@ def _trade_records(
             campaign_id=getattr(je, "campaign_id", None) if je is not None else None,
         )
     return records
+
+
+def _discrepancy_bucket(discrepancy: PaperStateDiscrepancy, context: dict[str, str]) -> str:
+    if discrepancy.trade_id is None:
+        return "operational"
+    return context.get(str(discrepancy.trade_id), "operational")
 
 
 def _filter_journal_by_campaign(entries: tuple[Any, ...], campaign_id: str | None, *, legacy: bool = False) -> tuple[Any, ...]:

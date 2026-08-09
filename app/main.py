@@ -153,6 +153,27 @@ from core.journal_integrity import (
     RootCauseReport,
     TimestampAudit,
 )
+from core.integrity_remediation import (
+    CampaignRebuildResult,
+    DuplicateGroupAnalysis,
+    EnhancedIntegritySummary,
+    IncompleteRecordDecision,
+    RebuildDerivedStateResult,
+    RemediationApplyRequest,
+    RemediationApplyResult,
+    RemediationPreview,
+    RemediationPreviewRequest,
+    RemediationRecord,
+    RemediationRegistry,
+    SafeModeClearResult,
+    ValidationBaseline,
+    ValidationBaselineManager,
+    duplicate_group_analysis,
+    enhanced_summary,
+    incomplete_decisions,
+    rebuild_campaign_summary,
+    rebuild_derived_state,
+)
 from core.validation_campaigns import (
     CampaignSummary,
     CampaignSummaryRefreshResult,
@@ -371,6 +392,14 @@ def get_journal_integrity_auditor(
         lifecycle=lifecycle,
         campaigns=campaigns,
     )
+
+
+def get_remediation_registry() -> RemediationRegistry:
+    return RemediationRegistry()
+
+
+def get_validation_baseline_manager() -> ValidationBaselineManager:
+    return ValidationBaselineManager()
 
 
 def get_recovery_test_harness(
@@ -706,6 +735,9 @@ def validation_readiness_7_day(
     monitor: LiveMarketMonitor = Depends(get_live_market_monitor),
     sessions: MarketSessionEngine = Depends(get_market_session_engine),
     coverage: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+    baselines: ValidationBaselineManager = Depends(get_validation_baseline_manager),
+    recovery: PaperRecoveryEngine = Depends(get_paper_recovery_engine),
 ) -> dict[str, Any]:
     registry = get_symbol_registry()
     validations = registry.validate_provider_symbols(registry.default_symbols(), "yahoo")
@@ -723,6 +755,19 @@ def validation_readiness_7_day(
         critical.append("Weekend session filtering does not leave only BTC-USD and ETH-USD active.")
     if not coverage.safe_empty_state():
         critical.append("Opportunity coverage empty-state analytics failed.")
+    integrity = auditor.summary()
+    latest_baseline = baselines.latest()
+    safe_mode_status = baselines.safe_mode_status(integrity)
+    integrity_enhanced = enhanced_summary(integrity, latest_baseline, safe_mode_status)
+    recovery_summary = recovery.summary()
+    if integrity.status == "FAIL" or integrity_enhanced.unresolved_critical_records:
+        critical.append("Paper integrity has unresolved critical operational records.")
+    if safe_mode_status != "CLEARED":
+        critical.append("SAFE MODE has not been cleared through validated integrity exit checks.")
+    if integrity_enhanced.baseline_status != "PASS":
+        critical.append("Clean validation baseline is missing or not PASS.")
+    if recovery_summary.status == "FAIL" or recovery_summary.reconciliation_status == "FAIL":
+        critical.append("Paper recovery or reconciliation is FAIL.")
     status_value = "NOT_READY" if critical else "WATCHLIST" if warnings else "READY"
     return {
         "status": status_value,
@@ -733,6 +778,14 @@ def validation_readiness_7_day(
         "recovery": "PASS",
         "candidate_diagnostics": "PASS",
         "opportunity_coverage": "PASS" if coverage.safe_empty_state() else "FAIL",
+        "integrity_status": integrity.status,
+        "safe_mode_status": safe_mode_status,
+        "baseline_status": integrity_enhanced.baseline_status,
+        "unresolved_critical_integrity": integrity_enhanced.unresolved_critical_records,
+        "quarantined_records": integrity_enhanced.quarantined_records,
+        "eligible_runtime_records": integrity_enhanced.eligible_runtime_records,
+        "reconciliation": recovery_summary.reconciliation_status,
+        "recovery_status": recovery_summary.status,
         "critical_issues": critical,
         "warnings": warnings,
     }
@@ -1247,6 +1300,15 @@ def paper_integrity_summary(auditor: JournalIntegrityAuditor = Depends(get_journ
     return auditor.summary()
 
 
+@app.get("/paper-integrity/enhanced-summary", response_model=EnhancedIntegritySummary, tags=["paper-integrity"])
+def paper_integrity_enhanced_summary(
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+    baselines: ValidationBaselineManager = Depends(get_validation_baseline_manager),
+) -> EnhancedIntegritySummary:
+    summary = auditor.summary()
+    return enhanced_summary(summary, baselines.latest(), baselines.safe_mode_status(summary))
+
+
 @app.get("/paper-integrity/quarantine", response_model=QuarantineSummary, tags=["paper-integrity"])
 def paper_integrity_quarantine(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> QuarantineSummary:
     return auditor.summary().quarantine
@@ -1255,6 +1317,16 @@ def paper_integrity_quarantine(auditor: JournalIntegrityAuditor = Depends(get_jo
 @app.get("/paper-integrity/duplicates", response_model=DuplicateReport, tags=["paper-integrity"])
 def paper_integrity_duplicates(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> DuplicateReport:
     return auditor.duplicate_report()
+
+
+@app.get("/paper-integrity/duplicates/analysis", response_model=tuple[DuplicateGroupAnalysis, ...], tags=["paper-integrity"])
+def paper_integrity_duplicate_analysis(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> tuple[DuplicateGroupAnalysis, ...]:
+    return duplicate_group_analysis(auditor.summary())
+
+
+@app.get("/paper-integrity/incomplete", response_model=tuple[IncompleteRecordDecision, ...], tags=["paper-integrity"])
+def paper_integrity_incomplete(auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> tuple[IncompleteRecordDecision, ...]:
+    return incomplete_decisions(auditor.summary())
 
 
 @app.get("/paper-integrity/lifecycle", response_model=LifecycleAudit, tags=["paper-integrity"])
@@ -1272,6 +1344,37 @@ def paper_integrity_root_cause(trade_id: str, auditor: JournalIntegrityAuditor =
     return auditor.root_cause(trade_id)
 
 
+@app.post("/paper-integrity/remediation/preview", response_model=tuple[RemediationPreview, ...], tags=["paper-integrity"])
+def paper_integrity_remediation_preview(
+    request: RemediationPreviewRequest,
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+    registry: RemediationRegistry = Depends(get_remediation_registry),
+) -> tuple[RemediationPreview, ...]:
+    return registry.preview(auditor.summary(), request)
+
+
+@app.post("/paper-integrity/remediation/apply", response_model=RemediationApplyResult, tags=["paper-integrity"])
+def paper_integrity_remediation_apply(
+    request: RemediationApplyRequest,
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+    registry: RemediationRegistry = Depends(get_remediation_registry),
+) -> RemediationApplyResult:
+    try:
+        return registry.apply(auditor.summary(), request)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/paper-integrity/remediation/history", response_model=tuple[RemediationRecord, ...], tags=["paper-integrity"])
+def paper_integrity_remediation_history(registry: RemediationRegistry = Depends(get_remediation_registry)) -> tuple[RemediationRecord, ...]:
+    return registry.history()
+
+
+@app.get("/paper-integrity/remediation/{trade_id}", response_model=tuple[RemediationRecord, ...], tags=["paper-integrity"])
+def paper_integrity_remediation_for_trade(trade_id: str, registry: RemediationRegistry = Depends(get_remediation_registry)) -> tuple[RemediationRecord, ...]:
+    return registry.history(trade_id)
+
+
 @app.get("/paper-integrity/campaign", response_model=dict[str, Any], tags=["paper-integrity"])
 def paper_integrity_campaign(campaign_id: str | None = None, auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor)) -> dict[str, Any]:
     summary = auditor.summary()
@@ -1282,6 +1385,73 @@ def paper_integrity_campaign(campaign_id: str | None = None, auditor: JournalInt
         "quarantined_count": sum(item.quarantine_status == "QUARANTINED" for item in records),
         "human_readable_summary": f"Campaign integrity view contains {len(records)} records.",
     }
+
+
+@app.post("/paper-integrity/rebuild-derived-state", response_model=RebuildDerivedStateResult, tags=["paper-integrity"])
+def paper_integrity_rebuild_derived_state(
+    campaign_id: str | None = None,
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+) -> RebuildDerivedStateResult:
+    return rebuild_derived_state(auditor.summary(), campaign_id=campaign_id)
+
+
+@app.get("/paper-integrity/campaign/rebuild", response_model=CampaignRebuildResult, tags=["paper-integrity"])
+def paper_integrity_campaign_rebuild(
+    campaign_id: str | None = None,
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+) -> CampaignRebuildResult:
+    return rebuild_campaign_summary(auditor.summary(), campaign_id)
+
+
+@app.get("/paper-integrity/baselines", response_model=tuple[ValidationBaseline, ...], tags=["paper-integrity"])
+def paper_integrity_baselines(baselines: ValidationBaselineManager = Depends(get_validation_baseline_manager)) -> tuple[ValidationBaseline, ...]:
+    return baselines.baselines()
+
+
+@app.get("/paper-integrity/baseline", response_model=dict[str, Any], tags=["paper-integrity"])
+def paper_integrity_baseline(baselines: ValidationBaselineManager = Depends(get_validation_baseline_manager)) -> dict[str, Any]:
+    latest = baselines.latest()
+    if latest is None:
+        return {"status": "FAIL", "baseline": None, "human_readable_summary": "No clean validation baseline exists yet."}
+    return {"status": latest.status, "baseline": latest, "human_readable_summary": latest.human_readable_summary}
+
+
+@app.get("/paper-integrity/baseline/{baseline_id}", response_model=dict[str, Any], tags=["paper-integrity"])
+def paper_integrity_baseline_by_id(
+    baseline_id: str,
+    baselines: ValidationBaselineManager = Depends(get_validation_baseline_manager),
+) -> dict[str, Any]:
+    baseline = baselines.get(baseline_id)
+    if baseline is None:
+        raise HTTPException(status_code=404, detail="Baseline not found.")
+    return {"status": baseline.status, "baseline": baseline, "human_readable_summary": baseline.human_readable_summary}
+
+
+@app.post("/paper-integrity/create-baseline", response_model=ValidationBaseline, tags=["paper-integrity"])
+def paper_integrity_create_baseline(
+    campaign_id: str | None = None,
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+    baselines: ValidationBaselineManager = Depends(get_validation_baseline_manager),
+    broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+) -> ValidationBaseline:
+    try:
+        return baselines.create(auditor.summary(), campaign_id=campaign_id, lifecycle=lifecycle, broker=broker)
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/paper-integrity/clear-safe-mode", response_model=SafeModeClearResult, tags=["paper-integrity"])
+def paper_integrity_clear_safe_mode(
+    auditor: JournalIntegrityAuditor = Depends(get_journal_integrity_auditor),
+    baselines: ValidationBaselineManager = Depends(get_validation_baseline_manager),
+    recovery: PaperRecoveryEngine = Depends(get_paper_recovery_engine),
+) -> SafeModeClearResult:
+    return baselines.clear_safe_mode(
+        auditor.summary(),
+        recovery_status=recovery.summary().status,
+        reconciliation_status=recovery.summary().reconciliation_status,
+    )
 
 
 @app.get("/paper-integrity/recovery", response_model=dict[str, Any], tags=["paper-integrity"])

@@ -24,6 +24,8 @@ from core.candidate_pipeline_diagnostics import current_candidate_pipeline_diagn
 from core.calibration_analytics import get_global_calibration_analytics
 from core.paper_state_reconciliation import latest_paper_reconciliation
 from core.paper_recovery import latest_paper_recovery
+from core.journal_integrity import JournalIntegrityAuditor
+from core.integrity_remediation import ValidationBaselineManager, enhanced_summary
 from core.recovery_test_harness import latest_recovery_test_status
 from core.market_session_engine import get_global_market_session_engine
 from core.validation_campaigns import get_global_validation_campaign_manager
@@ -232,6 +234,15 @@ class DashboardOverview:
     prop_max_daily_drawdown_percent: float | None = None
     prop_max_total_drawdown_percent: float | None = None
     trade_frequency_trades_per_day: float | None = None
+    paper_integrity_safe_mode: str = "unavailable"
+    paper_integrity_status: str = "unavailable"
+    paper_integrity_unresolved_critical: int = 0
+    paper_integrity_quarantined: int = 0
+    paper_integrity_legacy: int = 0
+    paper_integrity_incomplete: int = 0
+    paper_integrity_latest_baseline: str | None = None
+    paper_integrity_baseline_status: str = "MISSING"
+    paper_integrity_ready_for_validation: bool = False
 
 
 @dataclass(frozen=True)
@@ -515,6 +526,20 @@ class ResearchDashboardService:
         reconciliation_summary = getattr(reconciliation, "summary", None)
         recovery = latest_paper_recovery()
         recovery_summary = getattr(recovery, "summary", None)
+        integrity_summary = None
+        integrity_enhanced = None
+        try:
+            integrity_summary = JournalIntegrityAuditor(journal=journal).summary() if journal is not None else None
+            if integrity_summary is not None:
+                baseline_manager = ValidationBaselineManager()
+                integrity_enhanced = enhanced_summary(
+                    integrity_summary,
+                    baseline_manager.latest(),
+                    baseline_manager.safe_mode_status(integrity_summary),
+                )
+        except Exception:
+            integrity_summary = None
+            integrity_enhanced = None
         campaign_manager = get_global_validation_campaign_manager(journal)
         current_campaign = campaign_manager.current()
         campaign_summary = (
@@ -745,6 +770,15 @@ class ResearchDashboardService:
             prop_max_daily_drawdown_percent=coverage_report.prop_evaluation_readiness.max_daily_drawdown_percent,
             prop_max_total_drawdown_percent=coverage_report.prop_evaluation_readiness.max_total_drawdown_percent,
             trade_frequency_trades_per_day=coverage_report.trade_frequency.trades_per_day,
+            paper_integrity_safe_mode=getattr(integrity_enhanced, "safe_mode_status", "unavailable"),
+            paper_integrity_status=getattr(integrity_summary, "status", "unavailable"),
+            paper_integrity_unresolved_critical=int(getattr(integrity_enhanced, "unresolved_critical_records", 0) or 0),
+            paper_integrity_quarantined=int(getattr(integrity_enhanced, "quarantined_records", 0) or 0),
+            paper_integrity_legacy=int(getattr(integrity_enhanced, "legacy_records", 0) or 0),
+            paper_integrity_incomplete=int(getattr(integrity_enhanced, "incomplete_records", 0) or 0),
+            paper_integrity_latest_baseline=getattr(integrity_enhanced, "latest_baseline_id", None),
+            paper_integrity_baseline_status=getattr(integrity_enhanced, "baseline_status", "MISSING"),
+            paper_integrity_ready_for_validation=bool(getattr(integrity_enhanced, "ready_for_validation", False)),
         )
 
     def symbols(self) -> DashboardSymbols:

@@ -450,6 +450,16 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Run complete local system validation and exit.",
     )
+    parser.add_argument("--integrity-audit", action="store_true", help="Run paper journal integrity audit and exit.")
+    parser.add_argument("--integrity-remediate", action="store_true", help="Preview or apply approved paper-integrity remediation.")
+    parser.add_argument("--integrity-baseline", action="store_true", help="Create a clean validation baseline when integrity allows it.")
+    parser.add_argument("--integrity-rebuild", action="store_true", help="Rebuild derived integrity/campaign summaries from eligible records.")
+    parser.add_argument("--integrity-clear-safe-mode", action="store_true", help="Clear SAFE MODE only when all integrity exit rules pass.")
+    parser.add_argument("--validation-readiness", action="store_true", help="Print 7-day validation readiness and exit.")
+    parser.add_argument("--remediation-trade-id", help="Trade ID for --integrity-remediate.")
+    parser.add_argument("--remediation-action", default="QUARANTINE", help="Remediation action for --integrity-remediate.")
+    parser.add_argument("--remediation-reason", default="operator_approved_integrity_remediation", help="Remediation reason for --integrity-remediate.")
+    parser.add_argument("--confirm-remediation", action="store_true", help="Apply remediation after preview; without this flag remediation is preview-only.")
     parser.add_argument("--open-browser", action="store_true", help="Open the local Swagger UI after startup.")
     parser.add_argument("--no-browser", action="store_true", help="Never open a browser window.")
     parser.add_argument("--urls", action="store_true", help="Print useful localhost URLs and exit.")
@@ -540,6 +550,57 @@ def run_system_validation() -> int:
     print(f"Overall: {result['validation_status']} ({result['overall_score']:.2f}/100)")
     print(result["human_readable_summary"])
     return {"PASS": 0, "WATCHLIST": 1, "FAIL": 2}[result["validation_status"]]
+
+
+def run_integrity_cli(args: argparse.Namespace) -> int:
+    """Run v6.0.16 integrity commands through the FastAPI app in-process."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    client = TestClient(app)
+    if args.integrity_audit:
+        result = client.get("/paper-integrity/summary").json()
+        print(f"Paper Integrity: {result['status']}")
+        print(f"SAFE MODE: {result.get('safe_mode_status')}")
+        print(f"Unresolved critical: {result.get('unresolved_critical_records')}")
+        print(f"Quarantined/excluded: {result.get('quarantined_records')}")
+        return 0 if result["status"] in {"PASS", "WATCHLIST"} else 2
+    if args.integrity_remediate:
+        payload = {
+            "trade_id": args.remediation_trade_id,
+            "proposed_action": args.remediation_action,
+        }
+        preview = client.post("/paper-integrity/remediation/preview", json=payload).json()
+        print(json.dumps(preview, indent=2))
+        if not args.confirm_remediation:
+            print("Preview only. Re-run with --confirm-remediation to append remediation metadata.")
+            return 0
+        apply_payload = {
+            "trade_id": args.remediation_trade_id,
+            "action": args.remediation_action,
+            "reason": args.remediation_reason,
+            "operator": "cli",
+        }
+        response = client.post("/paper-integrity/remediation/apply", json=apply_payload)
+        print(json.dumps(response.json(), indent=2))
+        return 0 if response.status_code == 200 else 2
+    if args.integrity_rebuild:
+        result = client.post("/paper-integrity/rebuild-derived-state").json()
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("status") == "PASS" else 1
+    if args.integrity_baseline:
+        response = client.post("/paper-integrity/create-baseline")
+        print(json.dumps(response.json(), indent=2))
+        return 0 if response.status_code == 200 else 2
+    if args.integrity_clear_safe_mode:
+        result = client.post("/paper-integrity/clear-safe-mode").json()
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("cleared") else 2
+    if args.validation_readiness:
+        result = client.get("/validation-readiness/7-day").json()
+        print(json.dumps(result, indent=2))
+        return 0 if result.get("status") == "READY" else 1
+    return 2
 
 
 def _api_json(path: str, *, method: str = "GET", payload: dict | None = None, timeout: float = 10.0) -> dict:
@@ -814,6 +875,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.validate:
         exit_code = run_system_validation()
         write_startup_log(result="system_validation", argv=raw_argv, details=f"exit_code={exit_code}")
+        return exit_code
+    if any((
+        args.integrity_audit,
+        args.integrity_remediate,
+        args.integrity_baseline,
+        args.integrity_rebuild,
+        args.integrity_clear_safe_mode,
+        args.validation_readiness,
+    )):
+        exit_code = run_integrity_cli(args)
+        write_startup_log(result="integrity_cli", argv=raw_argv, details=f"exit_code={exit_code}")
         return exit_code
 
     health = run_startup_checks()

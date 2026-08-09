@@ -46,6 +46,9 @@ class PaperRecoverySummary:
     legacy_orphaned_trades: int = 0
     current_campaign_orphaned_trades: int = 0
     quarantined_recovery_excluded: int = 0
+    excluded_quarantined: int = 0
+    excluded_legacy: int = 0
+    excluded_test_fixtures: int = 0
 
 
 @dataclass(frozen=True)
@@ -94,7 +97,7 @@ class PaperRecoveryEngine:
             self.lifecycle.recover_from_storage()
         # Journal loads in its constructor; keep recovery read-only for journal contents.
         reconciliation = self.reconciliation.run(persist=persist_reconciliation)
-        orphans, quarantined_excluded = self._detect_orphans()
+        orphans, excluded = self._detect_orphans()
         self._persist_orphans(orphans)
         account = self.broker.account()
         performance = self.broker.performance()
@@ -128,7 +131,10 @@ class PaperRecoveryEngine:
             global_reconciliation_status=global_status,
             legacy_orphaned_trades=len(legacy_orphans),
             current_campaign_orphaned_trades=len(current_orphans),
-            quarantined_recovery_excluded=quarantined_excluded,
+            quarantined_recovery_excluded=excluded["quarantined"],
+            excluded_quarantined=excluded["quarantined"],
+            excluded_legacy=excluded["legacy"],
+            excluded_test_fixtures=excluded["test_fixture"],
         )
         result = PaperRecoveryResult(
             run_id=f"recovery_{_now_hash()}",
@@ -153,18 +159,21 @@ class PaperRecoveryEngine:
         except OSError:
             return False
 
-    def _detect_orphans(self) -> tuple[list[PaperOrphanRecord], int]:
-        quarantined_ids = set()
+    def _detect_orphans(self) -> tuple[list[PaperOrphanRecord], dict[str, int]]:
+        eligibility_by_trade = {}
+        excluded = {"quarantined": 0, "legacy": 0, "test_fixture": 0}
         try:
+            from core.integrity_remediation import RemediationRegistry, eligibility_decision
             from core.journal_integrity import JournalIntegrityAuditor
             integrity = JournalIntegrityAuditor(journal=self.journal, broker=self.broker, lifecycle=self.lifecycle).summary()
-            hard_reasons = {"duplicate", "synthetic", "test_fixture", "timestamp_corruption", "invalid_transition", "invalid_state"}
-            quarantined_ids = {
-                item.trade_id for item in integrity.quarantine.records
-                if item.trade_id and any(reason in hard_reasons for reason in item.quarantine_reasons)
+            remediations = RemediationRegistry().latest_by_trade()
+            eligibility_by_trade = {
+                item.trade_id: eligibility_decision(item, remediation=remediations.get(str(item.trade_id)))
+                for item in integrity.records
+                if item.trade_id
             }
         except Exception:
-            quarantined_ids = set()
+            eligibility_by_trade = {}
         broker_ids = {item.trade_id for item in (*self.broker.open_positions(), *self.broker.closed_trades())}
         lifecycle_ids = {item.trade_id for item in (*self.lifecycle.open_trades(), *self.lifecycle.closed_trades()) if item.trade_id}
         event_ids = {item.trade_id for item in self.lifecycle.events() if getattr(item, "trade_id", None)}
@@ -173,8 +182,15 @@ class PaperRecoveryEngine:
         for entry in self.journal.entries():
             if entry.status not in {"open", "closed"}:
                 continue
-            if entry.trade_id in quarantined_ids:
-                quarantined_excluded += 1
+            decision = eligibility_by_trade.get(entry.trade_id)
+            if decision is not None and not decision.runtime_eligible and any(
+                reason in decision.reasons
+                for reason in ("remediation_excluded", "corrupted", "duplicate", "synthetic", "test_fixture")
+            ):
+                if "remediation_excluded" in decision.reasons or "corrupted" in decision.reasons or "duplicate" in decision.reasons:
+                    excluded["quarantined"] += 1
+                if "test_fixture" in decision.reasons:
+                    excluded["test_fixture"] += 1
                 continue
             in_broker = entry.trade_id in broker_ids
             in_lifecycle = entry.trade_id in lifecycle_ids or entry.trade_id in event_ids
@@ -200,7 +216,7 @@ class PaperRecoveryEngine:
                     "campaign": getattr(entry, "campaign_id", None) is not None,
                 },
             ))
-        return orphans, quarantined_excluded
+        return orphans, excluded
 
     def _persist_orphans(self, orphans: list[PaperOrphanRecord]) -> None:
         self.orphan_path.parent.mkdir(parents=True, exist_ok=True)

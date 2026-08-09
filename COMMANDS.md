@@ -1,5 +1,20 @@
 # StructureIQ Command Cheat Sheet
 
+## Paper integrity remediation and clean baseline
+
+```powershell
+.\.venv\Scripts\python.exe start.py --integrity-audit
+.\.venv\Scripts\python.exe start.py --integrity-remediate --remediation-trade-id 47cbfd066469d49904e4dc23
+.\.venv\Scripts\python.exe start.py --integrity-remediate --remediation-trade-id 47cbfd066469d49904e4dc23 --remediation-action QUARANTINE --remediation-reason identical_open_close_timestamp_and_missing_lifecycle --confirm-remediation
+.\.venv\Scripts\python.exe start.py --integrity-rebuild
+.\.venv\Scripts\python.exe start.py --integrity-baseline
+.\.venv\Scripts\python.exe start.py --integrity-clear-safe-mode
+.\.venv\Scripts\python.exe start.py --validate
+.\.venv\Scripts\python.exe start.py --validation-readiness
+```
+
+The remediation command previews by default. `--confirm-remediation` appends metadata to `research/paper_integrity_remediation.jsonl`; it does not edit or delete raw journal rows. There is no force clear for SAFE MODE.
+
 ## Controlled paper auto-approval
 
 ```powershell

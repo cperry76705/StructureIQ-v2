@@ -98,11 +98,23 @@ class SystemValidationHarness:
         "/paper-reconciliation/summary",
         "/paper-recovery/status",
         "/paper-integrity/summary",
+        "/paper-integrity/enhanced-summary",
         "/paper-integrity/quarantine",
         "/paper-integrity/duplicates",
+        "/paper-integrity/duplicates/analysis",
+        "/paper-integrity/incomplete",
         "/paper-integrity/lifecycle",
         "/paper-integrity/timestamps",
         "/paper-integrity/campaign",
+        "/paper-integrity/remediation/preview",
+        "/paper-integrity/remediation/apply",
+        "/paper-integrity/remediation/history",
+        "/paper-integrity/rebuild-derived-state",
+        "/paper-integrity/campaign/rebuild",
+        "/paper-integrity/baselines",
+        "/paper-integrity/baseline",
+        "/paper-integrity/create-baseline",
+        "/paper-integrity/clear-safe-mode",
         "/paper-integrity/recovery",
         "/campaigns",
         "/campaigns/legacy_campaign/audit",
@@ -476,8 +488,10 @@ class SystemValidationHarness:
             campaigns=self.campaigns,
         )
         summary = auditor.summary()
-        if summary.safe_mode_required or summary.critical_count:
+        if summary.unresolved_critical_records:
             return _fail("Paper Journal Integrity requires SAFE MODE before automation.", tuple(issue.root_cause for issue in summary.issues if issue.severity == "critical"))
+        if summary.total_records and summary.safe_mode_status != "CLEARED":
+            return _watch(("SAFE MODE is not cleared through a clean validation baseline.",), summary.human_readable_summary)
         if summary.status == "WATCHLIST":
             return _watch(tuple(issue.root_cause for issue in summary.issues), summary.human_readable_summary)
         if auditor.root_cause("47cbfd066469d49904e4dc23").found:

@@ -11,6 +11,12 @@ Related Entries: [README.md](README.md)
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
 
+## v6.0.16 Knowledge Base Update — 2026-08-09
+
+- Added release documentation for StructureIQ v6.0.16.
+- Updated roadmap, validation workflow, release workflow, architecture, and documentation impact references for integrity remediation, clean validation baseline creation, and SAFE MODE exit rules.
+- Preserved raw-evidence and non-live-trading constraints.
+
 ## v6.0.15 Knowledge Base Update — 2026-08-09
 
 - Added release documentation for StructureIQ v6.0.15.

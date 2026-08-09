@@ -14,6 +14,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from core.integrity_remediation import (
+    RemediationRegistry,
+    ValidationBaselineManager,
+    enhanced_summary,
+)
+
 
 CLASSIFICATIONS = (
     "VALID_RUNTIME",
@@ -149,6 +155,20 @@ class JournalIntegritySummary:
     records: tuple[JournalIntegrityRecord, ...]
     issues: tuple[IntegrityIssue, ...]
     human_readable_summary: str
+    raw_record_count: int = 0
+    eligible_runtime_records: int = 0
+    eligible_performance_records: int = 0
+    quarantined_records: int = 0
+    legacy_records: int = 0
+    test_fixture_records: int = 0
+    corrupted_records: int = 0
+    incomplete_records: int = 0
+    unresolved_critical_records: int = 0
+    resolved_critical_records: int = 0
+    safe_mode_status: str = "ACTIVE"
+    baseline_status: str = "MISSING"
+    latest_baseline_id: str | None = None
+    ready_for_validation: bool = False
 
 
 class JournalIntegrityAuditor:
@@ -162,12 +182,16 @@ class JournalIntegrityAuditor:
         lifecycle: Any | None = None,
         campaigns: Any | None = None,
         journal_path: str | Path = "research/paper_trade_journal.jsonl",
+        remediation_path: str | Path = "research/paper_integrity_remediation.jsonl",
+        baseline_path: str | Path = "research/paper_validation_baselines.jsonl",
     ) -> None:
         self.journal = journal
         self.broker = broker
         self.lifecycle = lifecycle
         self.campaigns = campaigns
         self.journal_path = Path(getattr(journal, "path", journal_path))
+        self.remediation = RemediationRegistry(remediation_path)
+        self.baselines = ValidationBaselineManager(baseline_path)
 
     def summary(self) -> JournalIntegritySummary:
         entries = self._entries()
@@ -206,8 +230,35 @@ class JournalIntegrityAuditor:
                 "duplicate_opens",
             )
         )
-        safe_mode = bool(critical or duplicate_present or timestamp_audit.closed_before_opened or timestamp_audit.negative_durations)
-        status = "FAIL" if critical or duplicate_present else "WATCHLIST" if warnings or quarantine.quarantined_count else "PASS"
+        provisional = type(
+            "_ProvisionalSummary",
+            (),
+            {
+                "records": records,
+                "issues": tuple(issues),
+                "warning_count": warnings,
+                "total_records": len(entries),
+                "raw_record_count": len(raw_rows),
+            },
+        )()
+        baseline = self.baselines.latest()
+        safe_status = self.baselines.safe_mode_status(provisional, registry=self.remediation)
+        enhanced = enhanced_summary(provisional, baseline, safe_status, self.remediation)
+        operational_duplicate_present = any(
+            getattr(duplicate_report, name)
+            for name in (
+                "duplicate_trade_ids",
+                "duplicate_lifecycle_ids",
+                "duplicate_brokerage_ids",
+                "duplicate_execution_chains",
+                "duplicate_journal_entries",
+                "duplicate_campaign_membership",
+                "duplicate_closes",
+                "duplicate_opens",
+            )
+        )
+        safe_mode = bool(enhanced.unresolved_critical_records or operational_duplicate_present or timestamp_audit.closed_before_opened or timestamp_audit.negative_durations)
+        status = "FAIL" if enhanced.unresolved_critical_records or operational_duplicate_present else "WATCHLIST" if warnings or quarantine.quarantined_count else "PASS"
         return JournalIntegritySummary(
             status=status,
             safe_mode_required=safe_mode,
@@ -223,7 +274,21 @@ class JournalIntegrityAuditor:
             quarantine=quarantine,
             records=records,
             issues=tuple(issues),
-            human_readable_summary=f"Journal integrity is {status}: {len(entries)} records, {critical} critical issues, {quarantine.quarantined_count} quarantined records.",
+            human_readable_summary=f"Journal integrity is {status}: {len(entries)} records, {enhanced.unresolved_critical_records} unresolved critical issues, {enhanced.quarantined_records} quarantined/excluded records.",
+            raw_record_count=len(raw_rows),
+            eligible_runtime_records=enhanced.eligible_runtime_records,
+            eligible_performance_records=enhanced.eligible_performance_records,
+            quarantined_records=enhanced.quarantined_records,
+            legacy_records=enhanced.legacy_records,
+            test_fixture_records=enhanced.test_fixture_records,
+            corrupted_records=enhanced.corrupted_records,
+            incomplete_records=enhanced.incomplete_records,
+            unresolved_critical_records=enhanced.unresolved_critical_records,
+            resolved_critical_records=enhanced.resolved_critical_records,
+            safe_mode_status=enhanced.safe_mode_status,
+            baseline_status=enhanced.baseline_status,
+            latest_baseline_id=enhanced.latest_baseline_id,
+            ready_for_validation=enhanced.ready_for_validation,
         )
 
     def duplicate_report(self, entries: Iterable[Any] | None = None, raw_rows: Iterable[dict[str, Any]] | None = None) -> DuplicateReport:
@@ -424,6 +489,17 @@ class JournalIntegrityAuditor:
             classification = "UNKNOWN"
         else:
             classification = "VALID_RUNTIME" if _active_campaign(getattr(entry, "campaign_id", None), self.campaigns) else "VALID_HISTORICAL"
+        remediation = self.remediation.latest_by_trade().get(str(trade_id))
+        if remediation and remediation.remediation_action in {
+            "QUARANTINE",
+            "MARK_LEGACY",
+            "MARK_TEST_FIXTURE",
+            "MARK_INCOMPLETE",
+            "EXCLUDE_FROM_RUNTIME",
+            "EXCLUDE_FROM_CAMPAIGN",
+            "EXCLUDE_FROM_PERFORMANCE",
+        }:
+            reasons.append(remediation.remediation_reason)
         quarantine = "QUARANTINED" if reasons else None
         return JournalIntegrityRecord(
             trade_id=trade_id,

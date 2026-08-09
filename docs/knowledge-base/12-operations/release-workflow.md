@@ -14,3 +14,5 @@ Related Releases: None
 ## Workflow
 
 For every code release, update version identity, tests, README/API/changelog/roadmap documentation, release notes, and the Knowledge Base release entry. Do not claim test counts without running or citing the known result.
+
+For integrity releases, also document whether raw evidence was preserved, whether remediation metadata is append-only, whether SAFE MODE can be force-cleared, and whether trading behavior changed.
