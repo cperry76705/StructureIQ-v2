@@ -11,6 +11,21 @@ Related Entries: [README.md](README.md)
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
 
+## Knowledge Base v1.3 — 2026-08-09
+
+Added:
+
+- Navigation & Application Shell Design System v1.0.
+- Persistent authenticated navigation and global page-naming standards.
+- Four-flagship-workspace hierarchy and mobile navigation philosophy.
+- Trade Intelligence design-review entry and Performance Intelligence placeholder.
+
+Changed:
+
+- Reclassified Morning Intelligence as Morning Brief within Command Center.
+- Standardized current flagship naming: Dashboard → Command Center, Markets → Market Intelligence, Trades → Trade Intelligence, and Performance → Performance Intelligence.
+- Updated Command Center, Market Intelligence, Trade Intelligence, subscription, AI Authority, product-vision, and roadmap shell assumptions.
+
 ## Knowledge Base v1.2 — 2026-08-09
 
 Added:

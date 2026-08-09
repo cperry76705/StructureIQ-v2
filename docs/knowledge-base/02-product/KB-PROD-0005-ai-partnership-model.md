@@ -24,6 +24,8 @@ Explorer is manual execution only. Professional may use Observer, Advisor, and a
 
 AI Authority Level is also separate from visual subscription quality. UI quality and core intelligence stay premium across plans; authority controls behavior.
 
+AI Authority is persistent product-level status. Its location may be the lower sidebar, account area, or a consistent top-level status control, but it must remain stable across flagship workspaces rather than moving unpredictably by page.
+
 Professional approval and Elite Autopilot never bypass execution safeguards, risk controls, user authorization, allowed-symbol checks, exposure limits, daily loss limits, broker connection checks, or kill-switch state.
 
 ## Market Intelligence Behavior

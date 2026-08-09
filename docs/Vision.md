@@ -37,6 +37,12 @@ StructureIQ is intended for discretionary and systematic-minded traders who want
 
 ## Product Layers
 
+### Authenticated Workspace Architecture
+
+The four flagship workspaces are Command Center, Market Intelligence, Trade Intelligence, and Performance Intelligence. They use one persistent authenticated shell with left sidebar navigation, a consistent top utility bar, and workspace-specific content. Morning Brief is embedded within Command Center rather than treated as a standalone flagship destination.
+
+The core product narrative moves from public Landing Page and authentication/onboarding into Command Center, then Market Intelligence, Trade Intelligence, and Performance Intelligence. Supporting workspaces remain subordinate to this daily loop.
+
 ### Market Intelligence Workspace
 
 Market Intelligence is the approved AI-first market research workspace. It helps the trader understand the current state of the market before considering a trade.
@@ -59,9 +65,13 @@ Market Intelligence answers: **"What is happening across the markets right now?"
 
 Command Center may surface selected Market Intelligence, but Market Intelligence is the deeper research workspace.
 
-### Future Trade Intelligence Relationship
+### Trade Intelligence Relationship
 
-Trade Intelligence is a separate future workspace. Market Intelligence is market-centric; Trade Intelligence will be opportunity/trade-centric.
+Trade Intelligence is a separate flagship workspace whose full screen remains under design review. Market Intelligence is market-centric; Trade Intelligence is opportunity/trade-centric and answers: **"What should I do next?"**
+
+### Performance Intelligence Relationship
+
+Performance Intelligence is a planned flagship workspace that answers: **"How am I performing and improving?"** Its mission covers trading results, decision quality, discipline, risk behavior, and long-term improvement; its full design has not started.
 
 ### Internal Intelligence
 

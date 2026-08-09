@@ -43,7 +43,7 @@ Conceptual model: **Teach me.**
 
 Supporting language: Learn. Decide. Execute.
 
-Explorer receives the complete core intelligence experience, including Command Center, Market Intelligence, Morning Intelligence, Since Your Last Visit, Capital Intelligence, Yesterday's Debrief, Decision Quality, Today's Opportunities, AI Focus List, Intelligence Feed, Daily Scorecard, Learning & Coaching, explanations, research, trade reasoning, confidence, setup information, entry guidance, stop-loss guidance, target guidance, risk context, alerts, notifications, and performance/educational review where available.
+Explorer receives the complete core intelligence experience, including Command Center, Market Intelligence, Morning Brief within Command Center, Since Your Last Visit, Capital Intelligence, Yesterday's Debrief, Decision Quality, Today's Opportunities, AI Focus List, Intelligence Feed, Daily Scorecard, Learning & Coaching, explanations, research, trade reasoning, confidence, setup information, entry guidance, stop-loss guidance, target guidance, risk context, alerts, notifications, and performance/educational review where available.
 
 Explorer does not permit StructureIQ to place trades for the user. The user manually enters, manages, adjusts, and exits trades.
 
@@ -88,5 +88,7 @@ Subscription Tier defines the maximum execution authority available. AI Authorit
 An Elite subscriber may remain in Observer or approval-required mode indefinitely. A Professional subscriber cannot enable full Autopilot because autonomous authority is outside the Professional capability. Explorer remains manual execution only.
 
 ## Safety and Execution Controls
+
+All tiers use the same premium authenticated application shell and flagship workspace hierarchy. Navigation must not visually degrade or become a separate shell for Explorer, Professional, or Elite; only authorized behavior changes.
 
 Professional approval and Elite Autopilot do not bypass risk controls. Broker execution must validate applicable controls such as broker connection status, user authorization, allowed symbols, risk percentage, daily loss limits, exposure, open positions, execution/slippage conditions, trade-management permissions, and kill-switch state.

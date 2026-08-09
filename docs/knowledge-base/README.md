@@ -1,4 +1,4 @@
-# StructureIQ Knowledge Base v1.0
+# StructureIQ Knowledge Base v1.3
 
 ID: KB-ROOT-0001  
 Title: StructureIQ Knowledge Base  

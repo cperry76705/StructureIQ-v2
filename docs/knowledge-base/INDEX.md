@@ -27,6 +27,9 @@ Related Releases: None
 - [KB-PROD-0004 Subscription Model](02-product/KB-PROD-0004-subscription-model.md)
 - [KB-PROD-0005 AI Partnership Model](02-product/KB-PROD-0005-ai-partnership-model.md)
 - [KB-PROD-0006 Market Intelligence Workspace](02-product/KB-PROD-0006-market-intelligence-workspace.md)
+- [KB-PROD-0007 Navigation & Application Shell Design System](02-product/KB-PROD-0007-navigation-application-shell-design-system.md)
+- [KB-PROD-0008 Trade Intelligence](02-product/KB-PROD-0008-trade-intelligence.md)
+- [KB-PROD-0009 Performance Intelligence](02-product/KB-PROD-0009-performance-intelligence.md)
 
 ## Engineering
 
@@ -67,6 +70,7 @@ Related Releases: None
 - [TL-0014 Command Center Approved](06-timeline/TL-0014-command-center-approved.md)
 - [TL-0015 Subscription Execution Authority Model Approved](06-timeline/TL-0015-subscription-execution-authority-model.md)
 - [TL-0016 Market Intelligence Workspace v1.0 Approved](06-timeline/TL-0016-market-intelligence-workspace-approved.md)
+- [TL-0017 Global Navigation and Product Naming Standard Approved](06-timeline/TL-0017-global-navigation-and-product-naming-standard-approved.md)
 
 ## Decisions
 
@@ -92,6 +96,7 @@ Related Releases: None
 - [ADR-020 Knowledge Base Source of Truth](07-decisions/ADR-020-knowledge-base-source-of-truth.md)
 - [ADR-021 Subscription Tiers Based on Execution Authority](07-decisions/ADR-021-subscription-tiers-based-on-execution-authority.md)
 - [ADR-022 AI-First Market Research Workspace](07-decisions/ADR-022-ai-first-market-research-workspace.md)
+- [ADR-023 Persistent Authenticated Navigation and Naming Standard](07-decisions/ADR-023-persistent-authenticated-navigation-and-naming-standard.md)
 
 ## Validation
 

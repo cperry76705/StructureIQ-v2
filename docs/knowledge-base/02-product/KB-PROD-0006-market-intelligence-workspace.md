@@ -9,8 +9,8 @@ Created: 2026-08-09
 Last Updated: 2026-08-09  
 Version: 1.0  
 Design Status: Approved  
-Related Entries: [Product Vision](KB-PROD-0001-product-vision.md), [Command Center](KB-PROD-0003-command-center.md), [AI Partnership Model](KB-PROD-0005-ai-partnership-model.md)  
-Related ADRs: [ADR-003](../07-decisions/ADR-003-explainable-ai.md), [ADR-022](../07-decisions/ADR-022-ai-first-market-research-workspace.md)  
+Related Entries: [Product Vision](KB-PROD-0001-product-vision.md), [Command Center](KB-PROD-0003-command-center.md), [AI Partnership Model](KB-PROD-0005-ai-partnership-model.md), [Navigation & Application Shell Design System](KB-PROD-0007-navigation-application-shell-design-system.md)  
+Related ADRs: [ADR-003](../07-decisions/ADR-003-explainable-ai.md), [ADR-022](../07-decisions/ADR-022-ai-first-market-research-workspace.md), [ADR-023](../07-decisions/ADR-023-persistent-authenticated-navigation-and-naming-standard.md)  
 Related Releases: None
 
 ## Product Mission
@@ -151,15 +151,9 @@ It should feel like an analyst continuously watching the market. It should not d
 
 ## Approved Navigation Context
 
-Market Intelligence is a major authenticated workspace alongside:
+Market Intelligence uses the persistent authenticated shell. Its primary-navigation peers are Command Center, Trade Intelligence, and Performance Intelligence. The shared left sidebar and top utility bar remain consistent across those destinations.
 
-- Command Center.
-- Trade Intelligence.
-- Portfolio Intelligence.
-- Research / AI Reports.
-- Economic Calendar.
-- News Intelligence.
-- Strategy Lab.
+Watchlists, Strategy Lab, Economic Calendar, News Intelligence, AI Reports, and Journal & Coaching are secondary destinations. Workspace-specific market filters and research controls remain inside Market Intelligence; they do not replace global navigation.
 
 Market Intelligence itself is approved. Future workspace designs should not be marked as fully approved unless separately approved.
 
