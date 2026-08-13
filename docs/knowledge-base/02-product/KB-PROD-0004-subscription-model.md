@@ -15,6 +15,8 @@ Related Releases: None
 
 StructureIQ retains three subscription tiers: Explorer, Professional, and Elite.
 
+Paid subscriptions support monthly and annual billing; annual billing provides 20% savings. No authoritative prices are defined here.
+
 The authoritative model is:
 
 **All subscription tiers receive the same core StructureIQ intelligence and the same premium product experience. The primary difference between tiers is execution authority.**
@@ -96,3 +98,11 @@ Professional approval and Elite Autopilot do not bypass risk controls. Broker ex
 ## Performance Intelligence Across Tiers
 
 Every tier receives the same core Performance Intelligence quality. Explorer emphasizes manually executed decisions and behavior. Professional may eventually compare approvals, rejections, assisted execution, and AI recommendations. Elite may eventually compare Autopilot, Co-Pilot, manual overrides, autonomous periods, and user intervention. These contexts do not create visually inferior lower-tier versions or claim that every attribution integration exists.
+
+## Guided Evaluation and Lifecycle
+
+The 14-Day Guided Evaluation is Explorer-based and preserves the same core intelligence quality across all flagship workspaces. It may demonstrate Professional's approval-required Co-Pilot experience but cannot enable Autopilot or unrestricted live broker connectivity.
+
+Upgrades take effect after successful billing/authorization. Downgrades take effect at the next billing cycle, and plan changes are limited to once per billing cycle. Failed renewals receive a conceptual seven-day grace period before suspension. Cancellation ends renewal while preserving access through the current paid term. Detailed states and retention rules are governed by [Customer Account and Lifecycle Architecture](KB-PROD-0010-customer-account-and-lifecycle-architecture.md).
+
+Broker connections are available only to Professional and Elite. Explorer remains manual execution without a live broker connection.

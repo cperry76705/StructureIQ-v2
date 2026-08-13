@@ -132,6 +132,15 @@ class SystemValidationHarness:
         "/recovery-test/snapshot",
         "/recovery-test/verify-after-restart",
         "/recovery-test/cleanup",
+        "/execution-capture/summary",
+        "/execution-capture/unfilled",
+        "/execution-capture/counterfactuals",
+        "/execution-capture/trades",
+        "/execution-research/summary",
+        "/execution-research/orders",
+        "/shadow-execution/summary",
+        "/shadow-execution/scenarios",
+        "/dashboard/execution-research",
     }
 
     def __init__(
@@ -201,6 +210,9 @@ class SystemValidationHarness:
             ("Recovery Test Harness", self._recovery_test_harness),
             ("Symbol Registry", self._symbol_registry),
             ("Opportunity Coverage", self._opportunity_coverage),
+            ("Execution Capture Analytics", self._execution_capture),
+            ("Execution Research Capture", self._execution_research),
+            ("Shadow Execution Lab", self._shadow_execution),
             ("7-Day Validation Readiness", self._seven_day_readiness),
             ("Dashboard", self._dashboard),
             ("Observability", self._observability),
@@ -577,6 +589,26 @@ class SystemValidationHarness:
             if not path.exists():
                 return _fail("Opportunity Coverage campaign isolation file was not written.")
         return _pass("Opportunity Coverage handles empty/populated states, by-symbol and by-asset aggregation, and campaign isolation safely.")
+
+    def _execution_capture(self):
+        from core.execution_capture import SCENARIOS, ExecutionCaptureEngine
+        if len(SCENARIOS) != 8 or not callable(getattr(ExecutionCaptureEngine, "report", None)):
+            return _fail("Execution Capture Analytics is unavailable or incomplete.")
+        if not all(name in SCENARIOS for name in ("LIMIT_RETEST_CURRENT", "APPROVAL_PRICE_ENTRY", "CONFIRMATION_MARKET_ENTRY")):
+            return _fail("Execution Capture counterfactual scenarios are incomplete.")
+        return _pass("Execution Capture Analytics is available, campaign-scoped, read-only, and reports insufficient candle data without fabricating outcomes.")
+
+    def _execution_research(self):
+        from core.execution_research_capture import ExecutionResearchCapture
+        if not callable(getattr(ExecutionResearchCapture,"capture_order",None)) or not callable(getattr(ExecutionResearchCapture,"capture_candles",None)):
+            return _fail("Execution Research Capture is unavailable.")
+        return _pass("Execution Research Capture provides durable snapshots, candle deduplication, and restart recovery without blocking execution.")
+
+    def _shadow_execution(self):
+        from core.shadow_execution_lab import SCENARIOS, ShadowExecutionLab
+        if len(SCENARIOS)!=8 or not callable(getattr(ShadowExecutionLab,"evaluate",None)):
+            return _fail("Shadow Execution Lab is unavailable.")
+        return _pass("Shadow Execution Lab is pure research and keeps hypothetical results non-realized.")
 
     def _seven_day_readiness(self):
         registry = get_symbol_registry()

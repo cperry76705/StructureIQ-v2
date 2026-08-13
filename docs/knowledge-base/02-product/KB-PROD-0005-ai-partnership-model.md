@@ -28,6 +28,8 @@ AI Authority is persistent product-level status. Its location may be the lower s
 
 Professional approval and Elite Autopilot never bypass execution safeguards, risk controls, user authorization, allowed-symbol checks, exposure limits, daily loss limits, broker connection checks, or kill-switch state.
 
+They also never bypass account-state restrictions, mandatory MFA, or step-up authentication for sensitive broker, security, billing, and Autopilot actions. The Guided Evaluation may demonstrate approval-required Co-Pilot behavior, but it does not enable autonomous authority.
+
 ## Market Intelligence Behavior
 
 Within Market Intelligence, the AI behaves as a market research partner. It may summarize market conditions, explain structure, identify important changes, prioritize markets, summarize major drivers, and create meaningful observation events.

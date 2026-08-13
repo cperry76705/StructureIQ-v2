@@ -22,3 +22,5 @@ Market Intelligence is the approved research workspace for answering: "What is a
 The approved core product loop is Command Center, Market Intelligence, Trade Intelligence, and Performance Intelligence. These flagship workspaces share one persistent authenticated shell. Morning Brief is embedded in Command Center, the user's home workspace.
 
 Approved Performance Intelligence completes the loop as StructureIQ's continuous improvement engine. It evaluates Decision Quality and discipline alongside financial outcomes and connects trading behavior to review, coaching, and improvement.
+
+Customers enter through a paid account or the payment-required 14-Day Guided Evaluation, then complete verification, mandatory MFA, and mission-based onboarding before usable protected workspace access. Customer permissions depend on account state, subscription, AI Authority, and security status.

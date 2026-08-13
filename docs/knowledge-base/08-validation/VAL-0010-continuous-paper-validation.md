@@ -26,3 +26,7 @@ Formal seven-day validation requires a clean paper integrity baseline, zero unre
 ## Recovery Test Guard
 
 Deterministic recovery tests must be verified by `recovery_test_run_id`. A stale legacy snapshot, incomplete run, or ambiguous set of ready runs is a harness precondition failure, not a recovery failure. Genuine recovery failures are reported separately as `RECOVERY_DIFFERENCE`.
+
+## Execution Capture Gate
+
+Before another official validation, review approved-order fill rate, unfilled terminal reasons, candle-data coverage, and executed-trade linkage. Insufficient historical candles are a coverage warning, not permission to infer outcomes.

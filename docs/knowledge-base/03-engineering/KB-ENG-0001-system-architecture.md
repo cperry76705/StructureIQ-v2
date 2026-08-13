@@ -30,3 +30,11 @@ The architecture now includes an Integrity Remediation layer. It stores append-o
 ## v6.0.17 Architecture Update
 
 The deterministic recovery-test harness now has a durable run identity and state-machine layer. Recovery-test fixtures, snapshots, verification, cleanup, and history are bound to `recovery_test_run_id`, preventing stale snapshot selection while leaving normal lifecycle and paper trading behavior unchanged.
+
+## v6.0.19 Architecture Update
+
+Execution Capture Analytics joins durable lifecycle orders to campaign journal records, canonical execution classification, optional historical candles, opportunity coverage, and reconciliation. It is read-only; actual and counterfactual results remain separate.
+
+## v6.0.20 Architecture Update
+
+Prospective research attaches a failure-isolated lifecycle listener, persists bounded de-duplicated candles atomically, resumes after restart, and feeds a pure shadow evaluator. Actual execution has no dependency on research success.

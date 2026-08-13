@@ -2,11 +2,11 @@
 
 ## Overview
 
-StructureIQ `6.0.17` exposes a FastAPI HTTP interface for analysis, market-session awareness, active watchlist filtering, expanded FX universe validation, Opportunity Coverage Analytics, paper journal integrity remediation, clean validation baselines, durable paper runtime recovery, recovery-test run identity, validation campaigns, scoped paper-state reconciliation, deterministic recovery-test fixtures, candidate diagnostics and calibration analytics, controlled continuous paper sessions, end-to-end validation, local system observability, local report scheduling, controlled paper orchestration, daily paper reporting, automated paper journaling, simulated paper-account and lifecycle management, simplified backtesting, observational calibration, continuous monitoring, continuous research, and compact research dashboards. The API provides market intelligence only. It does not expose endpoints for real broker authentication, live order placement, or live position management.
+StructureIQ `6.0.20` exposes a FastAPI HTTP interface for analysis, market-session awareness, opportunity and execution capture, durable execution research, isolated shadow execution, paper recovery, validation campaigns, diagnostics, and system observability. Shadow results are non-realized research and cannot affect trading state.
 
 ### Recovery test runs
 
-Version 6.0.17 binds deterministic recovery-test fixtures, snapshots, verification, cleanup, and history to `recovery_test_run_id`. Legacy history remains viewable but is never selected automatically.
+Version 6.0.18 derives order/trade semantics from canonical execution evidence during recovery and reconciliation. Opportunity Coverage remains intentionally exposed through `/opportunity-coverage/summary` and its documented detail routes; there is no bare `/opportunity-coverage` collection route.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
@@ -62,6 +62,24 @@ Version 6.0.14 adds read-only opportunity coverage analytics over existing diagn
 | `GET` | `/campaigns/{campaign_id}/opportunity-coverage` | Return campaign-scoped opportunity coverage. |
 | `GET` | `/symbols/provider-validation` | Validate deterministic provider symbol mappings without network calls. |
 | `GET` | `/validation-readiness/7-day` | Check 7-day validation capability without requiring Forex to be open. |
+
+### Execution capture diagnostics
+
+Version 6.0.19 adds campaign-scoped, read-only approved-order capture and counterfactual research. Missing historical candles produce `INSUFFICIENT_DATA`; hypothetical outcomes never enter realized performance.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` | `/execution-capture/summary` | Return capture metrics and terminal counts. |
+| `GET` | `/execution-capture/funnel` | Return the approved-order-to-closed-trade funnel. |
+| `GET` | `/execution-capture/unfilled` | Inspect unfilled orders and post-order price evidence. |
+| `GET` | `/execution-capture/by-symbol` | Aggregate capture by symbol. |
+| `GET` | `/execution-capture/by-asset-class` | Aggregate Crypto versus Forex capture. |
+| `GET` | `/execution-capture/by-strategy` | Aggregate capture by strategy. |
+| `GET` | `/execution-capture/by-setup` | Aggregate capture by setup. |
+| `GET` | `/execution-capture/counterfactuals` | Return research-only execution sensitivity scenarios. |
+| `GET` | `/execution-capture/prop-readiness` | Return read-only opportunity and R-frequency metrics. |
+| `GET` | `/execution-capture/trades` | Audit executed-trade linkage and discrepancies. |
+| `GET` | `/campaigns/{campaign_id}/execution-capture` | Return a fully isolated campaign report. |
 
 ### Market sessions and active watchlist
 

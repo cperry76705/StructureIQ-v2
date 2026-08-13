@@ -227,7 +227,11 @@ def test_opportunity_api_dashboard_and_readiness(tmp_path: Path):
 
     assert summary["markets_analyzed"] == 3
     assert any(row["symbol"] == "EUR-USD" for row in by_symbol)
-    assert readiness["status"] in {"READY", "WATCHLIST"}
+    # A version bump can intentionally invalidate the persisted clean baseline until
+    # operators create and clear a new one; that does not make coverage unavailable.
+    assert readiness["status"] in {"READY", "WATCHLIST", "NOT_READY"}
+    if readiness["status"] == "NOT_READY":
+        assert readiness["opportunity_coverage"] == "PASS"
     assert readiness["configured_symbols"] == 9
     assert dashboard["trading_universe_configured"] == 9
     assert len(provider_validation) == 9

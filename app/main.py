@@ -26,6 +26,9 @@ from core.opportunity_coverage import (
     OpportunityFunnel,
     get_global_opportunity_coverage,
 )
+from core.execution_capture import ExecutionCaptureEngine
+from core.execution_research_capture import ExecutionResearchCapture
+from core.shadow_execution_lab import ShadowExecutionLab
 from core.symbol_registry import ProviderSymbolValidation, get_symbol_registry
 from core.live_market_monitor import (
     LiveMarketMonitor,
@@ -382,6 +385,48 @@ def get_paper_recovery_engine(
     )
 
 
+def get_execution_capture_engine(
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    journal: PaperTradeJournal = Depends(get_paper_trade_journal),
+    opportunity: OpportunityCoverageEngine = Depends(get_opportunity_coverage_engine),
+    reconciliation: PaperStateReconciliationEngine = Depends(get_paper_state_reconciliation_engine),
+    provider: MarketDataProvider = Depends(get_market_data_provider),
+) -> ExecutionCaptureEngine:
+    remediations = RemediationRegistry().latest_by_trade()
+    excluded = {
+        trade_id for trade_id, item in remediations.items()
+        if item.remediation_action in {
+            "QUARANTINE", "EXCLUDE_FROM_RUNTIME", "EXCLUDE_FROM_CAMPAIGN",
+            "EXCLUDE_FROM_PERFORMANCE", "MARK_TEST_FIXTURE", "MARK_INCOMPLETE",
+        }
+    }
+    return ExecutionCaptureEngine(
+        lifecycle=lifecycle, journal=journal, opportunity=opportunity,
+        reconciliation=reconciliation, provider=provider, excluded_trade_ids=excluded,
+    )
+
+
+@lru_cache
+def _execution_research_singleton() -> dict[str, Any]:
+    return {}
+
+
+def get_execution_research_capture(
+    lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
+    provider: MarketDataProvider = Depends(get_market_data_provider),
+) -> ExecutionResearchCapture:
+    cache = _execution_research_singleton()
+    engine = cache.get("engine")
+    if engine is None or engine.lifecycle is not lifecycle or engine.provider is not provider:
+        engine = ExecutionResearchCapture(lifecycle=lifecycle, provider=provider)
+        cache["engine"] = engine
+    return engine
+
+
+def get_shadow_execution_lab(capture: ExecutionResearchCapture = Depends(get_execution_research_capture)) -> ShadowExecutionLab:
+    return ShadowExecutionLab(capture)
+
+
 def get_journal_integrity_auditor(
     broker: PaperBrokerageEngine = Depends(get_paper_brokerage),
     lifecycle: TradeLifecycleManager = Depends(get_trade_lifecycle_manager),
@@ -730,6 +775,131 @@ def campaign_opportunity_coverage(
         raise HTTPException(status_code=404, detail="campaign was not found")
     from fastapi.encoders import jsonable_encoder
     return jsonable_encoder(engine.report(campaign_id=campaign_id))
+
+
+@app.get("/execution-capture/summary", response_model=dict[str, Any], tags=["execution-capture"])
+def execution_capture_summary(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)) -> dict[str, Any]:
+    return engine.report(campaign_id=campaign_id)["summary"]
+
+
+@app.get("/execution-capture/funnel", response_model=dict[str, Any], tags=["execution-capture"])
+def execution_capture_funnel(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)) -> dict[str, Any]:
+    return engine.report(campaign_id=campaign_id)["funnel"]
+
+
+def _execution_capture_section(section: str, campaign_id: str | None, engine: ExecutionCaptureEngine):
+    return engine.report(campaign_id=campaign_id)[section]
+
+
+@app.get("/execution-capture/unfilled", response_model=list[dict[str, Any]], tags=["execution-capture"])
+def execution_capture_unfilled(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)): return _execution_capture_section("unfilled", campaign_id, engine)
+
+
+@app.get("/execution-capture/by-symbol", response_model=list[dict[str, Any]], tags=["execution-capture"])
+def execution_capture_by_symbol(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)): return _execution_capture_section("by_symbol", campaign_id, engine)
+
+
+@app.get("/execution-capture/by-asset-class", response_model=list[dict[str, Any]], tags=["execution-capture"])
+def execution_capture_by_asset_class(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)): return _execution_capture_section("by_asset_class", campaign_id, engine)
+
+
+@app.get("/execution-capture/by-strategy", response_model=list[dict[str, Any]], tags=["execution-capture"])
+def execution_capture_by_strategy(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)): return _execution_capture_section("by_strategy", campaign_id, engine)
+
+
+@app.get("/execution-capture/by-setup", response_model=list[dict[str, Any]], tags=["execution-capture"])
+def execution_capture_by_setup(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)): return _execution_capture_section("by_setup", campaign_id, engine)
+
+
+@app.get("/execution-capture/counterfactuals", response_model=list[dict[str, Any]], tags=["execution-capture"])
+def execution_capture_counterfactuals(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)): return _execution_capture_section("counterfactuals", campaign_id, engine)
+
+
+@app.get("/execution-capture/prop-readiness", response_model=dict[str, Any], tags=["execution-capture"])
+def execution_capture_prop_readiness(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)): return _execution_capture_section("prop_readiness", campaign_id, engine)
+
+
+@app.get("/execution-capture/trades", response_model=list[dict[str, Any]], tags=["execution-capture"])
+def execution_capture_trades(campaign_id: str | None = None, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine)): return _execution_capture_section("trades", campaign_id, engine)
+
+
+@app.get("/campaigns/{campaign_id}/execution-capture", response_model=dict[str, Any], tags=["campaigns", "execution-capture"])
+def campaign_execution_capture(campaign_id: str, engine: ExecutionCaptureEngine = Depends(get_execution_capture_engine), manager: ValidationCampaignManager = Depends(get_validation_campaign_manager)):
+    if manager.get(campaign_id) is None: raise HTTPException(status_code=404, detail="Campaign not found")
+    return engine.report(campaign_id=campaign_id)
+
+
+@app.get("/execution-research/summary", response_model=dict[str, Any], tags=["execution-research"])
+def execution_research_summary(campaign_id: str | None = None, engine: ExecutionResearchCapture = Depends(get_execution_research_capture)): return engine.summary(campaign_id=campaign_id)
+
+
+@app.get("/execution-research/orders", response_model=list[dict[str, Any]], tags=["execution-research"])
+def execution_research_orders(campaign_id: str | None = None, engine: ExecutionResearchCapture = Depends(get_execution_research_capture)):
+    from dataclasses import asdict
+    return [asdict(x) for x in engine.orders(campaign_id=campaign_id)]
+
+
+@app.get("/execution-research/orders/{research_id}", response_model=dict[str, Any], tags=["execution-research"])
+def execution_research_order(research_id: str, engine: ExecutionResearchCapture = Depends(get_execution_research_capture)):
+    from dataclasses import asdict
+    item=engine.get(research_id)
+    if item is None: raise HTTPException(status_code=404, detail="Execution research order not found")
+    return asdict(item)
+
+
+@app.get("/execution-research/coverage", response_model=dict[str, Any], tags=["execution-research"])
+def execution_research_coverage(campaign_id: str | None = None, engine: ExecutionResearchCapture = Depends(get_execution_research_capture)): return engine.summary(campaign_id=campaign_id)
+
+
+@app.get("/execution-research/entry-touches", response_model=list[dict[str, Any]], tags=["execution-research"])
+def execution_research_entry_touches(campaign_id: str | None = None, lab: ShadowExecutionLab = Depends(get_shadow_execution_lab)): return lab.entry_touches(campaign_id=campaign_id)
+
+
+@app.get("/execution-research/lifetime", response_model=dict[str, Any], tags=["execution-research"])
+def execution_research_lifetime(campaign_id: str | None = None, lab: ShadowExecutionLab = Depends(get_shadow_execution_lab)): return lab.lifetime(campaign_id=campaign_id)
+
+
+def _shadow_section(section, campaign_id, lab): return lab.report(campaign_id=campaign_id)[section]
+
+
+@app.get("/shadow-execution/summary", response_model=dict[str, Any], tags=["shadow-execution"])
+def shadow_execution_summary(campaign_id: str | None = None, lab: ShadowExecutionLab = Depends(get_shadow_execution_lab)): return lab.report(campaign_id=campaign_id)
+
+
+@app.get("/shadow-execution/scenarios", response_model=list[dict[str, Any]], tags=["shadow-execution"])
+def shadow_execution_scenarios(campaign_id: str | None = None, lab: ShadowExecutionLab = Depends(get_shadow_execution_lab)): return _shadow_section("shadow",campaign_id,lab)
+
+
+def _add_shadow_routes():
+    for path, section in (("by-symbol","by_symbol"),("by-asset-class","by_asset_class"),("by-strategy","by_strategy"),("by-setup","by_setup")):
+        async def endpoint(campaign_id: str | None = None, lab: ShadowExecutionLab = Depends(get_shadow_execution_lab), _section=section): return _shadow_section(_section,campaign_id,lab)
+        app.add_api_route(f"/shadow-execution/{path}",endpoint,methods=["GET"],tags=["shadow-execution"],response_model=list[dict[str,Any]],name=f"shadow_execution_{section}")
+
+
+_add_shadow_routes()
+
+
+@app.get("/campaigns/{campaign_id}/execution-research", response_model=dict[str, Any], tags=["campaigns", "execution-research"])
+def campaign_execution_research(campaign_id: str, engine: ExecutionResearchCapture = Depends(get_execution_research_capture)): return {"campaign_id":campaign_id,"coverage":engine.summary(campaign_id=campaign_id),"orders":execution_research_orders(campaign_id,engine)}
+
+
+@app.get("/campaigns/{campaign_id}/shadow-execution", response_model=dict[str, Any], tags=["campaigns", "shadow-execution"])
+def campaign_shadow_execution(campaign_id: str, lab: ShadowExecutionLab = Depends(get_shadow_execution_lab)): return lab.report(campaign_id=campaign_id)
+
+
+@app.get("/dashboard/execution-research", response_model=dict[str, Any], tags=["dashboard", "execution-research"])
+def dashboard_execution_research(campaign_id: str | None = None, capture: ExecutionResearchCapture = Depends(get_execution_research_capture), lab: ShadowExecutionLab = Depends(get_shadow_execution_lab)):
+    coverage=capture.summary(campaign_id=campaign_id); report=lab.report(campaign_id=campaign_id); scenarios=report["shadow"]
+    best_fill=max((x for x in scenarios if x["fill_rate"] is not None),key=lambda x:x["fill_rate"],default=None)
+    best_expectancy=max((x for x in scenarios if x["expectancy_r"] is not None),key=lambda x:x["expectancy_r"],default=None)
+    touches=report["entry_touches"]
+    return {"section":"Execution Research","labels":["ACTUAL","SHADOW","RESEARCH ONLY"],"research_coverage":coverage,
+        "orders_under_observation":coverage["queue_backlog"],"completed_analyses":coverage["orders_with_complete_candle_horizon"],
+        "entry_touch_rate":round(sum(x["entry_touch_count"]>0 for x in touches)/len(touches)*100,6) if touches else None,
+        "after_expiration_touch_rate":round(sum(x["entry_touched_after_actual_expiration"] is True for x in touches)/len(touches)*100,6) if touches else None,
+        "actual_fill_rate":next((x["fill_rate"] for x in scenarios if x["scenario"]=="LIMIT_RETEST_CURRENT"),None),
+        "best_shadow_fill_rate_scenario":best_fill,"best_shadow_expectancy_scenario":best_expectancy,
+        "insufficient_data_count":coverage["orders_with_no_candles"]}
 
 
 @app.get("/validation-readiness/7-day", response_model=dict[str, Any], tags=["system"])

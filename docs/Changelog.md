@@ -1,5 +1,45 @@
 # Changelog
 
+## Version 6.0.20 — Execution Research Data Capture & Shadow Execution Lab — 2026-08-13
+
+- Added durable prospective approved-order snapshots, de-duplicated post-order candle retention, restart recovery, coverage status, and non-blocking collection.
+- Added eight pure shadow scenarios with conservative intrabar ambiguity and explicit non-realized labeling.
+- Added execution-research and shadow-execution APIs plus two system-validation components.
+- Historical missing candle data remains `INSUFFICIENT_DATA`; actual execution behavior and historical outcomes are unchanged.
+
+## Version 6.0.19 — Execution Opportunity Capture Diagnostics — 2026-08-13
+
+- Added campaign-scoped approved-order funnels, unfilled-order terminal analysis, post-order candle research, symbol/asset/strategy/setup aggregation, counterfactuals, prop-style readiness metrics, and executed-trade linkage audits.
+- Added ten read-only `/execution-capture/*` routes and a campaign report route.
+- Prevented direct brokerage/test records from inheriting the current validation campaign without explicit or lifecycle-derived attribution.
+- Preserved historical discrepancies and returns; insufficient candle history is reported rather than fabricated.
+- No trading or execution behavior changed.
+
+## Version 6.0.18 — Lifecycle Record Classification & Campaign Recovery Semantics — 2026-08-13
+
+- Added canonical execution-aware `PENDING_ORDER`, `EXPIRED_ORDER`, `OPEN_TRADE`, and `CLOSED_TRADE` classification.
+- Excluded unfilled lifecycle histories from orphaned-trade classification without deleting them.
+- Added auditable classification counts and active-campaign/legacy recovery isolation.
+- Preserved quarantine/test exclusions and genuine executed-orphan detection.
+- Confirmed Opportunity Coverage uses its documented subroutes; the bare collection path is not an API contract.
+- Strategy, qualification, confidence, risk/reward, entry, fill, and trade-management behavior are unchanged.
+
+## Frontend Phase 1 — Foundation and Core Customer Experience — 2026-08-10
+
+- Added the React/TypeScript/Vite frontend under `frontend/` with reusable semantic design tokens and components.
+- Added public Landing Page, Guided Evaluation wizard, Sign In and password recovery, persistent authenticated shell, and four flagship workspace presentations.
+- Added centralized typed mock data and service boundaries for future authentication, billing, market, trade, performance, and security integrations.
+- Added responsive behavior, accessibility foundations, production build validation, and route/interaction tests.
+- Backend trading logic and APP_VERSION remain unchanged.
+
+## Documentation — Customer Experience, Security, and Onboarding Architecture Approved — 2026-08-09
+
+- Established the payment-required 14-Day Guided Evaluation with full core intelligence quality, optional approval-required Co-Pilot preview, and no Autopilot.
+- Defined paid account creation, monthly/annual billing, upgrades, downgrades, grace period, cancellation, broker entitlements, account states, and retention direction.
+- Approved Email + Password and Google Sign-In, mandatory verification/MFA, step-up authentication, trusted devices, device management, security notifications/history, lockout, and recovery architecture.
+- Approved mandatory resumable, mission-based onboarding using curated educational scenarios and tier-specific simulated first success.
+- Confirmed these are product/customer-experience decisions and do not claim implementation.
+
 ## Documentation — Performance Intelligence Workspace v1.0 Approved — 2026-08-09
 
 - Approved Performance Intelligence as StructureIQ's continuous improvement workspace.

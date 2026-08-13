@@ -66,6 +66,15 @@ def test_open_and_close_are_automatically_journaled(tmp_path) -> None:
     assert closed.account_balance_at_close == 10_300
 
 
+def test_reused_executed_source_does_not_inherit_campaign(tmp_path) -> None:
+    broker, _, journal = _services(tmp_path)
+    first = broker.open_position(_request(metadata={"campaign_id": "campaign-one"}))
+    broker.close_position(first.trade_id, 106)
+    second = broker.open_position(_request())
+
+    assert journal.get_trade(second.trade_id).campaign_id is None
+
+
 def test_summary_calculates_performance_and_groups(tmp_path) -> None:
     broker, _, journal = _services(tmp_path)
     winner = broker.open_position(_request())

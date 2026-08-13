@@ -12,6 +12,7 @@ from core.market_data import Candle
 from core.paper_brokerage import PaperBrokerageEngine, PaperOpenRequest
 from core.paper_trade_journal import PaperTradeJournal
 from core.trade_lifecycle_manager import TradeLifecycleManager
+from core.validation_campaigns import get_global_validation_campaign_manager
 
 
 class _Provider:
@@ -30,12 +31,14 @@ def _services(tmp_path: Path):
 
 
 def _trade_request():
+    campaign = get_global_validation_campaign_manager().current()
     return PaperOpenRequest(
         symbol="BTC-USD", timeframe="5m", higher_timeframe="1h",
         action="buy", setup="liquidity_sweep_reversal_long",
         strategy="liquidity_sweep_reversal", entry_price=100,
         stop_loss=98, target=106,
-        metadata={"setup_quality": {"score": 90}, "score_summary": {"trade_quality_score": 86}},
+        metadata={"setup_quality": {"score": 90}, "score_summary": {"trade_quality_score": 86},
+                  "campaign_id": campaign.campaign_id if campaign else None},
     )
 
 

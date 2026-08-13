@@ -36,6 +36,8 @@ Secondary navigation, below the flagship group:
 
 The lower sidebar contains Notifications, Broker Connections, Settings, and System Status. User profile, plan summary, and AI Partnership / Authority may appear there or in the top utility area, but placement must remain consistent.
 
+Account Health and Security / Device Management belong in consistent account/system surfaces rather than becoming workspace-specific navigation. Pending Verification users may see the shell with protected workspace functions locked and a clear verification action.
+
 ## Authenticated Shell
 
 ### Left Sidebar

@@ -22,3 +22,5 @@ Risk-adjusted consistency matters more than attention-grabbing return claims.
 ## v6.0.14 Application
 
 Prop evaluation readiness is added as read-only benchmark analytics. It does not hard-code one firm's rules as universal truth and does not modify risk controls.
+
+v6.0.19 adds executed trades/day, approved opportunities/day, fill rate, realized R/day, expectancy, win rate, and drawdown in R. These remain descriptive diagnostics and make no profit or prop-firm guarantee.

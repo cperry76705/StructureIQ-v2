@@ -16,3 +16,5 @@ Related Releases: None
 StructureIQ uses a research-first validation approach. Proposed changes should be measured before production behavior changes.
 
 Validation should explain both performance and weakness: frequency, expectancy, drawdown, edge decay, execution realism, market regime behavior, and decision quality.
+
+v6.0.19 requires execution changes to begin as measured counterfactuals. Fill tolerance, lifetime, approval-price, and confirmation-market models cannot become runtime behavior from a single sample.

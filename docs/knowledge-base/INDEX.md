@@ -30,6 +30,8 @@ Related Releases: None
 - [KB-PROD-0007 Navigation & Application Shell Design System](02-product/KB-PROD-0007-navigation-application-shell-design-system.md)
 - [KB-PROD-0008 Trade Intelligence Workspace v1.0 — APPROVED](02-product/KB-PROD-0008-trade-intelligence.md)
 - [KB-PROD-0009 Performance Intelligence Workspace v1.0 — APPROVED](02-product/KB-PROD-0009-performance-intelligence.md)
+- [KB-PROD-0010 Customer Account and Lifecycle Architecture](02-product/KB-PROD-0010-customer-account-and-lifecycle-architecture.md)
+- [KB-PROD-0011 Mission-Based Onboarding Architecture](02-product/KB-PROD-0011-mission-based-onboarding-architecture.md)
 
 ## Engineering
 
@@ -38,6 +40,7 @@ Related Releases: None
 - [KB-ENG-0003 Risk-First Architecture](03-engineering/KB-ENG-0003-risk-first-architecture.md)
 - [KB-ENG-0004 Research Laboratories](03-engineering/KB-ENG-0004-research-laboratories.md)
 - [KB-ENG-0005 Development Environment Lessons](03-engineering/KB-ENG-0005-development-environment-lessons.md)
+- [KB-ENG-0006 Frontend Phase 1 Foundation](03-engineering/KB-ENG-0006-frontend-phase-1-foundation.md)
 
 ## AI
 
@@ -73,6 +76,7 @@ Related Releases: None
 - [TL-0017 Global Navigation and Product Naming Standard Approved](06-timeline/TL-0017-global-navigation-and-product-naming-standard-approved.md)
 - [TL-0018 Trade Intelligence Workspace v1.0 Approved](06-timeline/TL-0018-trade-intelligence-workspace-approved.md)
 - [TL-0019 Performance Intelligence Workspace v1.0 Approved](06-timeline/TL-0019-performance-intelligence-workspace-approved.md)
+- [TL-0020 Customer Experience, Security, and Onboarding Architecture Approved](06-timeline/TL-0020-customer-experience-security-and-onboarding-architecture-approved.md)
 
 ## Decisions
 
@@ -101,6 +105,10 @@ Related Releases: None
 - [ADR-023 Persistent Authenticated Navigation and Naming Standard](07-decisions/ADR-023-persistent-authenticated-navigation-and-naming-standard.md)
 - [ADR-024 AI-Selected Default Opportunity With User Override](07-decisions/ADR-024-ai-selected-default-opportunity-with-user-override.md)
 - [ADR-025 Decision Quality Over Outcome-Only Performance Evaluation](07-decisions/ADR-025-decision-quality-over-outcome-only-performance-evaluation.md)
+- [ADR-026 14-Day Guided Evaluation](07-decisions/ADR-026-fourteen-day-guided-evaluation.md)
+- [ADR-027 Mandatory MFA and Step-Up Authentication](07-decisions/ADR-027-mandatory-mfa-and-step-up-authentication.md)
+- [ADR-028 Customer Lifecycle and Account-State Model](07-decisions/ADR-028-customer-lifecycle-and-account-state-model.md)
+- [ADR-029 Mission-Based Curated Onboarding](07-decisions/ADR-029-mission-based-curated-onboarding.md)
 
 ## Validation
 
@@ -159,6 +167,9 @@ Related Releases: None
 - [v6.0.15](11-releases/REL-v6.0.15.md)
 - [v6.0.16](11-releases/REL-v6.0.16.md)
 - [v6.0.17](11-releases/REL-v6.0.17.md)
+- [v6.0.18](11-releases/REL-v6.0.18.md)
+- [v6.0.19](11-releases/REL-v6.0.19.md)
+- [v6.0.20](11-releases/REL-v6.0.20.md)
 
 ## Operations
 
@@ -167,3 +178,18 @@ Related Releases: None
 - [Documentation Impact Matrix](12-operations/documentation-impact-matrix.md)
 - [Release Workflow](12-operations/release-workflow.md)
 - [Validation Workflow](12-operations/validation-workflow.md)
+## Approved Designs
+
+- [KB-DESIGN-0000 Design System](13-approved-designs/KB-DESIGN-0000-design-system.md)
+- [KB-DESIGN-0001 Landing Page](13-approved-designs/KB-DESIGN-0001-landing-page.md)
+- [KB-DESIGN-0002 Sign In](13-approved-designs/KB-DESIGN-0002-sign-in.md)
+- [KB-DESIGN-0003 Guided Evaluation Step 1](13-approved-designs/KB-DESIGN-0003-guided-evaluation-step-1.md)
+- [KB-DESIGN-0004 Guided Evaluation Step 2](13-approved-designs/KB-DESIGN-0004-guided-evaluation-step-2.md)
+- [KB-DESIGN-0005 Guided Evaluation Step 3](13-approved-designs/KB-DESIGN-0005-guided-evaluation-step-3.md)
+- [KB-DESIGN-0006 Guided Evaluation Step 4](13-approved-designs/KB-DESIGN-0006-guided-evaluation-step-4.md)
+- [KB-DESIGN-0007 Welcome Page](13-approved-designs/KB-DESIGN-0007-welcome-page.md)
+- [KB-DESIGN-0008 Command Center](13-approved-designs/KB-DESIGN-0008-command-center.md)
+- [KB-DESIGN-0009 Market Intelligence](13-approved-designs/KB-DESIGN-0009-market-intelligence.md)
+- [KB-DESIGN-0010 Trade Intelligence](13-approved-designs/KB-DESIGN-0010-trade-intelligence.md)
+- [KB-DESIGN-0011 Performance Intelligence](13-approved-designs/KB-DESIGN-0011-performance-intelligence.md)
+

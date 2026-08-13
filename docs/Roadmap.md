@@ -1,5 +1,12 @@
 # StructureIQ Roadmap
 
+## Product Architecture Baseline — Customer Experience, Security, and Onboarding (approved)
+
+- Implement the 14-Day Guided Evaluation, separate paid-account path, monthly/annual billing with 20% annual savings, and lifecycle state model without claiming current billing capability.
+- Implement Email + Password and Google Sign-In, mandatory verification/MFA, step-up authentication, trusted devices, device management, security notifications/history, lockout, and recovery through security review.
+- Implement mandatory resumable, mission-based onboarding with curated scenarios, universal and tier-specific education, and simulated first success without live capital.
+- Preserve the distinction between approved customer-experience architecture and implemented application capability.
+
 ## Product Design Baseline — Performance Intelligence Workspace v1.0 (approved)
 
 - Continuous improvement workspace answering: "How am I performing and improving as a trader?"

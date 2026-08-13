@@ -43,6 +43,14 @@ The four flagship workspaces are Command Center, Market Intelligence, Trade Inte
 
 The core product narrative moves from public Landing Page and authentication/onboarding into Command Center, then Market Intelligence, Trade Intelligence, and Performance Intelligence. Supporting workspaces remain subordinate to this daily loop.
 
+### Customer Entry, Security, and Onboarding
+
+Public entry paths are Start 14-Day Guided Evaluation, Subscribe / Create Account, and Sign In. The evaluation requires payment method and verified email, is Explorer-based, exposes all four flagship workspaces with full core intelligence quality, may demonstrate approval-required Co-Pilot behavior, and never enables Autopilot.
+
+Paid activation requires plan and billing selection, Email + Password or Google Sign-In, payment, verified email, mandatory MFA, and mandatory resumable onboarding. Protected workspace use remains locked until required verification and security steps are complete. High-risk broker, Autopilot, account, security, and payment actions require step-up authentication.
+
+Onboarding uses curated educational scenarios rather than live opportunities. Every customer learns the flagship workspaces, AI Authority, risk, and explainability, followed by tier-specific simulated workflows and a guided first success without live customer capital.
+
 ### Market Intelligence Workspace
 
 Market Intelligence is the approved AI-first market research workspace. It helps the trader understand the current state of the market before considering a trade.

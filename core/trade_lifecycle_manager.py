@@ -332,6 +332,11 @@ class TradeLifecycleManager:
     def pending_orders(self) -> tuple[PendingPaperOrder, ...]:
         return tuple(item for item in self._orders.values() if item.status == "pending")
 
+    def orders(self) -> tuple[PendingPaperOrder, ...]:
+        """Return immutable snapshots of all retained orders for read-only diagnostics."""
+
+        return tuple(self._orders.values())
+
     def open_trades(self) -> tuple[PaperTrade, ...]:
         return tuple(item for item in self.broker.open_positions() if item.trade_id in self._managed_trade_ids)
 

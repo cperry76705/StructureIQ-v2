@@ -10,6 +10,11 @@ from typing import Any
 
 from fastapi.encoders import jsonable_encoder
 
+from core.lifecycle_record_classification import (
+    LifecycleRecordClassification,
+    classify_lifecycle_record,
+)
+
 
 @dataclass(frozen=True)
 class PaperOrphanRecord:
@@ -49,6 +54,10 @@ class PaperRecoverySummary:
     excluded_quarantined: int = 0
     excluded_legacy: int = 0
     excluded_test_fixtures: int = 0
+    pending_orders: int = 0
+    expired_orders: int = 0
+    open_trades: int = 0
+    closed_trades: int = 0
 
 
 @dataclass(frozen=True)
@@ -97,15 +106,17 @@ class PaperRecoveryEngine:
             self.lifecycle.recover_from_storage()
         # Journal loads in its constructor; keep recovery read-only for journal contents.
         reconciliation = self.reconciliation.run(persist=persist_reconciliation)
-        orphans, excluded = self._detect_orphans()
+        orphans, excluded, classifications = self._detect_orphans()
         self._persist_orphans(orphans)
         account = self.broker.account()
         performance = self.broker.performance()
         legacy_orphans = [item for item in orphans if item.orphan_classification == "LEGACY_PRE_PERSISTENCE"]
-        current_orphans = [item for item in orphans if item.orphan_classification != "LEGACY_PRE_PERSISTENCE"]
-        runtime_status = "WATCHLIST" if current_orphans else "PASS"
-        active_status = "WATCHLIST" if any(item.campaign_id and item.orphan_classification != "LEGACY_PRE_PERSISTENCE" for item in orphans) else "PASS"
-        legacy_status = "WATCHLIST" if legacy_orphans else "PASS"
+        active_campaign_id = getattr(getattr(reconciliation, "summary", None), "active_campaign_id", None)
+        current_orphans = [item for item in orphans if active_campaign_id and item.campaign_id == active_campaign_id]
+        runtime_orphans = [item for item in orphans if item.orphan_classification != "LEGACY_PRE_PERSISTENCE"]
+        runtime_status = "WATCHLIST" if runtime_orphans else "PASS"
+        active_status = self._scoped_reconciliation_status("active_campaign", "WATCHLIST" if current_orphans else "PASS")
+        legacy_status = self._scoped_reconciliation_status("legacy", "WATCHLIST" if legacy_orphans else "PASS")
         global_status = reconciliation.status
         status = "FAIL" if reconciliation.status == "FAIL" else "WATCHLIST" if orphans or reconciliation.status == "WATCHLIST" else "PASS"
         if orphans:
@@ -123,7 +134,9 @@ class PaperRecoveryEngine:
             human_readable_summary=(
                 f"Recovered {len(self.broker.open_positions())} open positions, "
                 f"{len(self.lifecycle.pending_orders())} pending orders, "
-                f"{len(self.lifecycle.events())} lifecycle histories; runtime recovery status {runtime_status}; overall status {status}."
+                f"{len(self.lifecycle.events())} lifecycle histories; classified {classifications['EXPIRED_ORDER']} expired unfilled orders, "
+                f"{classifications['OPEN_TRADE']} open trades, and {classifications['CLOSED_TRADE']} closed trades; "
+                f"runtime recovery status {runtime_status}; overall status {status}."
             ),
             runtime_recovery_status=runtime_status,
             active_campaign_recovery_status=active_status,
@@ -135,6 +148,10 @@ class PaperRecoveryEngine:
             excluded_quarantined=excluded["quarantined"],
             excluded_legacy=excluded["legacy"],
             excluded_test_fixtures=excluded["test_fixture"],
+            pending_orders=classifications["PENDING_ORDER"],
+            expired_orders=classifications["EXPIRED_ORDER"],
+            open_trades=classifications["OPEN_TRADE"],
+            closed_trades=classifications["CLOSED_TRADE"],
         )
         result = PaperRecoveryResult(
             run_id=f"recovery_{_now_hash()}",
@@ -149,6 +166,12 @@ class PaperRecoveryEngine:
         _set_latest(result)
         return result
 
+    def _scoped_reconciliation_status(self, scope: str, fallback: str) -> str:
+        try:
+            return str(self.reconciliation.run(persist=False, scope=scope).status)
+        except (AttributeError, TypeError, ValueError):
+            return fallback
+
     def writable(self) -> bool:
         try:
             self.orphan_path.parent.mkdir(parents=True, exist_ok=True)
@@ -159,7 +182,7 @@ class PaperRecoveryEngine:
         except OSError:
             return False
 
-    def _detect_orphans(self) -> tuple[list[PaperOrphanRecord], dict[str, int]]:
+    def _detect_orphans(self) -> tuple[list[PaperOrphanRecord], dict[str, int], dict[str, int]]:
         eligibility_by_trade = {}
         excluded = {"quarantined": 0, "legacy": 0, "test_fixture": 0}
         try:
@@ -175,12 +198,17 @@ class PaperRecoveryEngine:
         except Exception:
             eligibility_by_trade = {}
         broker_ids = {item.trade_id for item in (*self.broker.open_positions(), *self.broker.closed_trades())}
-        lifecycle_ids = {item.trade_id for item in (*self.lifecycle.open_trades(), *self.lifecycle.closed_trades()) if item.trade_id}
+        broker_open_ids = {item.trade_id for item in self.broker.open_positions()}
+        broker_closed_ids = {item.trade_id for item in self.broker.closed_trades()}
+        lifecycle_open_ids = {item.trade_id for item in self.lifecycle.open_trades() if item.trade_id}
+        lifecycle_closed_ids = {item.trade_id for item in self.lifecycle.closed_trades() if item.trade_id}
+        lifecycle_ids = lifecycle_open_ids | lifecycle_closed_ids
         event_ids = {item.trade_id for item in self.lifecycle.events() if getattr(item, "trade_id", None)}
         orphans: list[PaperOrphanRecord] = []
-        quarantined_excluded = 0
+        classifications = {item.value: 0 for item in LifecycleRecordClassification}
         for entry in self.journal.entries():
-            if entry.status not in {"open", "closed"}:
+            if getattr(entry, "test_fixture", False) or getattr(entry, "synthetic_recovery_test", False):
+                excluded["test_fixture"] += 1
                 continue
             decision = eligibility_by_trade.get(entry.trade_id)
             if decision is not None and not decision.runtime_eligible and any(
@@ -194,6 +222,16 @@ class PaperRecoveryEngine:
                 continue
             in_broker = entry.trade_id in broker_ids
             in_lifecycle = entry.trade_id in lifecycle_ids or entry.trade_id in event_ids
+            semantic = classify_lifecycle_record(
+                entry,
+                in_brokerage_open=entry.trade_id in broker_open_ids,
+                in_brokerage_closed=entry.trade_id in broker_closed_ids,
+                in_lifecycle_open=entry.trade_id in lifecycle_open_ids,
+                in_lifecycle_closed=entry.trade_id in lifecycle_closed_ids,
+            )
+            classifications[semantic.value] += 1
+            if semantic in {LifecycleRecordClassification.PENDING_ORDER, LifecycleRecordClassification.EXPIRED_ORDER}:
+                continue
             if in_broker or in_lifecycle:
                 continue
             classification = _classification(entry, in_broker, in_lifecycle)
@@ -216,7 +254,7 @@ class PaperRecoveryEngine:
                     "campaign": getattr(entry, "campaign_id", None) is not None,
                 },
             ))
-        return orphans, excluded
+        return orphans, excluded, classifications
 
     def _persist_orphans(self, orphans: list[PaperOrphanRecord]) -> None:
         self.orphan_path.parent.mkdir(parents=True, exist_ok=True)

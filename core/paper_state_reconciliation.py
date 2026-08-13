@@ -12,6 +12,11 @@ from typing import Any, Literal
 
 from fastapi.encoders import jsonable_encoder
 
+from core.lifecycle_record_classification import (
+    LifecycleRecordClassification,
+    classify_lifecycle_record,
+)
+
 
 ReconciliationStatus = Literal["PASS", "WATCHLIST", "FAIL"]
 DiscrepancySeverity = Literal["info", "warning", "critical"]
@@ -44,6 +49,7 @@ class ReconciledTradeRecord:
     lifecycle_event_count: int
     warnings: tuple[str, ...]
     campaign_id: str | None = None
+    classification: str = "PENDING_ORDER"
 
 
 @dataclass(frozen=True)
@@ -74,6 +80,10 @@ class PaperReconciliationSummary:
     quarantined_discrepancy_count: int = 0
     critical_operational_count: int = 0
     warning_operational_count: int = 0
+    pending_orders: int = 0
+    expired_orders: int = 0
+    open_trades: int = 0
+    closed_trades: int = 0
 
 
 @dataclass(frozen=True)
@@ -174,6 +184,7 @@ class PaperStateReconciliationEngine:
             broker_open, broker_closed, lifecycle_open, lifecycle_closed,
             journal_entries,
         )
+        classification_counts = Counter(item.classification for item in records.values())
         self._compare_trade_presence(records, discrepancies)
         self._compare_lifecycle_history(journal_entries, lifecycle_events, discrepancies)
         self._compare_totals(performance, journal_summary, latest_report, discrepancies)
@@ -235,6 +246,10 @@ class PaperStateReconciliationEngine:
             quarantined_discrepancy_count=len(quarantined_discrepancies),
             critical_operational_count=operational_critical,
             warning_operational_count=operational_warning,
+            pending_orders=classification_counts[LifecycleRecordClassification.PENDING_ORDER.value],
+            expired_orders=classification_counts[LifecycleRecordClassification.EXPIRED_ORDER.value],
+            open_trades=classification_counts[LifecycleRecordClassification.OPEN_TRADE.value],
+            closed_trades=classification_counts[LifecycleRecordClassification.CLOSED_TRADE.value],
         )
         result = PaperReconciliationResult(
             run_id=_run_id(checked_at),
@@ -323,6 +338,8 @@ class PaperStateReconciliationEngine:
 
     def _compare_trade_presence(self, records: dict[str, ReconciledTradeRecord], discrepancies: list[PaperStateDiscrepancy]) -> None:
         for record in records.values():
+            if record.classification in {"PENDING_ORDER", "EXPIRED_ORDER"}:
+                continue
             if record.in_journal and not (record.in_brokerage_open or record.in_brokerage_closed):
                 severity: DiscrepancySeverity = "warning"
                 if record.journal_status == "open":
@@ -529,6 +546,13 @@ def _trade_records(
         lc = _find(lifecycle_closed, trade_id)
         je = _find(journal_entries, trade_id)
         source = je or bo or bc or lo or lc
+        semantic = classify_lifecycle_record(
+            source,
+            in_brokerage_open=bo is not None,
+            in_brokerage_closed=bc is not None,
+            in_lifecycle_open=lo is not None,
+            in_lifecycle_closed=lc is not None,
+        )
         records[trade_id] = ReconciledTradeRecord(
             trade_id=trade_id,
             symbol=getattr(source, "symbol", None),
@@ -546,6 +570,7 @@ def _trade_records(
             lifecycle_event_count=len(getattr(je, "lifecycle_events", ()) or ()) if je is not None else 0,
             warnings=tuple(getattr(je, "warnings", ()) or ()) if je is not None else (),
             campaign_id=getattr(je, "campaign_id", None) if je is not None else None,
+            classification=semantic.value,
         )
     return records
 

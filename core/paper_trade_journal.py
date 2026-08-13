@@ -195,7 +195,17 @@ class PaperTradeJournal:
             metadata = trade.metadata or {}
             flags = _fixture_flags(metadata)
             if event_type == "paper_trade_opened":
-                campaign_id = metadata.get("campaign_id") or _current_campaign_id()
+                # Campaign attribution must be explicit or inherited from the
+                # lifecycle snapshot already created for an approved order. Direct
+                # brokerage/test events cannot claim whichever campaign is current.
+                inherited_campaign = (
+                    getattr(existing, "campaign_id", None)
+                    if existing is not None
+                    and getattr(existing, "opened_at", None) is None
+                    and getattr(existing, "actual_entry", None) is None
+                    else None
+                )
+                campaign_id = metadata.get("campaign_id") or inherited_campaign
                 entry = PaperTradeJournalEntry(
                     journal_id=_journal_id(trade.trade_id), trade_id=trade.trade_id,
                     source_event_id=trade.source_event_id, symbol=trade.symbol,

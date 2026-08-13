@@ -30,3 +30,5 @@ This lightweight matrix guides release-time Knowledge Base impact reviews. It is
 | Validation | Validation, operations, roadmap |
 | Market Universe | Engineering, research, validation, decisions |
 | SaaS Platform | Product, business, engineering, security when applicable |
+| Execution Capture Diagnostics | Engineering, validation, research, API, roadmap, release documentation |
+| Shadow Execution Research | Engineering, validation, research, operations, API, dashboard, release documentation |

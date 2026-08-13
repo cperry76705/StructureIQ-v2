@@ -26,3 +26,4 @@ Expand opportunity coverage before weakening quality standards.
 - Confirm market-session filtering activates crypto continuously and Forex only during configured Forex hours.
 - Measure whether increased opportunity flow comes from broader coverage, not looser standards.
 - Use Opportunity Coverage Analytics to reconcile where each observed market stops.
+- Use Execution Capture Analytics to compare fill behavior by symbol and asset class without penalizing legitimately closed Forex sessions.

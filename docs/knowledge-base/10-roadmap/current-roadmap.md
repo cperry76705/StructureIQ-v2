@@ -29,9 +29,13 @@ Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-rele
 14. Apply Navigation & Application Shell Design System v1.0 to future authenticated frontend work: one shell and the four authoritative flagship workspace names.
 15. Implement the approved Trade Intelligence v1.0 product baseline when frontend work resumes without treating Market Explorer as global navigation or claiming unimplemented exploratory analysis.
 16. Implement the approved Performance Intelligence v1.0 product baseline when frontend work resumes; validate Decision Quality and behavioral metric logic before representing those metrics as production-ready, and retain Edge Score as CONCEPT / FUTURE.
+17. Implement approved customer-entry architecture: 14-Day Guided Evaluation, paid activation, monthly/annual billing, account states, lifecycle transitions, and retention subject to legal/privacy validation.
+18. Implement authentication and security architecture through engineering/security review: Email + Password, Google Sign-In, mandatory verification/MFA, step-up authentication, device/session controls, notifications, audit history, lockout, and recovery.
+19. Implement mandatory resumable, mission-based onboarding with curated scenarios and simulated tier-specific first success; never present onboarding as live opportunity or use live customer capital.
 
 ## Recently Completed
 
+- Implemented Frontend Phase 1 foundation with public entry, Guided Evaluation wizard, authentication support screens, persistent app shell, flagship workspace shells, centralized mock services, responsive design, and test coverage.
 - Completed market-session awareness in v6.0.13.
 - Expanded the default monitored universe to BTC-USD, ETH-USD, and seven major USD Forex pairs in v6.0.14.
 - Added read-only Opportunity Coverage Analytics for campaign funnel, symbol, asset-class, trade-frequency, and prop-readiness context.
@@ -42,3 +46,6 @@ Related Releases: [v6.0.13](../11-releases/REL-v6.0.13.md), [v6.0.14](../11-rele
 - Approved the persistent authenticated navigation and naming standard; reclassified Morning Intelligence as Morning Brief within Command Center.
 - Approved Trade Intelligence Workspace v1.0 with AI Top Pick, user override, Opportunity Workspace, Market Universe, lifecycle guidance, and exploratory-market boundaries.
 - Approved Performance Intelligence Workspace v1.0, completing the four-workspace flagship loop and establishing Decision Quality as its primary behavioral KPI.
+- Approved customer experience, security, account lifecycle, and mission-based onboarding architecture before authentication frontend design.
+- Completed v6.0.19 execution-capture measurement; controlled execution-model testing is a future evidence-gated task, not part of this release.
+- Added v6.0.20 prospective capture and shadow execution; review an operator-started four-hour dataset before any execution-policy proposal.

@@ -11,6 +11,10 @@ Related Entries: [Validation Philosophy](../08-validation/VAL-0001-validation-ph
 Related ADRs: [ADR-004](../07-decisions/ADR-004-paper-before-live.md), [ADR-013](../07-decisions/ADR-013-research-before-production-change.md)  
 Related Releases: [v6.0.16](../11-releases/REL-v6.0.16.md), [v6.0.17](../11-releases/REL-v6.0.17.md)
 
+## v6.0.20 Execution Research Collection
+
+An operator may run a four-hour paper campaign using the existing command with `--hours 4`, a campaign name, and auto-approval. Research attaches automatically when enabled; actual and shadow results remain separate. No campaign starts automatically.
+
 ## Workflow
 
 Define the validation objective, run tests, run paper campaigns where needed, preserve diagnostics, separate historical drift from active campaign behavior, and document findings before changing production behavior.

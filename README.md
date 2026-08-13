@@ -1,8 +1,8 @@
 # StructureIQ
 
-## Recovery Test Snapshot Integrity Guard (v6.0.17)
+## Execution Research Data Capture & Shadow Execution Lab (v6.0.20)
 
-Version 6.0.17 makes the deterministic paper recovery-test harness transactionally safe. Every recovery test now has a durable `recovery_test_run_id` that binds fixture creation, snapshot, verification, cleanup, and history.
+Version 6.0.20 durably captures approved-order research snapshots and post-order candles, then evaluates isolated shadow execution scenarios. Shadow outcomes are research-only and never affect real paper execution, accounts, journals, risk locks, or campaign performance.
 
 Key behavior:
 

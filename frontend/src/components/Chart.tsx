@@ -1,0 +1,1 @@
+export const MiniChart = ({ variant = 'blue' }: { variant?: 'blue' | 'green' | 'purple' }) => <div className={`mini-chart mini-chart--${variant}`} aria-label="Illustrative non-production chart"><span/><span/><span/><span/><span/><span/><span/></div>

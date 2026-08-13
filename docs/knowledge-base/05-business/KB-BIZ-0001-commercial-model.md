@@ -34,3 +34,7 @@ Trade Intelligence is a major commercial differentiator because it combines AI o
 Performance Intelligence differentiates StructureIQ through long-term user development: decision-quality evaluation, discipline analysis, attribution, coaching, explainability, and repeatable improvement. It supports retention and engagement as product goals without making unsupported claims about profitability, churn reduction, or competitor capabilities.
 
 No authoritative prices are currently recorded in this entry.
+
+## Customer Entry and Retention Architecture
+
+The 14-Day Guided Evaluation provides full core intelligence quality across the four flagship workspaces and may preview approval-required Co-Pilot behavior without Autopilot. Paid plans support monthly and annual billing, with 20% annual savings. Mission-based onboarding, account restoration within the approved retention direction, security transparency, and continuous coaching support long-term engagement without making unsupported conversion, retention, or profitability claims.

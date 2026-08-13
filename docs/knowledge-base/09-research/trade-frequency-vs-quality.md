@@ -22,3 +22,9 @@ The system should seek every valid high-quality opportunity, not force trades to
 ## v6.0.14 Update
 
 Opportunity Coverage Analytics adds factual trade-frequency and selectivity measurements by campaign, symbol, and asset class. These metrics are descriptive only; high or low selectivity is not labeled good or bad without validation evidence.
+
+## v6.0.19 Update
+
+Approved opportunity frequency is now separated from executed-trade frequency. A selective engine may still have an execution-capture problem; conclusions require fill-rate, entry-distance, lifetime, and missed-favorable-move evidence.
+
+v6.0.20 supplies prospective candle evidence while keeping alternative execution results non-realized.

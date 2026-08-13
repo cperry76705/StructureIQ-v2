@@ -1,5 +1,14 @@
 # Knowledge Base Changelog
 
+## Knowledge Base v1.10 — 2026-08-13
+
+- Added REL-v6.0.20, prospective research storage, candle coverage, restart durability, shadow isolation, and the operator-started validation workflow.
+
+## Knowledge Base v1.9 — 2026-08-13
+
+- Added REL-v6.0.19 and execution-capture architecture, validation, research, prop-style analytics, roadmap, and documentation-impact updates.
+- Recorded the research-first boundary between counterfactual execution evidence and future runtime changes.
+
 ID: KB-ROOT-0002  
 Title: Knowledge Base Changelog  
 Category: Knowledge Base  
@@ -10,6 +19,52 @@ Last Updated: 2026-08-09
 Related Entries: [README.md](README.md)  
 Related ADRs: [ADR-020](07-decisions/ADR-020-knowledge-base-source-of-truth.md)  
 Related Releases: None
+
+## Knowledge Base v1.8 ? 2026-08-12
+
+Added:
+
+- Approved Designs category under `13-approved-designs`.
+- KB-DESIGN-0000 through KB-DESIGN-0011 records for the design system, Landing Page, Sign In, Guided Evaluation steps, Welcome Page, Command Center, Market Intelligence, Trade Intelligence, and Performance Intelligence.
+- Screenshot-embedded Markdown records establishing each PNG as the authoritative visual specification.
+
+Changed:
+
+- Updated the frontend implementation status to APPROVED DESIGN / FRONTEND IMPLEMENTED / VISUAL FIDELITY REVIEW REQUIRED.
+- Reinforced the corrected persistent authenticated sidebar hierarchy and approved visual design system.
+- Preserved APP_VERSION 6.0.17 and all trading-engine behavior.
+
+## Knowledge Base v1.7 — 2026-08-10
+
+Added:
+
+- Frontend Phase 1 Foundation implementation entry.
+- React/TypeScript/Vite application, shared design system, public customer-entry flow, authenticated shell, and four flagship workspace shells.
+- Typed centralized mock data, replaceable service boundaries, responsive behavior, accessibility foundation, and frontend tests.
+
+Changed:
+
+- Distinguished approved product designs from implemented frontend presentation.
+- Recorded authentication, billing, MFA, broker, intelligence, and performance services as integration boundaries rather than implemented backend capabilities.
+- Preserved APP_VERSION 6.0.17 and all trading-engine behavior.
+
+## Knowledge Base v1.6 — 2026-08-09
+
+Added:
+
+- Customer Account and Lifecycle Architecture.
+- Mission-Based Onboarding Architecture.
+- 14-Day Guided Evaluation with payment and verification requirements.
+- Authentication, mandatory MFA, step-up authentication, device/session security, recovery, Account Health, and audit-history concepts.
+- Billing lifecycle, account-state, retention, and curated onboarding decisions.
+- ADR-026 through ADR-029 and TL-0020.
+
+Changed:
+
+- Superseded the prior 7-day customer-trial concept with the 14-Day Guided Evaluation; seven-day engineering validation terminology is unchanged.
+- Defined separate Guided Evaluation, paid account creation, and Sign In entry paths.
+- Formalized monthly/annual billing, 20% annual savings, upgrade/downgrade timing, grace period, cancellation, and broker entitlements.
+- Made email verification and MFA mandatory before usable protected workspace access.
 
 ## Knowledge Base v1.5 — 2026-08-09
 
